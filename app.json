@@ -41,7 +41,17 @@
     ],
     "extra": {
       "thesportsdbLeagueId": "4429",
-      "thesportsdbSeason": "2026"
+      "thesportsdbSeason": "2026",
+      "eas": {
+        "projectId": "89af944a-ad75-4dc5-9119-2131ebdd9d96"
+      }
+    },
+    "owner": "nascimento.daniel",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/89af944a-ad75-4dc5-9119-2131ebdd9d96"
     }
   }
 }
