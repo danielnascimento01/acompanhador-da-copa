@@ -1,0 +1,133 @@
+import React, { useMemo } from 'react';
+import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+
+import { GROUPS, TEAMS, Team } from '../data/teams';
+import { useStore } from '../lib/store';
+import { colors, fonts, radius, spacing } from '../lib/theme';
+
+export function TeamsScreen() {
+  const { selected, toggleTeam } = useStore();
+
+  const sections = useMemo(
+    () =>
+      GROUPS.map((g) => ({
+        title: g,
+        data: TEAMS.filter((t) => t.group === g),
+      })),
+    [],
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Seleções</Text>
+        <Text style={styles.subtitle}>
+          {selected.size === 0
+            ? 'Toque nas seleções que você quer acompanhar.'
+            : `${selected.size} ${selected.size === 1 ? 'seleção marcada' : 'seleções marcadas'}`}
+        </Text>
+      </View>
+
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={{ paddingBottom: spacing(10), paddingHorizontal: spacing(4) }}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.groupRow}>
+            <View style={styles.groupTag}>
+              <Text style={styles.groupTagText}>{section.title}</Text>
+            </View>
+            <Text style={styles.groupLabel}>Grupo {section.title}</Text>
+            <View style={styles.groupLine} />
+          </View>
+        )}
+        renderItem={({ item }) => (
+          <TeamRow team={item} active={selected.has(item.id)} onPress={() => toggleTeam(item.id)} />
+        )}
+      />
+    </View>
+  );
+}
+
+function TeamRow({ team, active, onPress }: { team: Team; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: active }}
+      accessibilityLabel={team.name}
+      hitSlop={6}
+      style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && styles.rowPressed]}
+    >
+      <View style={[styles.flagWrap, active && styles.flagWrapActive]}>
+        <Text style={styles.flag}>{team.flag}</Text>
+      </View>
+      <Text style={[styles.name, active && styles.nameActive]} numberOfLines={1}>
+        {team.name}
+      </Text>
+      <View style={[styles.check, active && styles.checkActive]}>
+        {active && <Text style={styles.checkMark}>✓</Text>}
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 34 },
+  subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 14, marginTop: 2 },
+  groupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginTop: spacing(5), marginBottom: spacing(2) },
+  groupTag: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupTagText: { color: colors.ink, fontFamily: fonts.display, fontSize: 14 },
+  groupLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.5 },
+  groupLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing(2),
+    paddingHorizontal: spacing(2),
+    marginBottom: spacing(2),
+    gap: spacing(3),
+    minHeight: 60,
+  },
+  rowActive: { borderColor: colors.accent, backgroundColor: colors.surface2 },
+  rowPressed: { opacity: 0.6 },
+  flagWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flagWrapActive: { borderColor: colors.accentDeep },
+  flag: { fontSize: 26 },
+  name: { color: colors.text, fontFamily: fonts.semibold, fontSize: 16, flex: 1 },
+  nameActive: { color: colors.accent, fontFamily: fonts.bold },
+  check: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: colors.borderBright,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  checkMark: { color: colors.ink, fontFamily: fonts.extrabold, fontSize: 15 },
+});
