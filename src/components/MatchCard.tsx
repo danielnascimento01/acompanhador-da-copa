@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Match, kickoff, hasStarted, isLive, isFinished } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
@@ -10,9 +10,10 @@ type Props = {
   match: Match;
   /** Ids das seleções marcadas, para destacar quem você acompanha. */
   selected: Set<string>;
+  onPress?: () => void;
 };
 
-export function MatchCard({ match, selected }: Props) {
+export function MatchCard({ match, selected, onPress }: Props) {
   const ko = kickoff(match);
   const live = isLive(match);
   const finished = isFinished(match);
@@ -20,7 +21,12 @@ export function MatchCard({ match, selected }: Props) {
   const hasScore = match.homeScore != null && match.awayScore != null;
 
   return (
-    <View style={[styles.card, live && styles.cardLive]}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${teamName(match.home)} contra ${teamName(match.away)}, ver detalhes`}
+      style={({ pressed }) => [styles.card, live && styles.cardLive, pressed && styles.cardPressed]}
+    >
       {live && <View style={styles.liveBar} />}
 
       <View style={styles.side}>
@@ -64,7 +70,7 @@ export function MatchCard({ match, selected }: Props) {
           <Text style={styles.flag}>{teamFlag(match.away)}</Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -82,6 +88,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardLive: { borderColor: colors.live },
+  cardPressed: { opacity: 0.6 },
   liveBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: colors.live },
   side: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
   sideRight: { justifyContent: 'flex-end' },

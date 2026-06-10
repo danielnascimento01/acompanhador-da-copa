@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
+import { MatchDetailSheet } from './MatchDetailSheet';
 import { FadeInUp } from '../components/Motion';
 import { filterByTeams, kickoff, nextRelevantMatch, Match } from '../data/fixtures';
 import { useStore } from '../lib/store';
@@ -20,6 +21,7 @@ function updatedLabel(updatedAt: number | null): string {
 
 export function ScheduleScreen() {
   const { selected, matches, refresh, refreshing, updatedAt } = useStore();
+  const [detail, setDetail] = useState<Match | null>(null);
 
   useEffect(() => {
     if (!updatedAt && selected.size > 0) refresh();
@@ -86,7 +88,15 @@ export function ScheduleScreen() {
           ) : null
         }
         renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
-        renderItem={({ item }) => <MatchCard match={item} selected={selected} />}
+        renderItem={({ item }) => (
+          <MatchCard match={item} selected={selected} onPress={() => setDetail(item)} />
+        )}
+      />
+      <MatchDetailSheet
+        match={detail}
+        matches={matches}
+        selected={selected}
+        onClose={() => setDetail(null)}
       />
     </View>
   );

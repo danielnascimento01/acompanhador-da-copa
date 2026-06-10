@@ -18,15 +18,17 @@ import { configureNotificationHandler, ensureAndroidChannel } from './src/lib/no
 import { Backdrop } from './src/components/Backdrop';
 import { TeamsScreen } from './src/screens/TeamsScreen';
 import { ScheduleScreen } from './src/screens/ScheduleScreen';
+import { StandingsScreen } from './src/screens/StandingsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SupportSheet } from './src/screens/SupportScreen';
 import { colors, fonts, gradients, spacing } from './src/lib/theme';
 
-type TabKey = 'schedule' | 'teams' | 'settings';
+type TabKey = 'schedule' | 'standings' | 'teams' | 'settings';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'schedule', label: 'Jogos', icon: '⚽' },
+  { key: 'standings', label: 'Grupos', icon: '📊' },
   { key: 'teams', label: 'Seleções', icon: '🌎' },
   { key: 'settings', label: 'Avisos', icon: '🔔' },
 ];
@@ -64,6 +66,7 @@ function Shell() {
     <View style={styles.shell}>
       <View style={styles.content}>
         {tab === 'schedule' && <ScheduleScreen />}
+        {tab === 'standings' && <StandingsScreen />}
         {tab === 'teams' && <TeamsScreen />}
         {tab === 'settings' && <SettingsScreen />}
       </View>
