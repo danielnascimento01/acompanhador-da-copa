@@ -43,7 +43,7 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
             <Pressable
               onPress={openKofi}
               accessibilityRole="button"
-              accessibilityLabel="Apoiar no Ko-fi"
+              accessibilityLabel="Apoiar nosso app"
               style={({ pressed }) => pressed && styles.pressed}
             >
               <LinearGradient
@@ -52,7 +52,7 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
                 end={{ x: 1, y: 0 }}
                 style={[styles.primaryBtn, elevation(1)]}
               >
-                <Text style={styles.primaryText}>APOIAR NO KO-FI ☕</Text>
+                <Text style={styles.primaryText}>APOIAR NOSSO APP ☕</Text>
               </LinearGradient>
             </Pressable>
 

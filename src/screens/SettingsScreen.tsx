@@ -143,8 +143,8 @@ export function SettingsScreen() {
           Projeto independente. Se ele te ajuda, apoie ou mande uma ideia pra melhorar.
         </Text>
         <View style={styles.supportRow}>
-          <Pressable style={styles.supportPrimary} onPress={openKofi} accessibilityRole="button" accessibilityLabel="Apoiar no Ko-fi">
-            <Text style={styles.supportPrimaryText}>Apoiar no Ko-fi</Text>
+          <Pressable style={styles.supportPrimary} onPress={openKofi} accessibilityRole="button" accessibilityLabel="Apoiar nosso app">
+            <Text style={styles.supportPrimaryText}>Apoiar nosso app</Text>
           </Pressable>
           <Pressable style={styles.supportGhost} onPress={openSuggestion} accessibilityRole="button" accessibilityLabel="Enviar sugestão">
             <Text style={styles.supportGhostText}>Sugestão</Text>
