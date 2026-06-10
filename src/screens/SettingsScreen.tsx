@@ -140,7 +140,7 @@ export function SettingsScreen() {
       <View style={[styles.card, styles.supportCard]}>
         <Text style={styles.cardTitle}>☕ Apoie o app</Text>
         <Text style={styles.cardText}>
-          Projeto independente do 7a0. Se ele te ajuda, apoie ou mande uma ideia pra melhorar.
+          Projeto independente. Se ele te ajuda, apoie ou mande uma ideia pra melhorar.
         </Text>
         <View style={styles.supportRow}>
           <Pressable style={styles.supportPrimary} onPress={openKofi} accessibilityRole="button" accessibilityLabel="Apoiar no Ko-fi">

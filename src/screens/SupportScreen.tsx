@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { FadeInUp } from '../components/Motion';
-import { openKofi, openSite, openSuggestion } from '../lib/links';
+import { openKofi, openSuggestion } from '../lib/links';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
 
 export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -35,9 +35,9 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
 
             <Text style={styles.title}>CURTINDO O APP?</Text>
             <Text style={styles.body}>
-              Este é um projeto independente do <Text style={styles.brand}>7a0</Text>, feito com
-              carinho pra você não perder nenhum jogo das suas seleções. Se ele te ajuda, considere
-              apoiar — ajuda a manter o app de pé e a melhorar.
+              Este é um projeto independente, feito com carinho pra você não perder nenhum jogo das
+              suas seleções. Se ele te ajuda, considere apoiar — ajuda a manter o app de pé e a
+              melhorar.
             </Text>
 
             <Pressable
@@ -65,16 +65,7 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
               <Text style={styles.secondaryText}>💬  Enviar uma sugestão</Text>
             </Pressable>
 
-            <Pressable
-              onPress={openSite}
-              accessibilityRole="link"
-              accessibilityLabel="Conhecer o 7a0"
-              style={({ pressed }) => pressed && styles.pressed}
-            >
-              <Text style={styles.link}>Conhecer o 7a0 →</Text>
-            </Pressable>
-
-            <Text style={styles.footer}>Feito por 7a0 · app não oficial</Text>
+            <Text style={styles.footer}>App não oficial · sem vínculo com a FIFA</Text>
           </FadeInUp>
         </View>
       </View>
@@ -110,7 +101,6 @@ const styles = StyleSheet.create({
   },
   iconEmoji: { fontSize: 40 },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, textAlign: 'center', letterSpacing: 0.5 },
-  brand: { color: colors.accent, fontFamily: fonts.bold },
   body: {
     color: colors.textDim,
     fontFamily: fonts.regular,
@@ -131,7 +121,6 @@ const styles = StyleSheet.create({
     marginTop: spacing(3),
   },
   secondaryText: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  link: { color: colors.accent, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(5) },
-  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(4) },
+  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(6) },
   pressed: { opacity: 0.8 },
 });
