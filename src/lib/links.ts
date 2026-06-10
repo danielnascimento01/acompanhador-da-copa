@@ -5,6 +5,9 @@ export const LINKS = {
   kofi: 'https://ko-fi.com/acompanhadordacopa',
   // Sem e-mail configurado: o botão de sugestão abre o Ko-fi (tem mensagem).
   contactEmail: '',
+  // Preencher com a URL pública da política depois de hospedar
+  // docs/privacy-policy.html (ex.: GitHub Pages). Vazio = link some do app.
+  privacy: '',
 };
 
 const APP_NAME = 'Acompanhador da Copa';
@@ -19,6 +22,10 @@ export async function openUrl(url: string) {
 
 export function openKofi() {
   return openUrl(LINKS.kofi);
+}
+
+export function openPrivacy() {
+  if (LINKS.privacy) return openUrl(LINKS.privacy);
 }
 
 /**

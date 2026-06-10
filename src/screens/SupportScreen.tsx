@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { FadeInUp } from '../components/Motion';
-import { openKofi, openSuggestion } from '../lib/links';
+import { LINKS, openKofi, openPrivacy, openSuggestion } from '../lib/links';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
 
 export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -65,6 +65,12 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
               <Text style={styles.secondaryText}>💬  Enviar uma sugestão</Text>
             </Pressable>
 
+            {LINKS.privacy ? (
+              <Pressable onPress={openPrivacy} accessibilityRole="link" accessibilityLabel="Política de privacidade">
+                <Text style={styles.privacyLink}>Política de privacidade</Text>
+              </Pressable>
+            ) : null}
+
             <Text style={styles.footer}>App não oficial · sem vínculo com a FIFA</Text>
           </FadeInUp>
         </View>
@@ -121,6 +127,7 @@ const styles = StyleSheet.create({
     marginTop: spacing(3),
   },
   secondaryText: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(6) },
+  privacyLink: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, textAlign: 'center', marginTop: spacing(5), textDecorationLine: 'underline' },
+  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(3) },
   pressed: { opacity: 0.8 },
 });
