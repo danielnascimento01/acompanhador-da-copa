@@ -10,6 +10,7 @@ import {
   rescheduleAll,
   sendTestNotification,
 } from '../lib/notifications';
+import { openKofi, openSuggestion } from '../lib/links';
 import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
 
 const LEAD_OPTIONS = [5, 10, 15, 30, 60];
@@ -134,6 +135,22 @@ export function SettingsScreen() {
       <Text style={styles.note}>
         Os avisos são agendados direto no seu aparelho e funcionam mesmo sem internet.
       </Text>
+
+      {/* Apoio / sugestões */}
+      <View style={[styles.card, styles.supportCard]}>
+        <Text style={styles.cardTitle}>☕ Apoie o app</Text>
+        <Text style={styles.cardText}>
+          Projeto independente do 7a0. Se ele te ajuda, apoie ou mande uma ideia pra melhorar.
+        </Text>
+        <View style={styles.supportRow}>
+          <Pressable style={styles.supportPrimary} onPress={openKofi} accessibilityRole="button" accessibilityLabel="Apoiar no Ko-fi">
+            <Text style={styles.supportPrimaryText}>Apoiar no Ko-fi</Text>
+          </Pressable>
+          <Pressable style={styles.supportGhost} onPress={openSuggestion} accessibilityRole="button" accessibilityLabel="Enviar sugestão">
+            <Text style={styles.supportGhostText}>Sugestão</Text>
+          </Pressable>
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -216,4 +233,23 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 14 },
   chipTextActive: { color: colors.ink, fontFamily: fonts.bold },
   note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2) },
+  supportCard: { marginTop: spacing(4) },
+  supportRow: { flexDirection: 'row', gap: spacing(2), marginTop: spacing(4) },
+  supportPrimary: {
+    flex: 1,
+    backgroundColor: colors.amber,
+    borderRadius: radius.md,
+    paddingVertical: spacing(3),
+    alignItems: 'center',
+  },
+  supportPrimaryText: { color: colors.ink, fontFamily: fonts.bold, fontSize: 15 },
+  supportGhost: {
+    paddingHorizontal: spacing(5),
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  supportGhostText: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
 });
+

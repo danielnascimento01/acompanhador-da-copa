@@ -20,6 +20,7 @@ import { TeamsScreen } from './src/screens/TeamsScreen';
 import { ScheduleScreen } from './src/screens/ScheduleScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { SupportSheet } from './src/screens/SupportScreen';
 import { colors, fonts, gradients, spacing } from './src/lib/theme';
 
 type TabKey = 'schedule' | 'teams' | 'settings';
@@ -100,6 +101,7 @@ function Shell() {
 }
 
 export default function App() {
+  const [supportOpen, setSupportOpen] = useState(false);
   const [fontsLoaded] = useFonts({
     Anton_400Regular,
     HankenGrotesk_400Regular,
@@ -133,10 +135,21 @@ export default function App() {
           <View style={styles.brandYearWrap}>
             <Text style={styles.brandYear}>26</Text>
           </View>
+          <View style={styles.brandSpacer} />
+          <Pressable
+            style={styles.supportBtn}
+            onPress={() => setSupportOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Apoiar o app e enviar sugestões"
+            hitSlop={8}
+          >
+            <Text style={styles.supportBtnText}>☕</Text>
+          </Pressable>
         </View>
         <StoreProvider>
           <Shell />
         </StoreProvider>
+        <SupportSheet visible={supportOpen} onClose={() => setSupportOpen(false)} />
       </Backdrop>
     </SafeAreaView>
   );
@@ -158,6 +171,18 @@ const styles = StyleSheet.create({
   brand: { color: colors.text, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
   brandYearWrap: { backgroundColor: colors.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
   brandYear: { color: colors.ink, fontFamily: fonts.display, fontSize: 13 },
+  brandSpacer: { flex: 1 },
+  supportBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  supportBtnText: { fontSize: 18 },
   shell: { flex: 1 },
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing(4) },
