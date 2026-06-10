@@ -2,7 +2,7 @@ import { Linking } from 'react-native';
 
 /** Links do projeto 7a0. Trocar aqui se mudar canal de contato/apoio. */
 export const LINKS = {
-  kofi: 'https://ko-fi.com/7a0wc',
+  kofi: 'https://ko-fi.com/acompanhadordacopa',
   site: 'https://7a0.com.br',
   // ⚠️ Confirmar este e-mail com o Daniel — é o destino das sugestões.
   contactEmail: 'contato@7a0.com.br',
