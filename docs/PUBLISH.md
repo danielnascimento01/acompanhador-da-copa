@@ -10,11 +10,12 @@ Os comandos rodam na **sua conta** (Expo/Apple/Google) — execute você mesmo.
 - **Conta Expo** (grátis): https://expo.dev
 - **Apple Developer Program** (US$ 99/ano): https://developer.apple.com/programs
 - **Google Play Console** (US$ 25, pagamento único): https://play.google.com/console
-- **EAS CLI:**
+- **EAS CLI:** use via `npx` (sem instalar global, evita erro de permissão `EACCES`):
   ```bash
-  npm install -g eas-cli
-  eas login
+  npx eas-cli@latest login
   ```
+  > Em todos os comandos abaixo, troque `eas ...` por `npx eas-cli@latest ...`.
+  > (Se preferir instalar global mesmo assim: `sudo npm install -g eas-cli`.)
 
 ## 1. Conectar o projeto ao EAS
 
