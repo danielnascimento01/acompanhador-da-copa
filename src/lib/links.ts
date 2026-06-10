@@ -3,7 +3,8 @@ import { Linking } from 'react-native';
 /** Links do projeto. Trocar aqui se mudar canal de contato/apoio. */
 export const LINKS = {
   kofi: 'https://ko-fi.com/acompanhadordacopa',
-  contactEmail: 'nascimento.daniel00@gmail.com',
+  // Sem e-mail configurado: o botão de sugestão abre o Ko-fi (tem mensagem).
+  contactEmail: '',
 };
 
 const APP_NAME = 'Acompanhador da Copa';
