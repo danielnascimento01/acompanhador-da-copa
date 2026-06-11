@@ -17,7 +17,10 @@
     "ios": {
       "supportsTablet": false,
       "buildNumber": "1",
-      "bundleIdentifier": "com.danielnascimento.copa2026"
+      "bundleIdentifier": "com.danielnascimento.copa2026",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.danielnascimento.copa2026",

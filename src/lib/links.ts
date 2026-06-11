@@ -5,9 +5,8 @@ export const LINKS = {
   kofi: 'https://ko-fi.com/acompanhadordacopa',
   // Sem e-mail configurado: o botão de sugestão abre o Ko-fi (tem mensagem).
   contactEmail: '',
-  // Preencher com a URL pública da política depois de hospedar
-  // docs/privacy-policy.html (ex.: GitHub Pages). Vazio = link some do app.
-  privacy: '',
+  // Política hospedada via GitHub Pages (pasta /docs do repo).
+  privacy: 'https://danielnascimento01.github.io/acompanhador-da-copa/privacy-policy.html',
 };
 
 const APP_NAME = 'Acompanhador da Copa';
