@@ -1,0 +1,48 @@
+diff --git a/node_modules/expo-dynamic-app-icon/ios/ExpoDynamicAppIconModule.swift b/node_modules/expo-dynamic-app-icon/ios/ExpoDynamicAppIconModule.swift
+index 429bfe2..ca2df0e 100644
+--- a/node_modules/expo-dynamic-app-icon/ios/ExpoDynamicAppIconModule.swift
++++ b/node_modules/expo-dynamic-app-icon/ios/ExpoDynamicAppIconModule.swift
+@@ -1,13 +1,21 @@
+ import ExpoModulesCore
++import UIKit
+ 
+ public class ExpoDynamicAppIconModule: Module {
+   public func definition() -> ModuleDefinition {
+ 
+     Name("ExpoDynamicAppIcon")
+ 
+-    Function("setAppIcon") { (name:String) -> String in
+-      self.setAppIconWithoutAlert(name)
+-
++    // Usa a API PÚBLICA oficial setAlternateIconName(_:completionHandler:).
++    // Mostra o alerta padrão do sistema iOS ao trocar, mas é 100% aprovado pela
++    // App Store — sem uso de API privada (decisão "jogar seguro" do Daniel).
++    Function("setAppIcon") { (name: String) -> String in
++      let iconName: String? = (name == "DEFAULT") ? nil : name
++      DispatchQueue.main.async {
++        if UIApplication.shared.supportsAlternateIcons {
++          UIApplication.shared.setAlternateIconName(iconName, completionHandler: { _ in })
++        }
++      }
+       return name
+     }
+ 
+@@ -15,18 +23,4 @@ public class ExpoDynamicAppIconModule: Module {
+       return UIApplication.shared.alternateIconName ?? "DEFAULT"
+     }
+   }
+-
+-  private func setAppIconWithoutAlert(_ iconName: String?) {
+-    if UIApplication.shared.responds(to: #selector(getter: UIApplication.supportsAlternateIcons)) && UIApplication.shared.supportsAlternateIcons {
+-      typealias setAlternateIconName = @convention(c) (NSObject, Selector, NSString?, @escaping (NSError) -> ()) -> ()
+-      
+-      let selectorString = "_setAlternateIconName:completionHandler:"
+-      
+-      let selector = NSSelectorFromString(selectorString)
+-      let imp = UIApplication.shared.method(for: selector)
+-      let method = unsafeBitCast(imp, to: setAlternateIconName.self)
+-      method(UIApplication.shared, selector, iconName as NSString?, { _ in })
+-    }
+-  }
+-
+ }

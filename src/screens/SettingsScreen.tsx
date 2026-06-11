@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useStore } from '../lib/store';
@@ -11,6 +11,11 @@ import {
   sendTestNotification,
 } from '../lib/notifications';
 import { openKofi, openSuggestion } from '../lib/links';
+import { billingAvailable, purchaseRemoveAds, restorePurchases } from '../lib/billing';
+import { ADS_ENABLED } from '../lib/ads';
+import { getCurrentIconKey } from '../lib/appIcon';
+import { APP_ICONS, DEFAULT_ICON_KEY } from '../data/appIcons';
+import { AppIconSheet } from './AppIconSheet';
 import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
 
 const LEAD_OPTIONS = [5, 10, 15, 30, 60];
@@ -19,6 +24,38 @@ export function SettingsScreen() {
   const { settings, updateSettings, selected, matches } = useStore();
   const [granted, setGranted] = useState<boolean | null>(null);
   const [scheduled, setScheduled] = useState<number>(0);
+  const [iconOpen, setIconOpen] = useState(false);
+  const [iconKey, setIconKey] = useState<string>(DEFAULT_ICON_KEY);
+
+  useEffect(() => {
+    setIconKey(getCurrentIconKey());
+  }, [iconOpen]);
+
+  const currentIcon = APP_ICONS.find((i) => i.key === iconKey) ?? APP_ICONS[0];
+
+  const handleRemoveAds = async () => {
+    if (!billingAvailable()) {
+      Alert.alert('Indisponível na pré-visualização', 'A compra funciona no app instalado da loja.');
+      return;
+    }
+    const ok = await purchaseRemoveAds();
+    if (!ok) Alert.alert('Não foi possível abrir a compra', 'Tente novamente em instantes.');
+    // Sucesso: o listener concede e liga a flag (os anúncios somem sozinhos).
+  };
+
+  const handleRestore = async () => {
+    if (!billingAvailable()) {
+      Alert.alert('Indisponível na pré-visualização', 'A restauração funciona no app instalado da loja.');
+      return;
+    }
+    const owns = await restorePurchases();
+    if (owns) {
+      updateSettings({ adsRemoved: true });
+      Alert.alert('Pronto!', 'Sua compra foi restaurada — anúncios removidos.');
+    } else {
+      Alert.alert('Nenhuma compra encontrada', 'Não achamos uma compra de "Remover anúncios" nesta conta.');
+    }
+  };
 
   const refresh = async () => {
     setGranted(await getPermissionGranted());
@@ -39,6 +76,7 @@ export function SettingsScreen() {
   };
 
   return (
+    <>
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ padding: spacing(4), paddingBottom: spacing(12) }}
@@ -136,6 +174,44 @@ export function SettingsScreen() {
         Os avisos são agendados direto no seu aparelho e funcionam mesmo sem internet.
       </Text>
 
+      {/* Ícone do app */}
+      <Pressable
+        style={[styles.card, styles.iconCard]}
+        onPress={() => setIconOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Trocar o ícone do app. Atual: ${currentIcon.label}`}
+      >
+        <Image source={currentIcon.thumb} style={styles.iconPreview} />
+        <View style={styles.flex1}>
+          <Text style={styles.cardTitle}>🎨 Ícone do app</Text>
+          <Text style={styles.cardText}>Personalize como o app aparece na tela inicial.</Text>
+        </View>
+        <Text style={styles.iconChevron}>›</Text>
+      </Pressable>
+
+      {/* Remover anúncios (IAP) — só aparece quando os ads estão ligados;
+          no lançamento (ADS_ENABLED=false) não há o que remover, então fica oculto. */}
+      {ADS_ENABLED &&
+        (settings.adsRemoved ? (
+        <View style={[styles.card, styles.adsDoneCard]}>
+          <Text style={styles.cardTitle}>✅ Anúncios removidos</Text>
+          <Text style={styles.cardText}>Obrigado por apoiar o app! Você não verá mais anúncios.</Text>
+        </View>
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>🚫 Remover anúncios</Text>
+          <Text style={styles.cardText}>
+            Tire os anúncios para sempre com uma compra única. Sem assinatura.
+          </Text>
+          <Pressable style={styles.cta} onPress={handleRemoveAds} accessibilityRole="button" accessibilityLabel="Remover anúncios para sempre">
+            <Text style={styles.ctaText}>REMOVER ANÚNCIOS</Text>
+          </Pressable>
+          <Pressable onPress={handleRestore} accessibilityRole="button" accessibilityLabel="Restaurar compra" hitSlop={8}>
+            <Text style={styles.restoreLink}>Restaurar compra</Text>
+          </Pressable>
+        </View>
+        ))}
+
       {/* Apoio / sugestões */}
       <View style={[styles.card, styles.supportCard]}>
         <Text style={styles.cardTitle}>☕ Apoie o app</Text>
@@ -151,7 +227,10 @@ export function SettingsScreen() {
           </Pressable>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+
+      <AppIconSheet visible={iconOpen} onClose={() => setIconOpen(false)} />
+    </>
   );
 }
 
@@ -233,6 +312,11 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 14 },
   chipTextActive: { color: colors.ink, fontFamily: fonts.bold },
   note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2) },
+  iconCard: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), marginTop: spacing(4) },
+  iconPreview: { width: 52, height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  iconChevron: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 28, marginTop: -4 },
+  adsDoneCard: { borderColor: colors.accentDeep },
+  restoreLink: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, textAlign: 'center', marginTop: spacing(3), textDecorationLine: 'underline' },
   supportCard: { marginTop: spacing(4) },
   supportRow: { flexDirection: 'row', gap: spacing(2), marginTop: spacing(4) },
   supportPrimary: {

@@ -19,28 +19,39 @@ import { Backdrop } from './src/components/Backdrop';
 import { TeamsScreen } from './src/screens/TeamsScreen';
 import { ScheduleScreen } from './src/screens/ScheduleScreen';
 import { StandingsScreen } from './src/screens/StandingsScreen';
+import { AlbumScreen } from './src/screens/AlbumScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SupportSheet } from './src/screens/SupportScreen';
+import { AdBanner } from './src/components/AdBanner';
+import { initAds } from './src/lib/ads';
+import { initBilling, setOnAdsRemoved } from './src/lib/billing';
 import { colors, fonts, gradients, spacing } from './src/lib/theme';
 
-type TabKey = 'schedule' | 'standings' | 'teams' | 'settings';
+type TabKey = 'schedule' | 'standings' | 'teams' | 'album' | 'settings';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'schedule', label: 'Jogos', icon: '⚽' },
   { key: 'standings', label: 'Grupos', icon: '📊' },
   { key: 'teams', label: 'Seleções', icon: '🌎' },
+  { key: 'album', label: 'Álbum', icon: '🃏' },
   { key: 'settings', label: 'Avisos', icon: '🔔' },
 ];
 
 function Shell() {
-  const { ready, onboarded, completeOnboarding } = useStore();
+  const { ready, onboarded, completeOnboarding, updateSettings } = useStore();
   const [tab, setTab] = useState<TabKey>('schedule');
 
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(() => setTab('schedule'));
     return () => sub.remove();
   }, []);
+
+  // IAP: ao conceder a compra (listener), liga a flag que esconde os anúncios.
+  useEffect(() => {
+    setOnAdsRemoved(() => updateSettings({ adsRemoved: true }));
+    initBilling();
+  }, [updateSettings]);
 
   if (!ready) {
     return (
@@ -68,8 +79,11 @@ function Shell() {
         {tab === 'schedule' && <ScheduleScreen />}
         {tab === 'standings' && <StandingsScreen />}
         {tab === 'teams' && <TeamsScreen />}
+        {tab === 'album' && <AlbumScreen />}
         {tab === 'settings' && <SettingsScreen />}
       </View>
+
+      {tab === 'schedule' && <AdBanner />}
 
       <View style={styles.tabBar}>
         {TABS.map((t) => {
@@ -117,6 +131,7 @@ export default function App() {
   useEffect(() => {
     configureNotificationHandler();
     ensureAndroidChannel();
+    initAds();
   }, []);
 
   if (!fontsLoaded) {

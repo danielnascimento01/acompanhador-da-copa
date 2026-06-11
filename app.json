@@ -2,7 +2,7 @@
   "expo": {
     "name": "Acompanhador da Copa",
     "slug": "acompanhador-copa-2026",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "scheme": "copa2026",
     "userInterfaceStyle": "dark",
@@ -40,7 +40,78 @@
           "color": "#14E08A"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-dynamic-app-icon",
+        {
+          "brasil": {
+            "image": "./assets/app-icons/brasil.png",
+            "prerendered": true
+          },
+          "argentina": {
+            "image": "./assets/app-icons/argentina.png",
+            "prerendered": true
+          },
+          "franca": {
+            "image": "./assets/app-icons/franca.png",
+            "prerendered": true
+          },
+          "portugal": {
+            "image": "./assets/app-icons/portugal.png",
+            "prerendered": true
+          },
+          "espanha": {
+            "image": "./assets/app-icons/espanha.png",
+            "prerendered": true
+          },
+          "alemanha": {
+            "image": "./assets/app-icons/alemanha.png",
+            "prerendered": true
+          },
+          "eua": {
+            "image": "./assets/app-icons/eua.png",
+            "prerendered": true
+          },
+          "holografico": {
+            "image": "./assets/app-icons/holografico.png",
+            "prerendered": true
+          },
+          "neon": {
+            "image": "./assets/app-icons/neon.png",
+            "prerendered": true
+          },
+          "ruby": {
+            "image": "./assets/app-icons/ruby.png",
+            "prerendered": true
+          },
+          "hiperespaco": {
+            "image": "./assets/app-icons/hiperespaco.png",
+            "prerendered": true
+          },
+          "midnight": {
+            "image": "./assets/app-icons/midnight.png",
+            "prerendered": true
+          },
+          "nostalgia": {
+            "image": "./assets/app-icons/nostalgia.png",
+            "prerendered": true
+          }
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Usamos isso para mostrar anúncios mais relevantes e manter o app gratuito. Você pode recusar — o app funciona igual."
+        }
+      ],
+      "react-native-iap"
     ],
     "extra": {
       "thesportsdbLeagueId": "4429",
