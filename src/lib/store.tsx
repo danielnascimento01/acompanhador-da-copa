@@ -154,10 +154,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Palpites são salvos apenas em MUTAÇÕES do usuário (nunca no load),
   // com debounce — toques rápidos no stepper não geram uma escrita por toque.
+  // `latestPredictionsRef` guarda o último valor a salvar, p/ o flush no background.
   const predictionsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestPredictionsRef = useRef<PredictionMap | null>(null);
   const mutatePredictions = (updater: (prev: PredictionMap) => PredictionMap) => {
     setPredictions((prev) => {
       const next = updater(prev);
+      latestPredictionsRef.current = next;
       if (predictionsSaveTimer.current) clearTimeout(predictionsSaveTimer.current);
       predictionsSaveTimer.current = setTimeout(() => savePredictions(next), 400);
       return next;
@@ -167,14 +170,37 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Coleção do álbum: salva só em mutações do usuário (nunca no load), com
   // debounce — toques rápidos no +/- não geram uma escrita por toque.
   const albumSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestAlbumRef = useRef<AlbumCollection | null>(null);
   const mutateAlbum = (updater: (prev: AlbumCollection) => AlbumCollection) => {
     setAlbum((prev) => {
       const next = updater(prev);
+      latestAlbumRef.current = next;
       if (albumSaveTimer.current) clearTimeout(albumSaveTimer.current);
       albumSaveTimer.current = setTimeout(() => saveAlbum(next), 400);
       return next;
     });
   };
+
+  // 🛡️ PROTEÇÃO CONTRA PERDA DE DADOS: faz flush imediato dos saves pendentes
+  // (álbum + palpites) quando o app sai de cena (background/inativo). Elimina a
+  // janela de 400ms do debounce em que uma marcação se perderia se o usuário
+  // fechasse/matasse o app logo após marcar uma figurinha.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') return;
+      if (albumSaveTimer.current) {
+        clearTimeout(albumSaveTimer.current);
+        albumSaveTimer.current = null;
+      }
+      if (predictionsSaveTimer.current) {
+        clearTimeout(predictionsSaveTimer.current);
+        predictionsSaveTimer.current = null;
+      }
+      if (latestAlbumRef.current) saveAlbum(latestAlbumRef.current);
+      if (latestPredictionsRef.current) savePredictions(latestPredictionsRef.current);
+    });
+    return () => sub.remove();
+  }, []);
 
   // Normaliza para inteiro 0..MAX; 0 remove a chave (mantém o mapa enxuto).
   const setStickerQty = (code: string, qty: number) =>
