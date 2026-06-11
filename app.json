@@ -3,6 +3,7 @@
     "name": "Acompanhador da Copa",
     "slug": "acompanhador-copa-2026",
     "version": "1.1.0",
+    "platforms": ["ios", "android"],
     "orientation": "portrait",
     "scheme": "copa2026",
     "userInterfaceStyle": "dark",
