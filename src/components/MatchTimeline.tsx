@@ -37,7 +37,7 @@ export function MatchTimeline({ match }: { match: Match }) {
 
     setLoading(true);
     tick();
-    interval = setInterval(tick, 45000); // atualiza a cada 45s enquanto ao vivo
+    interval = setInterval(tick, 20000); // atualiza a cada 20s enquanto ao vivo
     return () => {
       alive = false;
       if (interval) clearInterval(interval);
@@ -55,7 +55,7 @@ export function MatchTimeline({ match }: { match: Match }) {
     ) : null;
   }
 
-  const { state, clock, events } = timeline;
+  const { state, clock, halftime, events } = timeline;
   // sem dados de lance e não está ao vivo → não mostra nada
   if (state !== 'in' && events.length === 0) return null;
 
@@ -65,7 +65,9 @@ export function MatchTimeline({ match }: { match: Match }) {
         <Text style={styles.title}>📝 Lance a lance</Text>
         {state === 'in' && (
           <View style={styles.liveBadge}>
-            <Text style={styles.liveText}>● AO VIVO{clock ? ` · ${clock}` : ''}</Text>
+            <Text style={styles.liveText}>
+              {halftime ? '● INTERVALO' : `● AO VIVO${clock ? ` · ${clock}` : ''}`}
+            </Text>
           </View>
         )}
       </View>

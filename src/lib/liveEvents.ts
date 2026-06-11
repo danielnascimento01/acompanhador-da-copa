@@ -21,6 +21,7 @@ export type TimelineEvent = {
 export type LiveTimeline = {
   state: 'pre' | 'in' | 'post';
   clock: string | null; // "24'" quando ao vivo
+  halftime: boolean; // jogo parado no intervalo
   homeScore: number | null;
   awayScore: number | null;
   events: TimelineEvent[];
@@ -126,12 +127,18 @@ export async function fetchTimeline(match: Match, timeoutMs = 8000): Promise<Liv
       .filter((e): e is TimelineEvent => !!e && !!e.player)
       .sort((a, b) => minuteNum(a.minute) - minuteNum(b.minute));
 
+    const stype = ev?.status?.type ?? {};
     const state: LiveTimeline['state'] =
-      ev?.status?.type?.state === 'in' ? 'in' : ev?.status?.type?.completed ? 'post' : 'pre';
+      stype.state === 'in' ? 'in' : stype.completed ? 'post' : 'pre';
+    // Intervalo: a ESPN mantém state="in" mas marca o status como Halftime.
+    const halftime =
+      String(stype.name || '').toUpperCase().includes('HALFTIME') ||
+      /half\s*time|intervalo/i.test(String(stype.description || stype.shortDetail || ''));
 
     return {
       state,
       clock: state === 'in' ? String(ev?.status?.displayClock || '') || null : null,
+      halftime: state === 'in' && halftime,
       homeScore: homeIsOurHome ? toNum(homeC?.score) : toNum(awayC?.score),
       awayScore: homeIsOurHome ? toNum(awayC?.score) : toNum(homeC?.score),
       events: tEvents,

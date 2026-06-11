@@ -56,7 +56,7 @@ export function NextMatchHero({ match }: { match: Match }) {
       if (alive) setTimeline(t);
     };
     tick();
-    const id = setInterval(tick, 45000);
+    const id = setInterval(tick, 20000);
     return () => {
       alive = false;
       clearInterval(id);
@@ -82,7 +82,9 @@ export function NextMatchHero({ match }: { match: Match }) {
         <Text style={styles.label}>{live ? 'ACONTECENDO AGORA' : 'PRÓXIMO JOGO'}</Text>
         {live ? (
           <View style={styles.liveDot}>
-            <Text style={styles.liveText}>● AO VIVO{timeline?.clock ? ` · ${timeline.clock}` : ''}</Text>
+            <Text style={styles.liveText}>
+              {timeline?.halftime ? '● INTERVALO' : `● AO VIVO${timeline?.clock ? ` · ${timeline.clock}` : ''}`}
+            </Text>
           </View>
         ) : (
           <Text style={styles.when}>
