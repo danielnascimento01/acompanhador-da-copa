@@ -7,7 +7,9 @@ import { PredictionEditor } from '../components/PredictionEditor';
 import { Match, kickoff, isLive, isFinished, isPredictable } from '../data/fixtures';
 import { getTeam, teamFlag, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
+import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
 import { formatDayLong, formatTime } from '../lib/format';
+import { openUrl } from '../lib/links';
 import { useStore } from '../lib/store';
 import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
 
@@ -102,6 +104,38 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           {sameGroup && <InfoRow icon="🏷️" label="Grupo" value={`Grupo ${sameGroup}`} />}
         </View>
 
+        {/* Onde assistir */}
+        <View style={styles.watchCard}>
+          <Text style={styles.watchTitle}>📺 Onde assistir</Text>
+          {broadcastersFor(match).map((b) => {
+            const url = watchUrl(b, match);
+            return (
+              <Pressable
+                key={b.id}
+                style={[styles.watchRow, b.free && styles.watchRowFree]}
+                onPress={url ? () => openUrl(url) : undefined}
+                disabled={!url}
+                accessibilityRole={url ? 'link' : 'text'}
+                accessibilityLabel={`${b.name}${b.free ? ', grátis' : ''}${url ? ', abrir' : ''}`}
+              >
+                <Text style={styles.watchEmoji}>{b.emoji}</Text>
+                <View style={styles.flex1}>
+                  <Text style={styles.watchName}>{b.name}</Text>
+                  <Text style={styles.watchKind}>
+                    {b.free ? 'Grátis' : 'Pago'} · {kindLabel(b.kind)}
+                  </Text>
+                </View>
+                {url ? (
+                  <Text style={[styles.watchCta, b.free && styles.watchCtaFree]}>
+                    {b.search ? 'Assistir ▶' : 'Abrir ›'}
+                  </Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+          <Text style={styles.watchNote}>A grade pode variar por jogo. Toque na CazéTV para abrir o jogo ao vivo no YouTube.</Text>
+        </View>
+
         {sameGroup && standings.length > 0 && (
           <View style={styles.tableCard}>
             <Text style={styles.tableTitle}>Classificação oficial · Grupo {sameGroup}</Text>
@@ -168,6 +202,34 @@ const styles = StyleSheet.create({
   infoLabel: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
   infoValue: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15, marginTop: 1 },
   infoHint: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12 },
+  watchCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing(4),
+    marginBottom: spacing(4),
+  },
+  watchTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
+  watchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(3),
+    paddingVertical: spacing(3),
+    paddingHorizontal: spacing(3),
+    borderRadius: radius.md,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing(2),
+  },
+  watchRowFree: { borderColor: colors.accent },
+  watchEmoji: { fontSize: 22, width: 28, textAlign: 'center' },
+  watchName: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
+  watchKind: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
+  watchCta: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  watchCtaFree: { color: colors.accent },
+  watchNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, marginTop: spacing(1) },
   tableCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
