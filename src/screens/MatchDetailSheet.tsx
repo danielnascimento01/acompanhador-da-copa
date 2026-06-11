@@ -86,6 +86,9 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           </View>
         </LinearGradient>
 
+        {/* Cotações (afiliação) — logo abaixo do placar. Kill-switch + age-gate no componente. */}
+        <OddsRow match={match} />
+
         {isPredictable(match) ? (
           <PredictionEditor
             match={match}
@@ -136,9 +139,6 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           })}
           <Text style={styles.watchNote}>A grade pode variar por jogo. Toque na CazéTV para abrir o jogo ao vivo no YouTube.</Text>
         </View>
-
-        {/* Cotações (afiliação) — contido, com kill-switch e age-gate dentro do componente */}
-        <OddsRow match={match} />
 
         {sameGroup && standings.length > 0 && (
           <View style={styles.tableCard}>

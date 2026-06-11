@@ -7,6 +7,7 @@ import { MatchDetailSheet } from './MatchDetailSheet';
 import { FadeInUp } from '../components/Motion';
 import { filterByTeams, kickoff, nextRelevantMatch, Match } from '../data/fixtures';
 import { useStore } from '../lib/store';
+import { isOddsAvailable } from '../lib/odds';
 import { localDayKey, relativeDayLabel } from '../lib/format';
 import { colors, fonts, spacing } from '../lib/theme';
 
@@ -20,8 +21,9 @@ function updatedLabel(updatedAt: number | null): string {
 }
 
 export function ScheduleScreen() {
-  const { selected, matches, refresh, refreshing, updatedAt, predictions } = useStore();
+  const { selected, matches, refresh, refreshing, updatedAt, predictions, settings } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
+  const showOdds = isOddsAvailable(settings);
 
   useEffect(() => {
     if (!updatedAt && selected.size > 0) refresh();
@@ -93,6 +95,7 @@ export function ScheduleScreen() {
             match={item}
             selected={selected}
             prediction={predictions[item.id]}
+            showOdds={showOdds}
             onPress={() => setDetail(item)}
           />
         )}
