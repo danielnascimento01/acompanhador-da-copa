@@ -1,3 +1,23 @@
+diff --git a/node_modules/expo-dynamic-app-icon/android/build.gradle b/node_modules/expo-dynamic-app-icon/android/build.gradle
+index a50832e..a3bf5b9 100644
+--- a/node_modules/expo-dynamic-app-icon/android/build.gradle
++++ b/node_modules/expo-dynamic-app-icon/android/build.gradle
+@@ -55,12 +55,12 @@ android {
+   compileSdkVersion safeExtGet("compileSdkVersion", 31)
+ 
+   compileOptions {
+-    sourceCompatibility JavaVersion.VERSION_11
+-    targetCompatibility JavaVersion.VERSION_11
++    sourceCompatibility JavaVersion.VERSION_17
++    targetCompatibility JavaVersion.VERSION_17
+   }
+ 
+   kotlinOptions {
+-    jvmTarget = JavaVersion.VERSION_11.majorVersion
++    jvmTarget = JavaVersion.VERSION_17.majorVersion
+   }
+ 
+   defaultConfig {
 diff --git a/node_modules/expo-dynamic-app-icon/ios/ExpoDynamicAppIconModule.swift b/node_modules/expo-dynamic-app-icon/ios/ExpoDynamicAppIconModule.swift
 index 429bfe2..ca2df0e 100644
 --- a/node_modules/expo-dynamic-app-icon/ios/ExpoDynamicAppIconModule.swift
