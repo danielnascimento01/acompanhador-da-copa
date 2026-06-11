@@ -4,6 +4,8 @@ import { AppState } from 'react-native';
 import {
   DEFAULT_SETTINGS,
   Settings,
+  Prediction,
+  PredictionMap,
   loadSelectedTeams,
   loadSettings,
   saveSelectedTeams,
@@ -12,6 +14,8 @@ import {
   saveCachedMatches,
   loadOnboarded,
   saveOnboarded,
+  loadPredictions,
+  savePredictions,
 } from './storage';
 import { rescheduleAll } from './notifications';
 import { fetchLatestMatches } from './liveData';
@@ -25,12 +29,16 @@ type Store = {
   matches: Match[];
   refreshing: boolean;
   updatedAt: number | null;
+  predictions: PredictionMap;
   isSelected: (teamId: string) => boolean;
   toggleTeam: (teamId: string) => void;
   setSelected: (ids: string[]) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   completeOnboarding: () => void;
   refresh: () => Promise<void>;
+  setPrediction: (matchId: string, p: Prediction) => void;
+  clearPrediction: (matchId: string) => void;
+  clearAllPredictions: () => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -43,21 +51,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [matches, setMatches] = useState<Match[]>(ALL_MATCHES);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [predictions, setPredictions] = useState<PredictionMap>({});
 
   // Evita reagendar/persistir antes do carregamento inicial.
   const loaded = useRef(false);
 
   useEffect(() => {
     (async () => {
-      const [teams, s, cached, ob] = await Promise.all([
+      const [teams, s, cached, ob, preds] = await Promise.all([
         loadSelectedTeams(),
         loadSettings(),
         loadCachedMatches(),
         loadOnboarded(),
+        loadPredictions(),
       ]);
       setSelectedState(new Set(teams));
       setSettings(s);
       setOnboarded(ob);
+      setPredictions(preds);
       if (cached?.matches?.length) {
         setMatches(cached.matches);
         setUpdatedAt(cached.updatedAt);
@@ -118,6 +129,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // Persiste palpites a cada mudança (após o load inicial).
+  useEffect(() => {
+    if (!loaded.current) return;
+    savePredictions(predictions);
+  }, [predictions]);
+
   const value = useMemo<Store>(
     () => ({
       ready,
@@ -127,6 +144,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       matches,
       refreshing,
       updatedAt,
+      predictions,
       isSelected: (id) => selected.has(id),
       toggleTeam: (id) =>
         setSelectedState((prev) => {
@@ -142,8 +160,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         saveOnboarded(true);
       },
       refresh,
+      setPrediction: (matchId, p) => setPredictions((prev) => ({ ...prev, [matchId]: p })),
+      clearPrediction: (matchId) =>
+        setPredictions((prev) => {
+          const next = { ...prev };
+          delete next[matchId];
+          return next;
+        }),
+      clearAllPredictions: () => setPredictions({}),
     }),
-    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, refresh],
+    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, predictions, refresh],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

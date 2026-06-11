@@ -1,5 +1,6 @@
 import { GROUPS, TEAMS, teamName } from './teams';
 import { Match } from './fixtures';
+import type { PredictionMap } from '../lib/storage';
 
 export type Standing = {
   teamId: string;
@@ -74,4 +75,27 @@ export function computeStandings(matches: Match[]): Record<string, Standing[]> {
 
 export function standingsForGroup(matches: Match[], group: string): Standing[] {
   return computeStandings(matches)[group] ?? [];
+}
+
+/**
+ * Aplica os palpites do usuário sobre a lista de jogos, SOMENTE nos jogos que
+ * ainda não têm placar real. O resultado serve para simular a classificação —
+ * o placar oficial sempre prevalece sobre o palpite.
+ */
+export function applyPredictions(matches: Match[], predictions: PredictionMap): Match[] {
+  return matches.map((m) => {
+    if (m.homeScore != null && m.awayScore != null) return m; // placar real manda
+    const p = predictions[m.id];
+    if (!p) return m;
+    return { ...m, homeScore: p.home, awayScore: p.away };
+  });
+}
+
+/** Quantos palpites do usuário ainda valem (jogos sem placar real). */
+export function countActivePredictions(matches: Match[], predictions: PredictionMap): number {
+  let n = 0;
+  for (const m of matches) {
+    if (m.homeScore == null && predictions[m.id]) n++;
+  }
+  return n;
 }

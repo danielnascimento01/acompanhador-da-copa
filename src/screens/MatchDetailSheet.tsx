@@ -3,10 +3,12 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { StandingsTable } from '../components/StandingsTable';
+import { PredictionEditor } from '../components/PredictionEditor';
 import { Match, kickoff, isLive, isFinished } from '../data/fixtures';
 import { getTeam, teamFlag, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { formatDayLong, formatTime } from '../lib/format';
+import { useStore } from '../lib/store';
 import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
 
 type Props = {
@@ -28,6 +30,7 @@ export function MatchDetailSheet({ match, matches, selected, onClose }: Props) {
 }
 
 function Content({ match, matches, selected, onClose }: { match: Match } & Omit<Props, 'match'>) {
+  const { predictions, setPrediction, clearPrediction } = useStore();
   const ko = kickoff(match);
   const live = isLive(match);
   const finished = isFinished(match);
@@ -79,6 +82,15 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
             </View>
           </View>
         </LinearGradient>
+
+        {!hasScore && !live && (
+          <PredictionEditor
+            match={match}
+            prediction={predictions[match.id]}
+            onChange={(p) => setPrediction(match.id, p)}
+            onClear={() => clearPrediction(match.id)}
+          />
+        )}
 
         <View style={styles.infoCard}>
           <InfoRow icon="🗓️" label="Data" value={`${formatDayLong(ko)} · ${formatTime(ko)}`} hint="no seu fuso" />

@@ -6,6 +6,11 @@ const KEY_TEAMS = 'copa2026:selectedTeams';
 const KEY_SETTINGS = 'copa2026:settings';
 const KEY_MATCHES = 'copa2026:cachedMatches';
 const KEY_ONBOARDED = 'copa2026:onboarded';
+const KEY_PREDICTIONS = 'copa2026:predictions';
+
+/** Palpite do usuário para um jogo (placar simulado). */
+export type Prediction = { home: number; away: number };
+export type PredictionMap = Record<string, Prediction>;
 
 export type Settings = {
   /** Avisar no início do dia quais jogos das suas seleções têm hoje. */
@@ -63,6 +68,23 @@ export async function loadCachedMatches(): Promise<{ matches: Match[]; updatedAt
 
 export async function saveCachedMatches(matches: Match[], updatedAt: number): Promise<void> {
   await AsyncStorage.setItem(KEY_MATCHES, JSON.stringify({ matches, updatedAt }));
+}
+
+export async function loadPredictions(): Promise<PredictionMap> {
+  try {
+    const raw = await AsyncStorage.getItem(KEY_PREDICTIONS);
+    return raw ? (JSON.parse(raw) as PredictionMap) : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function savePredictions(p: PredictionMap): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEY_PREDICTIONS, JSON.stringify(p));
+  } catch {
+    // Falha de escrita não deve derrubar o app; o palpite fica em memória.
+  }
 }
 
 export async function loadOnboarded(): Promise<boolean> {

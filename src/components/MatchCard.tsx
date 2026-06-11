@@ -4,16 +4,19 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Match, kickoff, hasStarted, isLive, isFinished } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
 import { formatTime } from '../lib/format';
+import { Prediction } from '../lib/storage';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 type Props = {
   match: Match;
   /** Ids das seleções marcadas, para destacar quem você acompanha. */
   selected: Set<string>;
+  /** Palpite do usuário para este jogo (exibido se não houver placar real). */
+  prediction?: Prediction;
   onPress?: () => void;
 };
 
-export function MatchCard({ match, selected, onPress }: Props) {
+export function MatchCard({ match, selected, prediction, onPress }: Props) {
   const ko = kickoff(match);
   const live = isLive(match);
   const finished = isFinished(match);
@@ -54,6 +57,10 @@ export function MatchCard({ match, selected, onPress }: Props) {
           <Text style={styles.statusDim}>Encerrado</Text>
         ) : started ? (
           <Text style={styles.statusDim}>Em andamento</Text>
+        ) : !hasScore && prediction ? (
+          <Text style={styles.predictionTag}>
+            🔮 {prediction.home}–{prediction.away}
+          </Text>
         ) : (
           <Text style={styles.statusDim}>Rodada {match.round}</Text>
         )}
@@ -110,6 +117,7 @@ const styles = StyleSheet.create({
   time: { color: colors.text, fontFamily: fonts.display, fontSize: 20 },
   score: { color: colors.text, fontFamily: fonts.display, fontSize: 24 },
   statusDim: { color: colors.textFaint, fontFamily: fonts.medium, fontSize: 11, marginTop: 3 },
+  predictionTag: { color: colors.amber, fontFamily: fonts.bold, fontSize: 11, marginTop: 3 },
   liveBadge: { marginTop: 4, backgroundColor: 'rgba(255,77,94,0.16)', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
   liveText: { color: colors.live, fontFamily: fonts.extrabold, fontSize: 10, letterSpacing: 0.4 },
 });

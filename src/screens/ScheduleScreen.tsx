@@ -20,7 +20,7 @@ function updatedLabel(updatedAt: number | null): string {
 }
 
 export function ScheduleScreen() {
-  const { selected, matches, refresh, refreshing, updatedAt } = useStore();
+  const { selected, matches, refresh, refreshing, updatedAt, predictions } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
 
   useEffect(() => {
@@ -89,7 +89,12 @@ export function ScheduleScreen() {
         }
         renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
         renderItem={({ item }) => (
-          <MatchCard match={item} selected={selected} onPress={() => setDetail(item)} />
+          <MatchCard
+            match={item}
+            selected={selected}
+            prediction={predictions[item.id]}
+            onPress={() => setDetail(item)}
+          />
         )}
       />
       <MatchDetailSheet
