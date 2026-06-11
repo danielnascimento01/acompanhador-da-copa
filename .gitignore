@@ -35,3 +35,7 @@ yarn-error.*
 
 # EAS
 .easignore
+
+# Artefatos de loja (regeneráveis; binários pesados)
+store/build/
+store/screenshots/
