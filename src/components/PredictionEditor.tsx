@@ -3,10 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Match } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
-import { Prediction } from '../lib/storage';
+import { MAX_PREDICTION_GOALS, Prediction } from '../lib/storage';
 import { colors, fonts, radius, spacing } from '../lib/theme';
-
-const MAX_GOALS = 20;
 
 type Props = {
   match: Match;
@@ -23,8 +21,12 @@ export function PredictionEditor({ match, prediction, onChange, onClear }: Props
   const current = prediction ?? null;
 
   const bump = (side: 'home' | 'away', delta: 1 | -1) => {
+    if (!current && delta === -1) return; // "−" sem palpite não cria um 0×0
     const base = current ?? { home: 0, away: 0 };
-    const next = { ...base, [side]: Math.min(MAX_GOALS, Math.max(0, base[side] + delta)) };
+    const next = {
+      ...base,
+      [side]: Math.min(MAX_PREDICTION_GOALS, Math.max(0, base[side] + delta)),
+    };
     onChange(next);
   };
 
@@ -84,7 +86,13 @@ function ScoreColumn({
       <Text style={styles.team} numberOfLines={1}>
         {flag} {label}
       </Text>
-      <View style={styles.stepper}>
+      <View
+        style={styles.stepper}
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={`Gols de ${label}`}
+        accessibilityValue={{ text: value == null ? 'sem palpite' : `${value} gols` }}
+      >
         <Pressable
           style={styles.stepBtn}
           onPress={onMinus}

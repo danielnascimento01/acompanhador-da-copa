@@ -68,7 +68,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSelectedState(new Set(teams));
       setSettings(s);
       setOnboarded(ob);
-      setPredictions(preds);
+      // null = falha de leitura: começa vazio em memória, mas NÃO regrava o
+      // disco até o usuário mexer (protege os palpites salvos).
+      setPredictions(preds ?? {});
       if (cached?.matches?.length) {
         setMatches(cached.matches);
         setUpdatedAt(cached.updatedAt);
@@ -78,9 +80,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Persiste seleção/preferências assim que mudam.
+  // Persiste seleção/preferências assim que mudam — pulando a primeira
+  // execução pós-load (se a leitura falhou, regravar aqui apagaria o disco).
+  const firstPersist = useRef(true);
   useEffect(() => {
     if (!loaded.current) return;
+    if (firstPersist.current) {
+      firstPersist.current = false;
+      return;
+    }
     saveSelectedTeams([...selected]);
     saveSettings(settings);
   }, [selected, settings]);
@@ -129,11 +137,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  // Persiste palpites a cada mudança (após o load inicial).
-  useEffect(() => {
-    if (!loaded.current) return;
-    savePredictions(predictions);
-  }, [predictions]);
+  // Palpites são salvos apenas em MUTAÇÕES do usuário (nunca no load),
+  // com debounce — toques rápidos no stepper não geram uma escrita por toque.
+  const predictionsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mutatePredictions = (updater: (prev: PredictionMap) => PredictionMap) => {
+    setPredictions((prev) => {
+      const next = updater(prev);
+      if (predictionsSaveTimer.current) clearTimeout(predictionsSaveTimer.current);
+      predictionsSaveTimer.current = setTimeout(() => savePredictions(next), 400);
+      return next;
+    });
+  };
 
   const value = useMemo<Store>(
     () => ({
@@ -160,14 +174,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         saveOnboarded(true);
       },
       refresh,
-      setPrediction: (matchId, p) => setPredictions((prev) => ({ ...prev, [matchId]: p })),
+      setPrediction: (matchId, p) =>
+        mutatePredictions((prev) => ({ ...prev, [matchId]: { ...p, at: Date.now() } })),
       clearPrediction: (matchId) =>
-        setPredictions((prev) => {
+        mutatePredictions((prev) => {
           const next = { ...prev };
           delete next[matchId];
           return next;
         }),
-      clearAllPredictions: () => setPredictions({}),
+      clearAllPredictions: () => mutatePredictions(() => ({})),
     }),
     [ready, selected, settings, onboarded, matches, refreshing, updatedAt, predictions, refresh],
   );

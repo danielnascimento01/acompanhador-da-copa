@@ -16,7 +16,7 @@ type Props = {
   onPress?: () => void;
 };
 
-export function MatchCard({ match, selected, prediction, onPress }: Props) {
+export const MatchCard = React.memo(function MatchCard({ match, selected, prediction, onPress }: Props) {
   const ko = kickoff(match);
   const live = isLive(match);
   const finished = isFinished(match);
@@ -79,7 +79,7 @@ export function MatchCard({ match, selected, prediction, onPress }: Props) {
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

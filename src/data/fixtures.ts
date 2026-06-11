@@ -47,6 +47,22 @@ export function isFinished(match: Match): boolean {
   return FINISHED_STATUSES.has(match.status);
 }
 
+/**
+ * O jogo aceita palpite? Regra única usada pelo editor, pela simulação e
+ * pelos contadores (evita gates divergentes): sem nenhum placar real, não
+ * ao vivo, não encerrado e ainda ANTES do apito inicial (sem janela de
+ * trapaça quando a API demora a atualizar o status).
+ */
+export function isPredictable(match: Match, now: Date = new Date()): boolean {
+  return (
+    match.homeScore == null &&
+    match.awayScore == null &&
+    !isLive(match) &&
+    !isFinished(match) &&
+    kickoff(match).getTime() > now.getTime()
+  );
+}
+
 /** O próximo jogo que ainda não terminou (ao vivo tem prioridade), ou null. */
 export function nextRelevantMatch(matches: Match[], now: Date = new Date()): Match | null {
   const live = matches.find(isLive);

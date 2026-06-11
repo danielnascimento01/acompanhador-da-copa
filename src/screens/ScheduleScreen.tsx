@@ -98,7 +98,7 @@ export function ScheduleScreen() {
         )}
       />
       <MatchDetailSheet
-        match={detail}
+        match={detail ? (matches.find((m) => m.id === detail.id) ?? detail) : null}
         matches={matches}
         selected={selected}
         onClose={() => setDetail(null)}

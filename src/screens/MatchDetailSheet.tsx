@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { StandingsTable } from '../components/StandingsTable';
 import { PredictionEditor } from '../components/PredictionEditor';
-import { Match, kickoff, isLive, isFinished } from '../data/fixtures';
+import { Match, kickoff, isLive, isFinished, isPredictable } from '../data/fixtures';
 import { getTeam, teamFlag, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { formatDayLong, formatTime } from '../lib/format';
@@ -83,14 +83,18 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           </View>
         </LinearGradient>
 
-        {!hasScore && !live && (
+        {isPredictable(match) ? (
           <PredictionEditor
             match={match}
             prediction={predictions[match.id]}
             onChange={(p) => setPrediction(match.id, p)}
             onClear={() => clearPrediction(match.id)}
           />
-        )}
+        ) : !hasScore && !live && !finished ? (
+          <View style={styles.lockedNote}>
+            <Text style={styles.lockedNoteText}>🔒 Palpites fecham no apito inicial.</Text>
+          </View>
+        ) : null}
 
         <View style={styles.infoCard}>
           <InfoRow icon="🗓️" label="Data" value={`${formatDayLong(ko)} · ${formatTime(ko)}`} hint="no seu fuso" />
@@ -100,7 +104,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
 
         {sameGroup && standings.length > 0 && (
           <View style={styles.tableCard}>
-            <Text style={styles.tableTitle}>Classificação · Grupo {sameGroup}</Text>
+            <Text style={styles.tableTitle}>Classificação oficial · Grupo {sameGroup}</Text>
             <StandingsTable standings={standings} selected={selected} />
           </View>
         )}
@@ -172,4 +176,14 @@ const styles = StyleSheet.create({
     padding: spacing(4),
   },
   tableTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
+  lockedNote: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing(3),
+    marginBottom: spacing(4),
+    alignItems: 'center',
+  },
+  lockedNoteText: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13 },
 });

@@ -1,23 +1,44 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { StandingsTable } from '../components/StandingsTable';
+import { QuickPredictRow } from '../components/QuickPredictRow';
 import { FadeInUp } from '../components/Motion';
 import { applyPredictions, computeStandings, countActivePredictions } from '../data/standings';
-import { GROUPS } from '../data/teams';
+import { Match, isPredictable } from '../data/fixtures';
+import { GROUPS, getTeam } from '../data/teams';
 import { useStore } from '../lib/store';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 type Mode = 'official' | 'predicted';
 
 export function StandingsScreen() {
-  const { matches, selected, predictions, clearAllPredictions } = useStore();
+  const { matches, selected, predictions, setPrediction, clearAllPredictions } = useStore();
   const [mode, setMode] = useState<Mode>('official');
 
   const activePredictions = useMemo(
     () => countActivePredictions(matches, predictions),
     [matches, predictions],
   );
+
+  // Jogos palpitáveis de cada grupo (para o preenchimento rápido na simulação).
+  const predictableByGroup = useMemo(() => {
+    const map: Record<string, Match[]> = {};
+    for (const g of GROUPS) map[g] = [];
+    for (const m of matches) {
+      if (!isPredictable(m)) continue;
+      const g = getTeam(m.home)?.group;
+      if (g && getTeam(m.away)?.group === g) map[g].push(m);
+    }
+    return map;
+  }, [matches]);
+
+  const confirmClearAll = () => {
+    Alert.alert('Limpar todos os palpites?', 'Isso apaga todos os placares que você palpitou. Não dá para desfazer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Limpar tudo', style: 'destructive', onPress: clearAllPredictions },
+    ]);
+  };
 
   const effectiveMatches = useMemo(
     () => (mode === 'predicted' ? applyPredictions(matches, predictions) : matches),
@@ -65,11 +86,11 @@ export function StandingsScreen() {
         <View style={styles.predictBanner}>
           <Text style={styles.predictBannerText}>
             {activePredictions === 0
-              ? 'Você ainda não tem palpites. Toque em um jogo na aba Jogos e preencha o placar — a simulação aparece aqui.'
+              ? 'Preencha os placares dos jogos abaixo de cada grupo — a classificação simula na hora. Os palpites ficam só no seu aparelho.'
               : `Simulação com ${activePredictions} ${activePredictions === 1 ? 'palpite seu' : 'palpites seus'} + resultados oficiais. Os palpites ficam só no seu aparelho.`}
           </Text>
           {activePredictions > 0 && (
-            <Pressable onPress={clearAllPredictions} accessibilityRole="button" accessibilityLabel="Limpar todos os palpites" hitSlop={6}>
+            <Pressable onPress={confirmClearAll} accessibilityRole="button" accessibilityLabel="Limpar todos os palpites" hitSlop={6}>
               <Text style={styles.clearAll}>Limpar todos os palpites</Text>
             </Pressable>
           )}
@@ -104,6 +125,20 @@ export function StandingsScreen() {
               {mode === 'predicted' && <Text style={styles.predictedFlag}>simulado</Text>}
             </View>
             <StandingsTable standings={byGroup[g]} selected={selected} />
+
+            {mode === 'predicted' && predictableByGroup[g].length > 0 && (
+              <View style={styles.quickPredict}>
+                <Text style={styles.quickPredictTitle}>Palpite os jogos do grupo</Text>
+                {predictableByGroup[g].map((m) => (
+                  <QuickPredictRow
+                    key={m.id}
+                    match={m}
+                    prediction={predictions[m.id]}
+                    onChange={(p) => setPrediction(m.id, p)}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         </FadeInUp>
       ))}
@@ -167,4 +202,20 @@ const styles = StyleSheet.create({
   groupTagText: { color: colors.ink, fontFamily: fonts.display, fontSize: 14 },
   groupLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, letterSpacing: 0.5 },
   predictedFlag: { color: colors.amber, fontFamily: fonts.semibold, fontSize: 11, marginLeft: 'auto', textTransform: 'uppercase', letterSpacing: 0.5 },
+  quickPredict: {
+    marginTop: spacing(3),
+    paddingTop: spacing(3),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing(1),
+  },
+  quickPredictTitle: {
+    color: colors.textFaint,
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing(1),
+    textAlign: 'center',
+  },
 });
