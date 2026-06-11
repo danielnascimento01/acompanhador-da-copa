@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   },
   badgeEmoji: { fontSize: 46 },
   kicker: { color: colors.accent, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 3 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 42, lineHeight: 42, textAlign: 'center', marginTop: spacing(1) },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 40, lineHeight: 50, textAlign: 'center', marginTop: spacing(2), paddingTop: spacing(1) },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 16, marginTop: spacing(3), textAlign: 'center' },
   features: { gap: spacing(3), marginBottom: spacing(8) },
   feature: {
