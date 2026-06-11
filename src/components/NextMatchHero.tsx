@@ -4,8 +4,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Match, kickoff, isLive } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
+import { fetchTimeline, type LiveTimeline, type TimelineEvent } from '../lib/liveEvents';
 import { formatTime, relativeDayLabel } from '../lib/format';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
+
+/** Lances "de destaque" pro card resumo: gols, gols contra e vermelhos. */
+function isKeyEvent(e: TimelineEvent): boolean {
+  return e.type === 'goal' || e.type === 'own-goal' || e.type === 'red';
+}
+function eventIcon(e: TimelineEvent): string {
+  return e.type === 'red' ? '🟥' : '⚽';
+}
+function eventSuffix(e: TimelineEvent): string {
+  return e.type === 'own-goal' ? ' (contra)' : e.penalty ? ' (p)' : '';
+}
 
 function countdown(target: Date, now: Date) {
   let ms = target.getTime() - now.getTime();
@@ -24,12 +36,34 @@ function countdown(target: Date, now: Date) {
 
 export function NextMatchHero({ match }: { match: Match }) {
   const [now, setNow] = useState(() => new Date());
+  const [timeline, setTimeline] = useState<LiveTimeline | null>(null);
   const live = isLive(match);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Lances ao vivo (ESPN) direto no card resumo — atualiza a cada 45s.
+  useEffect(() => {
+    if (!live) {
+      setTimeline(null);
+      return;
+    }
+    let alive = true;
+    const tick = async () => {
+      const t = await fetchTimeline(match);
+      if (alive) setTimeline(t);
+    };
+    tick();
+    const id = setInterval(tick, 45000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [match.id, live]);
+
+  const keyEvents = timeline?.events.filter(isKeyEvent) ?? [];
 
   const ko = kickoff(match);
   const hasScore = match.homeScore != null && match.awayScore != null;
@@ -48,7 +82,7 @@ export function NextMatchHero({ match }: { match: Match }) {
         <Text style={styles.label}>{live ? 'ACONTECENDO AGORA' : 'PRÓXIMO JOGO'}</Text>
         {live ? (
           <View style={styles.liveDot}>
-            <Text style={styles.liveText}>● AO VIVO</Text>
+            <Text style={styles.liveText}>● AO VIVO{timeline?.clock ? ` · ${timeline.clock}` : ''}</Text>
           </View>
         ) : (
           <Text style={styles.when}>
@@ -86,6 +120,20 @@ export function NextMatchHero({ match }: { match: Match }) {
           </Text>
         </View>
       </View>
+
+      {live && keyEvents.length > 0 && (
+        <View style={styles.events}>
+          {keyEvents.map((e, i) => (
+            <View key={`${e.minute}-${e.player}-${i}`} style={styles.eventRow}>
+              <Text style={styles.eventText} numberOfLines={1}>
+                {eventIcon(e)} {e.minute} {e.player}
+                {eventSuffix(e)}
+              </Text>
+              <Text style={styles.eventFlag}>{teamFlag(e.side === 'home' ? match.home : match.away)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {!live && (
         <View style={styles.countdownWrap}>
@@ -137,6 +185,16 @@ const styles = StyleSheet.create({
   middle: { paddingHorizontal: spacing(2), minWidth: 60, alignItems: 'center' },
   vs: { color: 'rgba(255,255,255,0.65)', fontFamily: fonts.display, fontSize: 22 },
   score: { color: '#fff', fontFamily: fonts.display, fontSize: 40 },
+  events: {
+    marginTop: spacing(4),
+    paddingTop: spacing(3),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    gap: spacing(1),
+  },
+  eventRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing(2) },
+  eventText: { color: '#fff', fontFamily: fonts.semibold, fontSize: 14, flex: 1 },
+  eventFlag: { fontSize: 16 },
   countdownWrap: { alignItems: 'center', marginTop: spacing(5) },
   countdownBig: {
     color: '#fff',

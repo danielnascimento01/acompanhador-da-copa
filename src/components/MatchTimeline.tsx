@@ -75,8 +75,6 @@ export function MatchTimeline({ match }: { match: Match }) {
       ) : (
         events.map((e, i) => <EventRow key={`${e.minute}-${e.player}-${i}`} match={match} event={e} />)
       )}
-
-      <Text style={styles.source}>Dados ao vivo via ESPN</Text>
     </View>
   );
 }
@@ -130,5 +128,4 @@ const styles = StyleSheet.create({
   player: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15, flex: 1 },
   suffix: { color: colors.amber, fontFamily: fonts.bold, fontSize: 13 },
   flag: { fontSize: 18 },
-  source: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11, marginTop: spacing(3) },
 });
