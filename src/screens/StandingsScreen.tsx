@@ -9,6 +9,7 @@ import { Match, isPredictable } from '../data/fixtures';
 import { GROUPS, getTeam } from '../data/teams';
 import { ScorersSheet } from './ScorersSheet';
 import { HistorySheet } from './HistorySheet';
+import { VenuesSheet } from './VenuesSheet';
 import { useStore } from '../lib/store';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -19,6 +20,7 @@ export function StandingsScreen() {
   const [mode, setMode] = useState<Mode>('official');
   const [scorersOpen, setScorersOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [venuesOpen, setVenuesOpen] = useState(false);
 
   const activePredictions = useMemo(
     () => countActivePredictions(matches, predictions),
@@ -63,7 +65,7 @@ export function StandingsScreen() {
     >
       <Text style={styles.title}>Grupos</Text>
 
-      {/* Mais da Copa: Artilheiros + História */}
+      {/* Mais da Copa: Artilheiros + História + Sedes */}
       <View style={styles.moreRow}>
         <Pressable style={styles.moreBtn} onPress={() => setScorersOpen(true)} accessibilityRole="button" accessibilityLabel="Ver artilheiros">
           <Text style={styles.moreEmoji}>⚽</Text>
@@ -71,7 +73,11 @@ export function StandingsScreen() {
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setHistoryOpen(true)} accessibilityRole="button" accessibilityLabel="Ver história da Copa">
           <Text style={styles.moreEmoji}>🏆</Text>
-          <Text style={styles.moreText}>História da Copa</Text>
+          <Text style={styles.moreText}>História</Text>
+        </Pressable>
+        <Pressable style={styles.moreBtn} onPress={() => setVenuesOpen(true)} accessibilityRole="button" accessibilityLabel="Ver sedes e estádios">
+          <Text style={styles.moreEmoji}>🏟️</Text>
+          <Text style={styles.moreText}>Sedes</Text>
         </Pressable>
       </View>
 
@@ -163,6 +169,7 @@ export function StandingsScreen() {
 
       <ScorersSheet visible={scorersOpen} onClose={() => setScorersOpen(false)} />
       <HistorySheet visible={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <VenuesSheet visible={venuesOpen} onClose={() => setVenuesOpen(false)} />
     </>
   );
 }
@@ -173,18 +180,17 @@ const styles = StyleSheet.create({
   moreRow: { flexDirection: 'row', gap: spacing(2), marginBottom: spacing(3) },
   moreBtn: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing(2),
+    gap: spacing(1),
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing(3),
   },
-  moreEmoji: { fontSize: 18 },
-  moreText: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
+  moreEmoji: { fontSize: 20 },
+  moreText: { color: colors.text, fontFamily: fonts.bold, fontSize: 13 },
   toggleRow: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
