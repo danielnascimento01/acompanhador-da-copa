@@ -13,6 +13,7 @@ import {
 import { openKofi, openSuggestion } from '../lib/links';
 import { billingAvailable, purchaseRemoveAds, restorePurchases } from '../lib/billing';
 import { ADS_ENABLED } from '../lib/ads';
+import { appVersion, otaStatus } from '../lib/appInfo';
 import { getCurrentIconKey } from '../lib/appIcon';
 import { APP_ICONS, DEFAULT_ICON_KEY } from '../data/appIcons';
 import { AppIconSheet } from './AppIconSheet';
@@ -227,6 +228,10 @@ export function SettingsScreen() {
           </Pressable>
         </View>
       </View>
+
+      <Text style={styles.versionLine}>
+        Acompanhador da Copa · v{appVersion()} · {otaStatus()}
+      </Text>
       </ScrollView>
 
       <AppIconSheet visible={iconOpen} onClose={() => setIconOpen(false)} />
@@ -335,5 +340,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   supportGhostText: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
+  versionLine: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11, textAlign: 'center', marginTop: spacing(5) },
 });
 
