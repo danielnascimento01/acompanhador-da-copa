@@ -65,7 +65,8 @@ function Shell() {
   if (!onboarded) {
     return (
       <OnboardingScreen
-        onStart={() => {
+        onStart={(is18Plus) => {
+          if (is18Plus != null) updateSettings({ is18Plus });
           completeOnboarding();
           setTab('teams');
         }}

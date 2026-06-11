@@ -52,6 +52,8 @@ export type Settings = {
   matchStartLeadMinutes: number;
   /** Comprou "Remover anúncios" (IAP não-consumível). Fonte da verdade pra esconder ads. */
   adsRemoved: boolean;
+  /** Confirmou 18+ (age-gate). null = ainda não respondeu. Libera o módulo de cotações. */
+  is18Plus: boolean | null;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -60,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
   matchStart: true,
   matchStartLeadMinutes: 15,
   adsRemoved: false,
+  is18Plus: null,
 };
 
 export async function loadSelectedTeams(): Promise<string[]> {

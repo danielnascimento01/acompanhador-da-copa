@@ -8,6 +8,7 @@ import { Match, kickoff, isLive, isFinished, isPredictable } from '../data/fixtu
 import { getTeam, teamFlag, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
+import { OddsRow } from '../components/OddsRow';
 import { formatDayLong, formatTime } from '../lib/format';
 import { openUrl } from '../lib/links';
 import { useStore } from '../lib/store';
@@ -135,6 +136,9 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           })}
           <Text style={styles.watchNote}>A grade pode variar por jogo. Toque na CazéTV para abrir o jogo ao vivo no YouTube.</Text>
         </View>
+
+        {/* Cotações (afiliação) — contido, com kill-switch e age-gate dentro do componente */}
+        <OddsRow match={match} />
 
         {sameGroup && standings.length > 0 && (
           <View style={styles.tableCard}>

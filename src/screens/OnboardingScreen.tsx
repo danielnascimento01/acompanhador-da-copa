@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { FadeInUp } from '../components/Motion';
 import { requestPermission } from '../lib/notifications';
+import { ODDS_ENABLED } from '../lib/odds';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
 
 const FEATURES = [
@@ -12,8 +13,9 @@ const FEATURES = [
   { icon: '⏰', title: 'Jogo começando', text: 'Um lembrete pouco antes de cada partida.' },
 ];
 
-export function OnboardingScreen({ onStart }: { onStart: () => void }) {
+export function OnboardingScreen({ onStart }: { onStart: (is18Plus: boolean | null) => void }) {
   const [busy, setBusy] = useState(false);
+  const [age, setAge] = useState<boolean | null>(null);
 
   const handleStart = async () => {
     setBusy(true);
@@ -22,7 +24,7 @@ export function OnboardingScreen({ onStart }: { onStart: () => void }) {
     } catch {
       // Sem permissão agora — pode ativar depois em Avisos.
     } finally {
-      onStart();
+      onStart(age);
     }
   };
 
@@ -59,6 +61,34 @@ export function OnboardingScreen({ onStart }: { onStart: () => void }) {
           </FadeInUp>
         ))}
       </View>
+
+      {ODDS_ENABLED && (
+        <FadeInUp delay={360}>
+          <View style={styles.ageCard}>
+            <Text style={styles.ageQ}>Você tem 18 anos ou mais?</Text>
+            <View style={styles.ageRow}>
+              <Pressable
+                style={[styles.agePill, age === true && styles.agePillOn]}
+                onPress={() => setAge(true)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: age === true }}
+                accessibilityLabel="Sim, tenho 18 anos ou mais"
+              >
+                <Text style={[styles.agePillText, age === true && styles.agePillTextOn]}>Sim</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.agePill, age === false && styles.agePillOn]}
+                onPress={() => setAge(false)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: age === false }}
+                accessibilityLabel="Não, sou menor de 18 anos"
+              >
+                <Text style={[styles.agePillText, age === false && styles.agePillTextOn]}>Não</Text>
+              </Pressable>
+            </View>
+          </View>
+        </FadeInUp>
+      )}
 
       <FadeInUp delay={420}>
         <Pressable
@@ -123,6 +153,20 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   featureTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 16 },
   featureText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 2 },
+  ageCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing(4),
+    marginBottom: spacing(4),
+  },
+  ageQ: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginBottom: spacing(3) },
+  ageRow: { flexDirection: 'row', gap: spacing(2) },
+  agePill: { flex: 1, paddingVertical: spacing(3), borderRadius: radius.md, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  agePillOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  agePillText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 15 },
+  agePillTextOn: { color: colors.ink },
   button: { borderRadius: radius.lg, paddingVertical: spacing(4), alignItems: 'center' },
   buttonText: { color: colors.ink, fontFamily: fonts.display, fontSize: 20, letterSpacing: 1 },
   pressed: { opacity: 0.85 },
