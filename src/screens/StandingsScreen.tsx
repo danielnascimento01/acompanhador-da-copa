@@ -7,6 +7,8 @@ import { FadeInUp } from '../components/Motion';
 import { applyPredictions, computeStandings, countActivePredictions } from '../data/standings';
 import { Match, isPredictable } from '../data/fixtures';
 import { GROUPS, getTeam } from '../data/teams';
+import { ScorersSheet } from './ScorersSheet';
+import { HistorySheet } from './HistorySheet';
 import { useStore } from '../lib/store';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -15,6 +17,8 @@ type Mode = 'official' | 'predicted';
 export function StandingsScreen() {
   const { matches, selected, predictions, setPrediction, clearAllPredictions } = useStore();
   const [mode, setMode] = useState<Mode>('official');
+  const [scorersOpen, setScorersOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const activePredictions = useMemo(
     () => countActivePredictions(matches, predictions),
@@ -52,11 +56,24 @@ export function StandingsScreen() {
   );
 
   return (
+    <>
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ padding: spacing(4), paddingBottom: spacing(10) }}
     >
       <Text style={styles.title}>Grupos</Text>
+
+      {/* Mais da Copa: Artilheiros + História */}
+      <View style={styles.moreRow}>
+        <Pressable style={styles.moreBtn} onPress={() => setScorersOpen(true)} accessibilityRole="button" accessibilityLabel="Ver artilheiros">
+          <Text style={styles.moreEmoji}>⚽</Text>
+          <Text style={styles.moreText}>Artilheiros</Text>
+        </Pressable>
+        <Pressable style={styles.moreBtn} onPress={() => setHistoryOpen(true)} accessibilityRole="button" accessibilityLabel="Ver história da Copa">
+          <Text style={styles.moreEmoji}>🏆</Text>
+          <Text style={styles.moreText}>História da Copa</Text>
+        </Pressable>
+      </View>
 
       {/* Alternância Oficial / Meus palpites */}
       <View style={styles.toggleRow}>
@@ -142,13 +159,32 @@ export function StandingsScreen() {
           </View>
         </FadeInUp>
       ))}
-    </ScrollView>
+      </ScrollView>
+
+      <ScorersSheet visible={scorersOpen} onClose={() => setScorersOpen(false)} />
+      <HistorySheet visible={historyOpen} onClose={() => setHistoryOpen(false)} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 34, marginBottom: spacing(3) },
+  moreRow: { flexDirection: 'row', gap: spacing(2), marginBottom: spacing(3) },
+  moreBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing(2),
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing(3),
+  },
+  moreEmoji: { fontSize: 18 },
+  moreText: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
   toggleRow: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
