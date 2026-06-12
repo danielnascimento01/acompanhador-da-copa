@@ -101,7 +101,7 @@ export function AppIconSheet({ visible, onClose }: { visible: boolean; onClose: 
               </View>
             ))}
 
-            <Text style={styles.footer}>App não oficial · sem vínculo com a FIFA</Text>
+            <Text style={styles.footer}>App não oficial · sem vínculo com entidades ou competições oficiais</Text>
           </ScrollView>
         </View>
       </View>

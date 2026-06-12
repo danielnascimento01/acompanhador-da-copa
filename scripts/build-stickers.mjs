@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
- * Gera assets/data/stickers.json — o catálogo FIEL do álbum Panini FIFA World Cup 2026.
+ * Gera assets/data/stickers.json — catálogo AUTORAL do álbum de figurinhas das
+ * seleções 2026 (conteúdo próprio, sem vínculo com produtos/marcas de terceiros).
  * Uso: npm run build-stickers
  *
- * Estrutura oficial (980 figurinhas):
- *  - Especiais (20): 00 (logo) + FWC1–FWC8 (emblemas/sedes) + FWC9–FWC19 (FIFA Museum).
- *  - 48 seleções × 20: código FIFA de 3 letras + 1..20.
- *    Por time: 1 = escudo (FOIL) · 2..19 = 18 jogadores · 20 = foto do elenco.
- *  - 68 brilhantes (FOIL) = 48 escudos + 20 especiais.
+ * Estrutura (980 figurinhas):
+ *  - Especiais (20): 00 (capa) + SP1–SP8 (abertura) + SP9–SP19 (Lendas).
+ *  - 48 seleções × 20: código de 3 letras do país (padrão internacional) + 1..20.
+ *    Por time: 1 = brilhante (FOIL) · 2..19 = 18 cromos · 20 = cromo do elenco.
+ *  - 68 brilhantes (FOIL) = 48 da posição 1 + 20 especiais.
  *
  * Os 48 times batem com src/data/teams.ts (mesmos ids/grupos). Se a lista mudar,
- * ajuste CODES e rode de novo. Nomes de jogadores não entram (não são necessários
- * pra troca; o que importa é o código BRAx). Podem virar `label` opcional depois.
+ * ajuste CODES e rode de novo. Os códigos de país de 3 letras são padrão
+ * internacional (ISO/COI) e identificam apenas a seção; não são conteúdo de marca.
  */
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -90,15 +91,15 @@ const BADGE_INDEX = 1; // posição do escudo FOIL dentro do time
 function buildSpecials() {
   const sections = [];
 
-  // Abertura: 00 (logo) + FWC1..FWC8 (emblemas e cidades-sede) — todas FOIL
+  // Abertura: 00 (capa) + SP1..SP8 (figurinhas especiais de abertura) — todas FOIL
   const abertura = [{ code: '00', shiny: true }];
-  for (let i = 1; i <= 8; i++) abertura.push({ code: `FWC${i}`, shiny: true });
+  for (let i = 1; i <= 8; i++) abertura.push({ code: `SP${i}`, shiny: true });
   sections.push({ id: 'special:abertura', title: 'Abertura', stickers: abertura });
 
-  // FIFA Museum: FWC9..FWC19 (11 campeões históricos) — todas FOIL
-  const museu = [];
-  for (let i = 9; i <= 19; i++) museu.push({ code: `FWC${i}`, shiny: true });
-  sections.push({ id: 'special:museu', title: 'FIFA Museum', stickers: museu });
+  // Lendas: SP9..SP19 (11 craques históricos) — todas FOIL
+  const lendas = [];
+  for (let i = 9; i <= 19; i++) lendas.push({ code: `SP${i}`, shiny: true });
+  sections.push({ id: 'special:lendas', title: 'Lendas', stickers: lendas });
 
   return sections;
 }
@@ -121,9 +122,9 @@ function main() {
     0,
   );
 
-  const data = { version: 1, album: 'Panini FIFA World Cup 2026', total, sections };
+  const data = { version: 1, album: 'Figurinhas das Seleções 2026', total, sections };
 
-  // Sanidade: o álbum oficial tem 980 figurinhas e 68 brilhantes.
+  // Sanidade: o catálogo tem 980 figurinhas e 68 brilhantes.
   if (total !== 980) throw new Error(`Esperava 980 figurinhas, gerou ${total}`);
   if (foil !== 68) throw new Error(`Esperava 68 brilhantes (foil), gerou ${foil}`);
 

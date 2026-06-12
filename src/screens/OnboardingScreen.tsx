@@ -108,7 +108,7 @@ export function OnboardingScreen({ onStart }: { onStart: (is18Plus: boolean | nu
           </LinearGradient>
         </Pressable>
         <Text style={styles.disclaimer}>
-          App não oficial · sem vínculo com a FIFA. Dados de terceiros, sujeitos a alteração.
+          App não oficial · sem vínculo com entidades ou competições oficiais. Dados de terceiros, sujeitos a alteração.
         </Text>
       </FadeInUp>
     </View>

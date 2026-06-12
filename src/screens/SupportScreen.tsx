@@ -71,7 +71,7 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
               </Pressable>
             ) : null}
 
-            <Text style={styles.footer}>App não oficial · sem vínculo com a FIFA</Text>
+            <Text style={styles.footer}>App não oficial · sem vínculo com entidades ou competições oficiais</Text>
           </FadeInUp>
         </View>
       </View>

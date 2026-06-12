@@ -20,7 +20,7 @@ amam tabela limpa/simulador/álbum; odeiam excesso de anúncio e paywall.
 `O app completo da Copa 2026: jogos das suas seleções, simulador de palpites, álbum de figurinhas com troca e onde assistir. Sem aquela propaganda atrapalhando.`
 
 **Palavras-chave (campo de até 100 — separe por vírgula, sem espaços):**
-`copa do mundo,futebol,jogos,album,placar ao vivo,selecoes,brasil,bolao,grupos,artilheiros,sedes,mata-mata`
+`copa 2026,futebol,jogos,album,placar ao vivo,selecoes,brasil,bolao,grupos,artilheiros,sedes,mata-mata`
 
 ---
 
@@ -36,7 +36,7 @@ amam tabela limpa/simulador/álbum; odeiam excesso de anúncio e paywall.
 
 ## 📄 DESCRIÇÃO COMPLETA (App Store + Play)
 
-⚽ O app completo da Copa do Mundo de 2026 — e sem aquela propaganda atrapalhando.
+⚽ O app completo da Copa de 2026 — e sem aquela propaganda atrapalhando.
 
 Acompanhe os jogos das suas seleções, simule os resultados, organize seu álbum de figurinhas e não perca nenhum apito inicial. Tudo de graça, leve e feito com carinho pra você curtir a Copa.
 
@@ -66,13 +66,13 @@ Acompanhe os jogos das suas seleções, simule os resultados, organize seu álbu
 
 Baixe agora e viva a Copa de 2026 do seu jeito! 🇧🇷
 
-App independente, sem vínculo com a FIFA.
+App independente, sem vínculo com entidades ou competições oficiais.
 
 ---
 
 ## 🔑 ESTRATÉGIA DE PALAVRAS-CHAVE (ASO)
 
-**Alvos principais** (alto volume na Copa): copa do mundo 2026 · copa 2026 · tabela da copa · jogos da copa · figurinhas copa · álbum da copa · palpites copa · placar ao vivo · seleção brasileira
+**Alvos principais** (alto volume na Copa): copa 2026 · tabela da copa · jogos da copa · figurinhas copa · álbum da copa · palpites copa · placar ao vivo · seleção brasileira
 
 **Dica:** o nome + subtítulo (iOS) e título + descrição curta (Play) pesam MUITO no ranking
 — por isso já colocamos "Copa 2026", "Tabela", "palpites" e "figurinhas" neles.

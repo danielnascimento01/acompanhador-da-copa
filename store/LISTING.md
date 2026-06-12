@@ -1,6 +1,6 @@
 # Textos da loja — Acompanhador da Copa
 
-> Disclaimer obrigatório em todas as descrições: **App não oficial, sem vínculo com a FIFA.**
+> Disclaimer obrigatório em todas as descrições: **App não oficial, sem vínculo com entidades ou competições oficiais.**
 > Categoria: **Esportes / Sports**. Classificação: **Livre / 4+ / Everyone**.
 
 ---
@@ -40,7 +40,7 @@ estádio e a tabela do grupo.
 
 Sem cadastro. Sem anúncios. Sem rastreamento.
 
-App não oficial, sem vínculo com a FIFA. Dados de terceiros, sujeitos a alteração.
+App não oficial, sem vínculo com entidades ou competições oficiais. Dados de terceiros, sujeitos a alteração.
 ```
 
 **Palavras-chave (Apple, máx. 100 caracteres):**
@@ -65,7 +65,7 @@ Pick your teams for Cup 2026 and get reminders: schedule, groups and scores.
 
 **Full description:**
 ```
-Never miss a match of the teams you follow at the 2026 World Cup.
+Never miss a match of the teams you follow in the 2026 national-team tournament.
 
 Pick your teams and the app does the rest: the full schedule in your time zone, a
 reminder when a match is about to start, and a morning digest of the day's games.
@@ -87,12 +87,12 @@ Pull to refresh for scores. Tap any match for date, venue and the group table.
 
 No account. No ads. No tracking.
 
-Unofficial app, not affiliated with FIFA. Third-party data, subject to change.
+Unofficial app, not affiliated with any official body or competition. Third-party data, subject to change.
 ```
 
 **Keywords (Apple, max 100 chars):**
 ```
-world cup,2026,football,soccer,fixtures,schedule,scores,groups,table,reminder,teams
+2026,football,soccer,fixtures,schedule,scores,groups,table,reminder,teams,national
 ```
 
 ---

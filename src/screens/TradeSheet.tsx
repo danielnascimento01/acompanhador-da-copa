@@ -140,7 +140,7 @@ export function TradeSheet({ visible, onClose }: { visible: boolean; onClose: ()
               <Text style={styles.ghostText}>Restaurar coleção</Text>
             </Pressable>
 
-            <Text style={styles.footer}>App não oficial · sem vínculo com a FIFA/Panini</Text>
+            <Text style={styles.footer}>App não oficial · sem vínculo com entidades ou competições oficiais</Text>
           </ScrollView>
         </View>
       </View>

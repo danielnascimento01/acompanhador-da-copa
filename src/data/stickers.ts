@@ -1,7 +1,8 @@
 /**
- * Catálogo do álbum Panini FIFA World Cup 2026 (FIEL ao físico — 980 figurinhas).
- * O dataset vem de assets/data/stickers.json, gerado por scripts/build-stickers.mjs.
- * Estrutura confirmada: 20 especiais + 48 seleções × 20 (código FIFA + 1..20).
+ * Catálogo autoral do álbum de figurinhas das seleções 2026 (980 figurinhas,
+ * conteúdo próprio). O dataset vem de assets/data/stickers.json, gerado por
+ * scripts/build-stickers.mjs.
+ * Estrutura: 20 especiais + 48 seleções × 20 (código do país + 1..20).
  *
  * A COLEÇÃO do usuário (quantas ele tem de cada) é `AlbumCollection`, persistida à parte.
  * code -> quantidade: 0/ausente = falta · 1 = tenho · >1 = tenho + (n-1) repetidas.
