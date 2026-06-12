@@ -50,8 +50,6 @@ export type Settings = {
   matchStart: boolean;
   /** Quantos minutos antes do apito inicial avisar. */
   matchStartLeadMinutes: number;
-  /** Comprou "Remover anúncios" (IAP não-consumível). Fonte da verdade pra esconder ads. */
-  adsRemoved: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -59,7 +57,6 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyDigestHour: 9,
   matchStart: true,
   matchStartLeadMinutes: 15,
-  adsRemoved: false,
 };
 
 export async function loadSelectedTeams(): Promise<string[]> {

@@ -98,21 +98,7 @@
             "prerendered": true
           }
         }
-      ],
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
-        }
-      ],
-      [
-        "expo-tracking-transparency",
-        {
-          "userTrackingPermission": "Usamos isso para mostrar anúncios mais relevantes e manter o app gratuito. Você pode recusar — o app funciona igual."
-        }
-      ],
-      "react-native-iap"
+      ]
     ],
     "extra": {
       "thesportsdbLeagueId": "4429",

@@ -11,8 +11,6 @@ import {
   sendTestNotification,
 } from '../lib/notifications';
 import { openKofi, openSuggestion } from '../lib/links';
-import { billingAvailable, purchaseRemoveAds, restorePurchases } from '../lib/billing';
-import { ADS_ENABLED } from '../lib/ads';
 import { appVersion, otaStatus } from '../lib/appInfo';
 import { getCurrentIconKey } from '../lib/appIcon';
 import { APP_ICONS, DEFAULT_ICON_KEY } from '../data/appIcons';
@@ -33,30 +31,6 @@ export function SettingsScreen() {
   }, [iconOpen]);
 
   const currentIcon = APP_ICONS.find((i) => i.key === iconKey) ?? APP_ICONS[0];
-
-  const handleRemoveAds = async () => {
-    if (!billingAvailable()) {
-      Alert.alert('Indisponível na pré-visualização', 'A compra funciona no app instalado da loja.');
-      return;
-    }
-    const ok = await purchaseRemoveAds();
-    if (!ok) Alert.alert('Não foi possível abrir a compra', 'Tente novamente em instantes.');
-    // Sucesso: o listener concede e liga a flag (os anúncios somem sozinhos).
-  };
-
-  const handleRestore = async () => {
-    if (!billingAvailable()) {
-      Alert.alert('Indisponível na pré-visualização', 'A restauração funciona no app instalado da loja.');
-      return;
-    }
-    const owns = await restorePurchases();
-    if (owns) {
-      updateSettings({ adsRemoved: true });
-      Alert.alert('Pronto!', 'Sua compra foi restaurada — anúncios removidos.');
-    } else {
-      Alert.alert('Nenhuma compra encontrada', 'Não achamos uma compra de "Remover anúncios" nesta conta.');
-    }
-  };
 
   const refresh = async () => {
     setGranted(await getPermissionGranted());
@@ -189,29 +163,6 @@ export function SettingsScreen() {
         </View>
         <Text style={styles.iconChevron}>›</Text>
       </Pressable>
-
-      {/* Remover anúncios (IAP) — só aparece quando os ads estão ligados;
-          no lançamento (ADS_ENABLED=false) não há o que remover, então fica oculto. */}
-      {ADS_ENABLED &&
-        (settings.adsRemoved ? (
-        <View style={[styles.card, styles.adsDoneCard]}>
-          <Text style={styles.cardTitle}>✅ Anúncios removidos</Text>
-          <Text style={styles.cardText}>Obrigado por apoiar o app! Você não verá mais anúncios.</Text>
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>🚫 Remover anúncios</Text>
-          <Text style={styles.cardText}>
-            Tire os anúncios para sempre com uma compra única. Sem assinatura.
-          </Text>
-          <Pressable style={styles.cta} onPress={handleRemoveAds} accessibilityRole="button" accessibilityLabel="Remover anúncios para sempre">
-            <Text style={styles.ctaText}>REMOVER ANÚNCIOS</Text>
-          </Pressable>
-          <Pressable onPress={handleRestore} accessibilityRole="button" accessibilityLabel="Restaurar compra" hitSlop={8}>
-            <Text style={styles.restoreLink}>Restaurar compra</Text>
-          </Pressable>
-        </View>
-        ))}
 
       {/* Apoio / sugestões */}
       <View style={[styles.card, styles.supportCard]}>
