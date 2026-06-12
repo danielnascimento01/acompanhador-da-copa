@@ -8,7 +8,6 @@ import { Match, kickoff, isLive, isFinished, isPredictable } from '../data/fixtu
 import { getTeam, teamFlag, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
-import { OddsRow } from '../components/OddsRow';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { formatDayLong, formatTime } from '../lib/format';
 import { openUrl } from '../lib/links';
@@ -89,9 +88,6 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
 
         {/* Lance a lance ao vivo (ESPN) — minuto, gols, cartões. Só p/ jogos iniciados. */}
         <MatchTimeline match={match} />
-
-        {/* Cotações (afiliação) — logo abaixo do placar. Kill-switch + age-gate no componente. */}
-        <OddsRow match={match} />
 
         {isPredictable(match) ? (
           <PredictionEditor
