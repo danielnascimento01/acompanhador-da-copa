@@ -3,11 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Acompanhador da Copa — App da Copa do Mundo 2026</title>
-  <meta name="description" content="O app completo da Copa do Mundo de 2026: jogos das suas seleções, lembretes, simulador de palpites, álbum de figurinhas, classificação dos grupos e onde assistir. Grátis, para iOS e Android." />
-  <meta property="og:title" content="Acompanhador da Copa — App da Copa do Mundo 2026" />
-  <meta property="og:description" content="Jogos, lembretes, simulador de palpites, álbum de figurinhas e onde assistir. Grátis, para iOS e Android." />
+  <title>Acompanhador da Copa 2026 — o app da Copa no seu bolso</title>
+  <meta name="description" content="O app para acompanhar a Copa 2026: jogos das suas seleções com placar e lance a lance ao vivo, lembretes, simulador de palpites, álbum de figurinhas, grupos, artilheiros e onde assistir. Grátis, sem anúncios e sem cadastro — para iOS e Android." />
+  <link rel="icon" href="favicon.png" />
+  <meta property="og:title" content="Acompanhador da Copa 2026" />
+  <meta property="og:description" content="Jogos ao vivo, lembretes, simulador de palpites, álbum de figurinhas e onde assistir. Grátis, sem anúncios, sem cadastro. iOS e Android." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="logo.png" />
+  <meta name="twitter:card" content="summary" />
   <style>
     :root {
       --bg: #080B10; --elev: #0E131A; --surface: #11161D; --border: #222B38;
@@ -15,58 +18,98 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-    .wrap { max-width: 920px; margin: 0 auto; padding: 0 20px; }
-    header { padding: 22px 0; display: flex; align-items: center; gap: 10px; }
-    .logo { font-weight: 800; letter-spacing: .5px; font-size: 18px; }
+    a { color: inherit; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+    header { padding: 20px 0; display: flex; align-items: center; gap: 12px; }
+    header img.brand { width: 36px; height: 36px; border-radius: 9px; }
+    .logo { font-weight: 800; letter-spacing: .4px; font-size: 17px; }
     .badge { background: var(--accent); color: var(--ink); border-radius: 6px; padding: 1px 7px; font-weight: 800; font-size: 13px; }
-    .hero { text-align: center; padding: 56px 0 40px; }
-    .hero .mark { font-size: 64px; }
-    .hero h1 { font-size: clamp(30px, 6vw, 46px); line-height: 1.15; margin: 16px 0 12px; }
+
+    .hero { text-align: center; padding: 40px 0 16px; }
+    .hero img.appicon { width: 116px; height: 116px; border-radius: 26px; box-shadow: 0 18px 50px rgba(20,224,138,.18), 0 6px 18px rgba(0,0,0,.5); }
+    .hero h1 { font-size: clamp(30px, 6vw, 48px); line-height: 1.12; margin: 22px 0 14px; letter-spacing: -.5px; }
     .hero h1 .grad { background: linear-gradient(90deg, var(--accent), var(--teal)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-    .hero p { color: var(--dim); font-size: 18px; max-width: 620px; margin: 0 auto; }
+    .hero p.lead { color: var(--dim); font-size: 18px; max-width: 640px; margin: 0 auto; }
+
+    .pills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 22px auto 0; max-width: 640px; }
+    .pill { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+    .pill b { color: var(--accent); }
+
     .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
-    .store { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 20px; color: var(--text); text-decoration: none; font-weight: 700; }
+    .store { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 11px 22px; color: var(--text); text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .store .si { font-size: 22px; }
     .store small { display: block; color: var(--faint); font-weight: 500; font-size: 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 48px 0; }
+
+    .section-title { text-align: center; color: var(--faint); text-transform: uppercase; letter-spacing: 2px; font-size: 12.5px; font-weight: 800; margin-top: 60px; }
+    .section-sub { text-align: center; color: var(--dim); font-size: 16px; max-width: 560px; margin: 8px auto 0; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin: 28px 0 0; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
-    .card .ico { font-size: 30px; }
-    .card h3 { margin: 10px 0 4px; font-size: 18px; }
-    .card p { color: var(--dim); font-size: 15px; }
-    .section-title { text-align: center; color: var(--faint); text-transform: uppercase; letter-spacing: 2px; font-size: 13px; font-weight: 800; margin-top: 24px; }
-    footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 28px 0 48px; text-align: center; color: var(--faint); font-size: 14px; }
-    footer a { color: var(--dim); }
+    .card .ico { font-size: 28px; }
+    .card h3 { margin: 12px 0 5px; font-size: 17.5px; }
+    .card p { color: var(--dim); font-size: 14.5px; }
+
+    .trust { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 28px 0 0; }
+    .trust .t { background: linear-gradient(180deg, rgba(20,224,138,.06), transparent); border: 1px solid var(--border); border-radius: 16px; padding: 20px; text-align: center; }
+    .trust .t .big { font-size: 22px; font-weight: 800; color: var(--accent); }
+    .trust .t p { color: var(--dim); font-size: 14px; margin-top: 4px; }
+
+    footer { border-top: 1px solid var(--border); margin-top: 64px; padding: 28px 0 48px; text-align: center; color: var(--faint); font-size: 14px; }
+    footer a { color: var(--dim); text-decoration: none; }
+    footer a:hover { color: var(--text); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <span class="mark">🏆</span>
+      <img class="brand" src="logo.png" alt="Acompanhador da Copa 2026" />
       <span class="logo">ACOMPANHADOR DA COPA</span>
-      <span class="badge">26</span>
+      <span class="badge">2026</span>
     </header>
 
     <section class="hero">
-      <div class="mark">🏆</div>
-      <h1>O app completo da<br /><span class="grad">Copa do Mundo de 2026</span></h1>
-      <p>Acompanhe os jogos das suas seleções, receba lembretes, simule os resultados, organize seu álbum de figurinhas e veja onde assistir cada partida. Tudo de graça.</p>
+      <img class="appicon" src="logo.png" alt="Ícone do app Acompanhador da Copa 2026" />
+      <h1>A Copa 2026 inteira<br /><span class="grad">no seu bolso</span></h1>
+      <p class="lead">Jogos das suas seleções com placar e lance a lance ao vivo, lembretes, simulador de palpites, álbum de figurinhas e onde assistir cada partida. Tudo de graça, leve e direto ao ponto.</p>
+
+      <div class="pills">
+        <span class="pill"><b>Grátis</b></span>
+        <span class="pill">Sem anúncios</span>
+        <span class="pill">Sem cadastro</span>
+        <span class="pill">Sem rastreamento</span>
+        <span class="pill">iOS &amp; Android</span>
+      </div>
+
       <div class="cta">
-        <a class="store" href="#">App Store <small>iPhone — em breve</small></a>
-        <a class="store" href="#">Google Play <small>Android — em breve</small></a>
+        <a class="store" href="#"><span class="si"></span><span>App Store<small>iPhone — em breve</small></span></a>
+        <a class="store" href="#"><span class="si">▶</span><span>Google Play<small>Android — em breve</small></span></a>
       </div>
     </section>
 
-    <div class="section-title">O que o app faz</div>
+    <div class="section-title">Tudo o que o app faz</div>
+    <p class="section-sub">Cada recurso pensado para você não perder nada da competição.</p>
     <section class="grid">
-      <div class="card"><div class="ico">⚽</div><h3>Seus jogos</h3><p>A agenda das suas seleções no seu fuso, com contagem regressiva e placar ao vivo.</p></div>
-      <div class="card"><div class="ico">🔔</div><h3>Lembretes</h3><p>Avisos antes de cada partida e o resumo dos jogos do dia. Funciona offline.</p></div>
-      <div class="card"><div class="ico">🔮</div><h3>Simulador de palpites</h3><p>Palpite os placares e veja a classificação dos grupos mudar na hora.</p></div>
-      <div class="card"><div class="ico">🃏</div><h3>Álbum de figurinhas</h3><p>Marque o que tem, o que falta e as repetidas — e combine trocas com amigos.</p></div>
-      <div class="card"><div class="ico">📊</div><h3>Grupos & estatísticas</h3><p>Classificação, artilheiros, história da Copa e as sedes dos estádios.</p></div>
-      <div class="card"><div class="ico">📺</div><h3>Onde assistir</h3><p>Os canais que transmitem cada jogo, em um toque.</p></div>
+      <div class="card"><div class="ico">⚽</div><h3>Jogos ao vivo</h3><p>Placar, minuto da partida, gols e cartões em tempo real. A tabela completa, jogo a jogo, no seu fuso horário.</p></div>
+      <div class="card"><div class="ico">⭐</div><h3>Suas seleções</h3><p>Escolha os times que você torce e veja a agenda deles em destaque, com contagem regressiva para cada jogo.</p></div>
+      <div class="card"><div class="ico">🔔</div><h3>Lembretes</h3><p>Avisos antes do apito inicial e um resumo dos jogos do dia. Funciona offline, sem depender de internet.</p></div>
+      <div class="card"><div class="ico">🔮</div><h3>Simulador de palpites</h3><p>Palpite os placares e veja a classificação dos grupos e o chaveamento mudarem na hora.</p></div>
+      <div class="card"><div class="ico">🃏</div><h3>Álbum de figurinhas</h3><p>Marque o que você tem, o que falta e as repetidas. Combine trocas com amigos compartilhando e importando listas.</p></div>
+      <div class="card"><div class="ico">📊</div><h3>Grupos &amp; classificação</h3><p>A tabela de cada grupo atualizada e o caminho até a final, sempre à mão.</p></div>
+      <div class="card"><div class="ico">👟</div><h3>Artilheiros</h3><p>O ranking de gols da competição, atualizado partida após partida.</p></div>
+      <div class="card"><div class="ico">📺</div><h3>Onde assistir</h3><p>Os canais que transmitem cada jogo, em um toque — para você nunca ficar na mão.</p></div>
+      <div class="card"><div class="ico">🏟️</div><h3>Sedes &amp; história</h3><p>Os estádios e cidades-sede do torneio e um passeio pela história das edições anteriores.</p></div>
+      <div class="card"><div class="ico">🎨</div><h3>Ícone personalizável</h3><p>Escolha entre vários ícones do app para deixar a tela inicial com a sua cara.</p></div>
+    </section>
+
+    <div class="section-title">Por que as pessoas curtem</div>
+    <section class="trust">
+      <div class="t"><div class="big">0 anúncios</div><p>Nada de propaganda atrapalhando a tabela ou os jogos.</p></div>
+      <div class="t"><div class="big">0 cadastro</div><p>Abriu, usou. Sem login, sem senha, sem e-mail.</p></div>
+      <div class="t"><div class="big">Privacidade</div><p>Não coletamos seus dados nem rastreamos você.</p></div>
     </section>
 
     <footer>
-      <p>App independente, sem vínculo com a FIFA. Disponível para iOS e Android.</p>
+      <p>App independente para acompanhar a Copa 2026. Sem vínculo com a FIFA ou com qualquer organização oficial. Disponível para iOS e Android.</p>
       <p style="margin-top:8px"><a href="privacy-policy.html">Política de privacidade</a></p>
       <p style="margin-top:8px">© 2026 Acompanhador da Copa</p>
     </footer>
