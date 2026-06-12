@@ -37,16 +37,22 @@ function countdown(target: Date, now: Date) {
 export function NextMatchHero({ match }: { match: Match }) {
   const [now, setNow] = useState(() => new Date());
   const [timeline, setTimeline] = useState<LiveTimeline | null>(null);
-  const live = isLive(match);
+  // Janela de tempo + status (trava status "preso"). Re-avalia a cada segundo (now).
+  const liveByStatus = isLive(match, now);
+  // A ESPN é a fonte em tempo real: se ela diz que acabou, não está ao vivo —
+  // mesmo que o status do dataset ainda diga 2H/LIVE. Resolve o caso na hora.
+  const live = liveByStatus && timeline?.state !== 'post';
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Lances ao vivo (ESPN) direto no card resumo — atualiza a cada 45s.
+  // Lances ao vivo (ESPN) direto no card resumo — atualiza a cada 20s.
+  // O gate é o status (liveByStatus), não o `live` derivado: assim o polling
+  // continua e o state:'post' persiste, sem loop de fetch/limpa/refetch.
   useEffect(() => {
-    if (!live) {
+    if (!liveByStatus) {
       setTimeline(null);
       return;
     }
@@ -61,12 +67,19 @@ export function NextMatchHero({ match }: { match: Match }) {
       alive = false;
       clearInterval(id);
     };
-  }, [match.id, live]);
+  }, [match.id, liveByStatus]);
+
+  // Status diz ao vivo, mas a ESPN confirma que já acabou → "recém-encerrado".
+  // (Evita mostrar como "próximo jogo" com contagem regressiva um jogo terminado.)
+  const ended = liveByStatus && timeline?.state === 'post';
 
   const keyEvents = timeline?.events.filter(isKeyEvent) ?? [];
 
   const ko = kickoff(match);
-  const hasScore = match.homeScore != null && match.awayScore != null;
+  // Prefere o placar do dataset; cai pro placar da ESPN quando o embutido ainda é null.
+  const homeScore = match.homeScore ?? timeline?.homeScore ?? null;
+  const awayScore = match.awayScore ?? timeline?.awayScore ?? null;
+  const hasScore = homeScore != null && awayScore != null;
   const cd = countdown(ko, now);
 
   return (
@@ -79,12 +92,16 @@ export function NextMatchHero({ match }: { match: Match }) {
       <View style={styles.glow} pointerEvents="none" />
 
       <View style={styles.topRow}>
-        <Text style={styles.label}>{live ? 'ACONTECENDO AGORA' : 'PRÓXIMO JOGO'}</Text>
+        <Text style={styles.label}>{live ? 'ACONTECENDO AGORA' : ended ? 'ENCERRADO' : 'PRÓXIMO JOGO'}</Text>
         {live ? (
           <View style={styles.liveDot}>
             <Text style={styles.liveText}>
               {timeline?.halftime ? '● INTERVALO' : `● AO VIVO${timeline?.clock ? ` · ${timeline.clock}` : ''}`}
             </Text>
+          </View>
+        ) : ended ? (
+          <View style={styles.liveDot}>
+            <Text style={styles.liveText}>● ENCERRADO</Text>
           </View>
         ) : (
           <Text style={styles.when}>
@@ -106,7 +123,7 @@ export function NextMatchHero({ match }: { match: Match }) {
         <View style={styles.middle}>
           {hasScore ? (
             <Text style={styles.score}>
-              {match.homeScore}–{match.awayScore}
+              {homeScore}–{awayScore}
             </Text>
           ) : (
             <Text style={styles.vs}>VS</Text>
@@ -123,7 +140,7 @@ export function NextMatchHero({ match }: { match: Match }) {
         </View>
       </View>
 
-      {live && keyEvents.length > 0 && (
+      {(live || ended) && keyEvents.length > 0 && (
         <View style={styles.events}>
           {keyEvents.map((e, i) => (
             <View key={`${e.minute}-${e.player}-${i}`} style={styles.eventRow}>
@@ -137,7 +154,7 @@ export function NextMatchHero({ match }: { match: Match }) {
         </View>
       )}
 
-      {!live && (
+      {!live && !ended && (
         <View style={styles.countdownWrap}>
           <Text style={styles.countdownBig}>{cd.big}</Text>
           <Text style={styles.countdownSmall}>{cd.small}</Text>

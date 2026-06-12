@@ -44,13 +44,13 @@ const ALIAS: Record<string, string> = {
   korearepublic: 'southkorea',
 };
 
-function teamMatches(espnName: string, ourId: string): boolean {
+export function teamMatches(espnName: string, ourId: string): boolean {
   const a = norm(espnName);
   const b = norm(ourId);
   return a === b || ALIAS[a] === b || ALIAS[b] === a;
 }
 
-function yyyymmdd(d: Date): string {
+export function yyyymmdd(d: Date): string {
   return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
@@ -74,18 +74,90 @@ export function minuteNum(m: string): number {
   return Number.isNaN(n) ? 999 : n;
 }
 
+/** Lê o status/placar do nó de status da ESPN (mesma regra do fetchTimeline). */
+function readStatus(ev: any): { state: 'pre' | 'in' | 'post'; halftime: boolean } {
+  const stype = ev?.status?.type ?? {};
+  const state: 'pre' | 'in' | 'post' =
+    stype.state === 'in' ? 'in' : stype.completed ? 'post' : 'pre';
+  const halftime =
+    String(stype.name || '').toUpperCase().includes('HALFTIME') ||
+    /half\s*time|intervalo/i.test(String(stype.description || stype.shortDetail || ''));
+  return { state, halftime: state === 'in' && halftime };
+}
+
+/** Eventos crus do scoreboard de UM dia (YYYYMMDD). Rede falha → []. */
+async function fetchRawDay(date: string, timeoutMs = 8000): Promise<any[]> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE}?dates=${date}`, { signal: ctrl.signal });
+    const json = await res.json();
+    return Array.isArray(json?.events) ? json.events : [];
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * A ESPN agrupa os jogos por dia no fuso ET (UTC-4/-5), então um jogo de
+ * madrugada UTC cai no dia ANTERIOR no índice deles. Como ET é sempre ≤ UTC,
+ * a data UTC + a anterior cobrem qualquer jogo, sem depender de Intl/timezone
+ * (que o Hermes não suporta de forma confiável).
+ */
+export function espnDatesFor(utc: string): string[] {
+  const d = new Date(utc);
+  return [yyyymmdd(d), yyyymmdd(new Date(d.getTime() - 86400000))];
+}
+
+/** Um jogo do scoreboard da ESPN, já com mando e placar resolvidos. */
+export type EspnMatch = {
+  homeName: string;
+  awayName: string;
+  state: 'pre' | 'in' | 'post';
+  halftime: boolean;
+  homeScore: number | null;
+  awayScore: number | null;
+};
+
+/**
+ * Lê o scoreboard de UM dia (YYYYMMDD) e devolve todos os jogos daquela data.
+ * Um único request cobre todos os jogos do dia — é o que alimenta a
+ * reconciliação de status/placar de toda a lista. Falha de rede → lista vazia.
+ */
+export async function fetchEspnDay(date: string, timeoutMs = 8000): Promise<EspnMatch[]> {
+  const events = await fetchRawDay(date, timeoutMs);
+  const out: EspnMatch[] = [];
+  for (const ev of events) {
+    const comps: any[] = ev?.competitions?.[0]?.competitors ?? [];
+    const homeC = comps.find((c) => c.homeAway === 'home');
+    const awayC = comps.find((c) => c.homeAway === 'away');
+    const homeName = homeC?.team?.displayName;
+    const awayName = awayC?.team?.displayName;
+    if (!homeName || !awayName) continue;
+    const { state, halftime } = readStatus(ev);
+    out.push({
+      homeName,
+      awayName,
+      state,
+      halftime,
+      homeScore: toNum(homeC?.score),
+      awayScore: toNum(awayC?.score),
+    });
+  }
+  return out;
+}
+
 /**
  * Busca o lance a lance de um jogo. Retorna `null` se não achar o jogo na ESPN
  * ou se a rede falhar. Só faz sentido chamar p/ jogos que já começaram.
  */
 export async function fetchTimeline(match: Match, timeoutMs = 8000): Promise<LiveTimeline | null> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const date = yyyymmdd(new Date(match.utc));
-    const res = await fetch(`${BASE}?dates=${date}`, { signal: ctrl.signal });
-    const json = await res.json();
-    const events: any[] = Array.isArray(json?.events) ? json.events : [];
+    // Busca a data UTC + a anterior (cobre o fuso ET da ESPN) e junta os jogos.
+    const days = await Promise.all(espnDatesFor(match.utc).map((d) => fetchRawDay(d, timeoutMs)));
+    const events: any[] = days.flat();
 
     const ev = events.find((e) => {
       const comps = e?.competitions?.[0]?.competitors ?? [];
@@ -127,25 +199,18 @@ export async function fetchTimeline(match: Match, timeoutMs = 8000): Promise<Liv
       .filter((e): e is TimelineEvent => !!e && !!e.player)
       .sort((a, b) => minuteNum(a.minute) - minuteNum(b.minute));
 
-    const stype = ev?.status?.type ?? {};
-    const state: LiveTimeline['state'] =
-      stype.state === 'in' ? 'in' : stype.completed ? 'post' : 'pre';
     // Intervalo: a ESPN mantém state="in" mas marca o status como Halftime.
-    const halftime =
-      String(stype.name || '').toUpperCase().includes('HALFTIME') ||
-      /half\s*time|intervalo/i.test(String(stype.description || stype.shortDetail || ''));
+    const { state, halftime } = readStatus(ev);
 
     return {
       state,
       clock: state === 'in' ? String(ev?.status?.displayClock || '') || null : null,
-      halftime: state === 'in' && halftime,
+      halftime,
       homeScore: homeIsOurHome ? toNum(homeC?.score) : toNum(awayC?.score),
       awayScore: homeIsOurHome ? toNum(awayC?.score) : toNum(homeC?.score),
       events: tEvents,
     };
   } catch {
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }

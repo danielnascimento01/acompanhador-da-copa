@@ -39,8 +39,20 @@ export function matchesForTeams(teamIds: Set<string> | string[]): Match[] {
 const LIVE_STATUSES = new Set(['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE']);
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN', 'AP']);
 
-export function isLive(match: Match): boolean {
-  return LIVE_STATUSES.has(match.status);
+/**
+ * Janela máxima de "ao vivo" depois do apito inicial. Um jogo com prorrogação +
+ * pênaltis dura ~150min de tempo real (90 + intervalos + 30 de prorrog. + disputa).
+ * 170min dá folga sem nunca cortar jogo de verdade. Serve de trava contra status
+ * "preso" (a API às vezes deixa o jogo em 2H/LIVE e nunca vira FT).
+ */
+const MAX_LIVE_MS = 170 * 60 * 1000;
+
+export function isLive(match: Match, now: Date = new Date()): boolean {
+  if (!LIVE_STATUSES.has(match.status)) return false;
+  // Status diz ao vivo, mas só vale dentro de uma janela realista após o início.
+  // Fora dela, o status está defasado (a API não atualizou pra FT) → não é ao vivo.
+  const elapsed = now.getTime() - kickoff(match).getTime();
+  return elapsed >= 0 && elapsed <= MAX_LIVE_MS;
 }
 
 export function isFinished(match: Match): boolean {
@@ -57,7 +69,7 @@ export function isPredictable(match: Match, now: Date = new Date()): boolean {
   return (
     match.homeScore == null &&
     match.awayScore == null &&
-    !isLive(match) &&
+    !isLive(match, now) &&
     !isFinished(match) &&
     kickoff(match).getTime() > now.getTime()
   );
@@ -65,7 +77,7 @@ export function isPredictable(match: Match, now: Date = new Date()): boolean {
 
 /** O próximo jogo que ainda não terminou (ao vivo tem prioridade), ou null. */
 export function nextRelevantMatch(matches: Match[], now: Date = new Date()): Match | null {
-  const live = matches.find(isLive);
+  const live = matches.find((m) => isLive(m, now));
   if (live) return live;
   const upcoming = matches.find((m) => !isFinished(m) && kickoff(m).getTime() > now.getTime());
   return upcoming ?? null;
