@@ -90,7 +90,7 @@ export function StandingsScreen() {
           style={[styles.toggleBtn, mode === 'official' && styles.toggleActive]}
         >
           <Text style={[styles.toggleText, mode === 'official' && styles.toggleTextActive]}>
-            Oficial
+            Resultados
           </Text>
         </Pressable>
         <Pressable

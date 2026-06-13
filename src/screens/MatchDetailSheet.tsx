@@ -142,7 +142,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
 
         {sameGroup && standings.length > 0 && (
           <View style={styles.tableCard}>
-            <Text style={styles.tableTitle}>Classificação oficial · Grupo {sameGroup}</Text>
+            <Text style={styles.tableTitle}>Classificação · Grupo {sameGroup}</Text>
             <StandingsTable standings={standings} selected={selected} />
           </View>
         )}

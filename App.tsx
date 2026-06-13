@@ -19,19 +19,17 @@ import { Backdrop } from './src/components/Backdrop';
 import { TeamsScreen } from './src/screens/TeamsScreen';
 import { ScheduleScreen } from './src/screens/ScheduleScreen';
 import { StandingsScreen } from './src/screens/StandingsScreen';
-import { AlbumScreen } from './src/screens/AlbumScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SupportSheet } from './src/screens/SupportScreen';
 import { colors, fonts, gradients, spacing } from './src/lib/theme';
 
-type TabKey = 'schedule' | 'standings' | 'teams' | 'album' | 'settings';
+type TabKey = 'schedule' | 'standings' | 'teams' | 'settings';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'schedule', label: 'Jogos', icon: '⚽' },
   { key: 'standings', label: 'Grupos', icon: '📊' },
   { key: 'teams', label: 'Seleções', icon: '🌎' },
-  { key: 'album', label: 'Álbum', icon: '🃏' },
   { key: 'settings', label: 'Avisos', icon: '🔔' },
 ];
 
@@ -47,7 +45,7 @@ function Shell() {
   if (!ready) {
     return (
       <View style={styles.loading}>
-        <Text style={styles.loadingLogo}>🏆</Text>
+        <Text style={styles.loadingLogo}>⚽</Text>
         <ActivityIndicator color={colors.accent} />
       </View>
     );
@@ -70,7 +68,6 @@ function Shell() {
         {tab === 'schedule' && <ScheduleScreen />}
         {tab === 'standings' && <StandingsScreen />}
         {tab === 'teams' && <TeamsScreen />}
-        {tab === 'album' && <AlbumScreen />}
         {tab === 'settings' && <SettingsScreen />}
       </View>
 
@@ -125,7 +122,7 @@ export default function App() {
   if (!fontsLoaded) {
     return (
       <View style={styles.bootRoot}>
-        <Text style={styles.bootLogo}>🏆</Text>
+        <Text style={styles.bootLogo}>⚽</Text>
         <ActivityIndicator color={colors.accent} />
       </View>
     );
@@ -136,7 +133,7 @@ export default function App() {
       <StatusBar style="light" />
       <Backdrop>
         <View style={styles.brandBar}>
-          <Text style={styles.brandMark}>🏆</Text>
+          <Text style={styles.brandMark}>⚽</Text>
           <Text style={styles.brand}>ACOMPANHADOR DA COPA</Text>
           <View style={styles.brandYearWrap}>
             <Text style={styles.brandYear}>26</Text>
@@ -146,10 +143,10 @@ export default function App() {
             style={styles.supportBtn}
             onPress={() => setSupportOpen(true)}
             accessibilityRole="button"
-            accessibilityLabel="Apoiar o app e enviar sugestões"
+            accessibilityLabel="Ajuda e sugestões"
             hitSlop={8}
           >
-            <Text style={styles.supportBtnText}>☕</Text>
+            <Text style={styles.supportBtnText}>💬</Text>
           </Pressable>
         </View>
         <StoreProvider>

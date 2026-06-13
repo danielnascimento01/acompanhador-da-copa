@@ -8,7 +8,6 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "update-fixtures": "node scripts/update-fixtures.mjs",
-    "build-stickers": "node scripts/build-stickers.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {

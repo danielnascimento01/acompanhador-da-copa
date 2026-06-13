@@ -98,7 +98,7 @@ Unofficial app, not affiliated with any official body or competition. Third-part
 ---
 
 ## Metadados comuns
-- **URL de suporte:** página do Ko-fi (https://ko-fi.com/acompanhadordacopa) ou um site/contato à sua escolha
+- **URL de suporte:** https://danielnascimento01.github.io/acompanhador-da-copa/suporte.html (central de ajuda com FAQ + e-mail)
 - **URL de marketing (opcional):** —
 - **URL da política de privacidade:** (após hospedar `docs/privacy-policy.html`)
 - **Copyright:** © 2026 Acompanhador da Copa

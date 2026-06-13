@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { FadeInUp } from '../components/Motion';
-import { LINKS, openKofi, openPrivacy, openSuggestion } from '../lib/links';
+import { LINKS, openPrivacy, openSuggestion } from '../lib/links';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
 
 export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -30,20 +30,20 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
               end={{ x: 1, y: 1 }}
               style={[styles.iconBadge, elevation(2)]}
             >
-              <Text style={styles.iconEmoji}>☕</Text>
+              <Text style={styles.iconEmoji}>💬</Text>
             </LinearGradient>
 
             <Text style={styles.title}>CURTINDO O APP?</Text>
             <Text style={styles.body}>
               Este é um projeto independente, feito com carinho pra você não perder nenhum jogo das
-              suas seleções. Se ele te ajuda, considere apoiar — ajuda a manter o app de pé e a
-              melhorar.
+              suas seleções. Tem uma ideia ou achou algum problema? Manda pra gente — sua opinião
+              ajuda a melhorar o app.
             </Text>
 
             <Pressable
-              onPress={openKofi}
+              onPress={openSuggestion}
               accessibilityRole="button"
-              accessibilityLabel="Apoiar nosso app"
+              accessibilityLabel="Enviar uma sugestão"
               style={({ pressed }) => pressed && styles.pressed}
             >
               <LinearGradient
@@ -52,17 +52,8 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
                 end={{ x: 1, y: 0 }}
                 style={[styles.primaryBtn, elevation(1)]}
               >
-                <Text style={styles.primaryText}>APOIAR NOSSO APP ☕</Text>
+                <Text style={styles.primaryText}>💬  ENVIAR UMA SUGESTÃO</Text>
               </LinearGradient>
-            </Pressable>
-
-            <Pressable
-              onPress={openSuggestion}
-              accessibilityRole="button"
-              accessibilityLabel="Enviar uma sugestão"
-              style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-            >
-              <Text style={styles.secondaryText}>💬  Enviar uma sugestão</Text>
             </Pressable>
 
             {LINKS.privacy ? (

@@ -10,7 +10,7 @@ import {
   rescheduleAll,
   sendTestNotification,
 } from '../lib/notifications';
-import { openKofi, openSuggestion } from '../lib/links';
+import { openSuggestion, openSupport } from '../lib/links';
 import { appVersion, otaStatus } from '../lib/appInfo';
 import { getCurrentIconKey } from '../lib/appIcon';
 import { APP_ICONS, DEFAULT_ICON_KEY } from '../data/appIcons';
@@ -164,18 +164,18 @@ export function SettingsScreen() {
         <Text style={styles.iconChevron}>›</Text>
       </Pressable>
 
-      {/* Apoio / sugestões */}
+      {/* Ajuda / sugestões */}
       <View style={[styles.card, styles.supportCard]}>
-        <Text style={styles.cardTitle}>☕ Apoie o app</Text>
+        <Text style={styles.cardTitle}>💬 Ajuda & sugestões</Text>
         <Text style={styles.cardText}>
-          Projeto independente. Se ele te ajuda, apoie ou mande uma ideia pra melhorar.
+          Projeto independente. Achou um problema ou tem uma ideia? Fala com a gente.
         </Text>
         <View style={styles.supportRow}>
-          <Pressable style={styles.supportPrimary} onPress={openKofi} accessibilityRole="button" accessibilityLabel="Apoiar nosso app">
-            <Text style={styles.supportPrimaryText}>Apoiar nosso app</Text>
+          <Pressable style={styles.supportPrimary} onPress={openSuggestion} accessibilityRole="button" accessibilityLabel="Enviar sugestão">
+            <Text style={styles.supportPrimaryText}>Enviar sugestão</Text>
           </Pressable>
-          <Pressable style={styles.supportGhost} onPress={openSuggestion} accessibilityRole="button" accessibilityLabel="Enviar sugestão">
-            <Text style={styles.supportGhostText}>Sugestão</Text>
+          <Pressable style={styles.supportGhost} onPress={openSupport} accessibilityRole="button" accessibilityLabel="Central de ajuda">
+            <Text style={styles.supportGhostText}>Ajuda</Text>
           </Pressable>
         </View>
       </View>
