@@ -72,7 +72,7 @@ export function StandingsScreen() {
           <Text style={styles.moreText}>Artilheiros</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setHistoryOpen(true)} accessibilityRole="button" accessibilityLabel="Ver história da Copa">
-          <Text style={styles.moreEmoji}>🏆</Text>
+          <Text style={styles.moreEmoji}>📖</Text>
           <Text style={styles.moreText}>História</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setVenuesOpen(true)} accessibilityRole="button" accessibilityLabel="Ver sedes e estádios">

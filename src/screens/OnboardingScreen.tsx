@@ -36,7 +36,7 @@ export function OnboardingScreen({ onStart }: { onStart: () => void }) {
             end={{ x: 1, y: 1 }}
             style={[styles.badge, elevation(2)]}
           >
-            <Text style={styles.badgeEmoji}>🏆</Text>
+            <Text style={styles.badgeEmoji}>⚽</Text>
           </LinearGradient>
           <Text style={styles.kicker}>EDIÇÃO 2026</Text>
           <Text style={styles.title}>ACOMPANHADOR{'\n'}DA COPA</Text>

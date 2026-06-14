@@ -35,7 +35,7 @@ export function VenuesSheet({ visible, onClose }: { visible: boolean; onClose: (
                     </View>
                     {v.tag && (
                       <View style={[styles.tag, v.tag === 'final' ? styles.tagFinal : styles.tagOpen]}>
-                        <Text style={styles.tagText}>{v.tag === 'final' ? '🏆 Final' : '🎉 Abertura'}</Text>
+                        <Text style={styles.tagText}>{v.tag === 'final' ? '⭐ Final' : '🎉 Abertura'}</Text>
                       </View>
                     )}
                   </View>

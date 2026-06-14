@@ -52,7 +52,7 @@ export const TITLES: { team: string; flag: string; titles: number; years: string
 
 /** Recordes e curiosidades. */
 export const RECORDS: { emoji: string; label: string; value: string }[] = [
-  { emoji: '🏆', label: 'Maior campeão', value: 'Brasil — 5 títulos' },
+  { emoji: '🥇', label: 'Maior campeão', value: 'Brasil — 5 títulos' },
   { emoji: '⚽', label: 'Maior artilheiro (carreira)', value: 'Miroslav Klose 🇩🇪 — 16 gols' },
   { emoji: '🔥', label: 'Mais gols numa Copa', value: 'Just Fontaine 🇫🇷 — 13 (1958)' },
   { emoji: '🎯', label: 'Mais finais disputadas', value: 'Alemanha — 8' },
