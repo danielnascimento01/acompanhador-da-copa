@@ -60,6 +60,15 @@ export function isFinished(match: Match): boolean {
 }
 
 /**
+ * O status indica que a partida já COMEÇOU (ao vivo) ou terminou? Usado pela
+ * camada de dados para nunca carregar placar de jogo que ainda não rolou — a
+ * API às vezes manda "0"/"0" antes do apito, o que poluía a classificação.
+ */
+export function isStartedStatus(status: string): boolean {
+  return LIVE_STATUSES.has(status) || FINISHED_STATUSES.has(status);
+}
+
+/**
  * O jogo aceita palpite? Regra única usada pelo editor, pela simulação e
  * pelos contadores (evita gates divergentes): sem nenhum placar real, não
  * ao vivo, não encerrado e ainda ANTES do apito inicial (sem janela de

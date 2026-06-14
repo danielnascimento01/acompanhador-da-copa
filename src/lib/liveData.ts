@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 
-import { ALL_MATCHES, Match } from '../data/fixtures';
+import { ALL_MATCHES, Match, isStartedStatus } from '../data/fixtures';
 import { fetchEspnDay, teamMatches, espnDatesFor, type EspnMatch } from './liveEvents';
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
@@ -34,6 +34,10 @@ function normalize(e: ApiEvent): Match {
       ? e.strTimestamp
       : `${e.strTimestamp}Z`
     : `${e.dateEvent}T${e.strTime || '00:00:00'}Z`;
+  const status = e.strStatus || 'NS';
+  // Jogo que ainda não começou NÃO carrega placar — a API às vezes manda "0"/"0"
+  // antes do apito, e isso entrava na classificação como um empate fantasma.
+  const started = isStartedStatus(status);
   return {
     id: e.idEvent,
     utc,
@@ -43,9 +47,9 @@ function normalize(e: ApiEvent): Match {
     homeBadge: e.strHomeTeamBadge || null,
     awayBadge: e.strAwayTeamBadge || null,
     venue: e.strVenue || null,
-    homeScore: e.intHomeScore != null ? Number(e.intHomeScore) : null,
-    awayScore: e.intAwayScore != null ? Number(e.intAwayScore) : null,
-    status: e.strStatus || 'NS',
+    homeScore: started && e.intHomeScore != null ? Number(e.intHomeScore) : null,
+    awayScore: started && e.intAwayScore != null ? Number(e.intAwayScore) : null,
+    status,
   };
 }
 
@@ -116,11 +120,13 @@ async function reconcileWithEspn(matches: Match[]): Promise<Match[]> {
     const homeIsOurHome = teamMatches(e.homeName, m.home);
     const hs = homeIsOurHome ? e.homeScore : e.awayScore;
     const as = homeIsOurHome ? e.awayScore : e.homeScore;
+    // Antes do apito (state 'pre'), zera o placar: nenhum ponto na tabela até começar.
+    const started = e.state === 'in' || e.state === 'post';
     return {
       ...m,
       status: espnStatusCode(e),
-      homeScore: hs ?? m.homeScore,
-      awayScore: as ?? m.awayScore,
+      homeScore: started ? hs ?? m.homeScore : null,
+      awayScore: started ? as ?? m.awayScore : null,
     };
   });
 }

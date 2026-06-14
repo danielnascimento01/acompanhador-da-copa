@@ -1,14 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { FadeInUp } from '../components/Motion';
-import { filterByTeams, kickoff, nextRelevantMatch, Match } from '../data/fixtures';
+import {
+  filterByTeams,
+  hasStarted,
+  isFinished,
+  isLive,
+  kickoff,
+  nextRelevantMatch,
+  Match,
+} from '../data/fixtures';
 import { useStore } from '../lib/store';
 import { localDayKey, relativeDayLabel } from '../lib/format';
-import { colors, fonts, spacing } from '../lib/theme';
+import { colors, fonts, radius, spacing } from '../lib/theme';
+
+type DaySection = {
+  key: string;
+  title: string;
+  data: Match[];
+  kind?: 'upcoming' | 'past';
+  toggle?: boolean;
+};
 
 function updatedLabel(updatedAt: number | null): string {
   if (!updatedAt) return 'puxe para atualizar';
@@ -19,9 +35,29 @@ function updatedLabel(updatedAt: number | null): string {
   return `atualizado há ${h}h`;
 }
 
+/** Agrupa jogos por dia (no fuso local). `reverse` deixa os dias mais recentes no topo. */
+function groupByDay(list: Match[], kind: 'upcoming' | 'past'): DaySection[] {
+  const byDay = new Map<string, Match[]>();
+  for (const m of list) {
+    const key = localDayKey(kickoff(m));
+    const arr = byDay.get(key) ?? [];
+    arr.push(m);
+    byDay.set(key, arr);
+  }
+  let entries = [...byDay.entries()];
+  if (kind === 'past') entries = entries.reverse();
+  return entries.map(([key, data]) => ({
+    key,
+    title: relativeDayLabel(kickoff(data[0])),
+    data,
+    kind,
+  }));
+}
+
 export function ScheduleScreen() {
   const { selected, matches, refresh, refreshing, updatedAt, predictions } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
+  const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
     if (!updatedAt && selected.size > 0) refresh();
@@ -31,20 +67,31 @@ export function ScheduleScreen() {
   const myMatches = useMemo(() => filterByTeams(matches, selected), [matches, selected]);
   const hero = useMemo(() => nextRelevantMatch(myMatches), [myMatches]);
 
-  const sections = useMemo(() => {
-    const byDay = new Map<string, Match[]>();
+  // Reparte os jogos: "próximos" (ao vivo/futuro, fora o hero) vão na lista;
+  // "passados" (encerrados ou já iniciados que não estão ao vivo) ficam escondidos
+  // atrás do botão "Ver jogos passados".
+  const { upcomingSections, pastSections } = useMemo(() => {
+    const now = new Date();
+    const upcoming: Match[] = [];
+    const past: Match[] = [];
     for (const m of myMatches) {
-      const key = localDayKey(kickoff(m));
-      const arr = byDay.get(key) ?? [];
-      arr.push(m);
-      byDay.set(key, arr);
+      if (hero && m.id === hero.id) continue; // já aparece em destaque no topo
+      if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) past.push(m);
+      else upcoming.push(m);
     }
-    return [...byDay.entries()].map(([key, data]) => ({
-      key,
-      title: relativeDayLabel(kickoff(data[0])),
-      data,
-    }));
-  }, [myMatches]);
+    return {
+      upcomingSections: groupByDay(upcoming, 'upcoming'),
+      pastSections: groupByDay(past, 'past'),
+    };
+  }, [myMatches, hero]);
+
+  const sections = useMemo<DaySection[]>(() => {
+    if (pastSections.length === 0) return upcomingSections;
+    const toggle: DaySection = { key: '__toggle__', title: '', data: [], toggle: true };
+    return showPast
+      ? [...upcomingSections, toggle, ...pastSections]
+      : [...upcomingSections, toggle];
+  }, [upcomingSections, pastSections, showPast]);
 
   if (selected.size === 0) {
     return (
@@ -64,7 +111,8 @@ export function ScheduleScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Seus jogos</Text>
         <Text style={styles.subtitle}>
-          {myMatches.length} jogos · seu fuso · {updatedLabel(updatedAt)}
+          {hero ? 'Próximo jogo em destaque' : 'Sem jogos à frente'} · seu fuso ·{' '}
+          {updatedLabel(updatedAt)}
         </Text>
       </View>
       <SectionList
@@ -83,11 +131,27 @@ export function ScheduleScreen() {
         ListHeaderComponent={
           hero ? (
             <FadeInUp>
-              <NextMatchHero match={hero} />
+              <NextMatchHero match={hero} onPress={() => setDetail(hero)} />
             </FadeInUp>
           ) : null
         }
-        renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
+        renderSectionHeader={({ section }) =>
+          (section as DaySection).toggle ? (
+            <Pressable
+              onPress={() => setShowPast((v) => !v)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.pastBtn, pressed && styles.pastBtnPressed]}
+            >
+              <Text style={styles.pastBtnText}>
+                {showPast ? 'Ocultar jogos passados  ↑' : 'Ver jogos passados  ↓'}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={[styles.day, (section as DaySection).kind === 'past' && styles.dayPast]}>
+              {section.title}
+            </Text>
+          )
+        }
         renderItem={({ item }) => (
           <MatchCard
             match={item}
@@ -121,6 +185,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
     textTransform: 'uppercase',
   },
+  dayPast: { color: colors.textFaint },
+  pastBtn: {
+    marginTop: spacing(5),
+    marginBottom: spacing(1),
+    paddingVertical: spacing(3),
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+  },
+  pastBtnPressed: { opacity: 0.6 },
+  pastBtnText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.3 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing(8) },
   emptyEmoji: { fontSize: 52, marginBottom: spacing(4) },
   emptyTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 21, marginBottom: spacing(2), textAlign: 'center' },

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Match, kickoff, isLive } from '../data/fixtures';
@@ -34,7 +34,7 @@ function countdown(target: Date, now: Date) {
   return { big: `${pad(h)}:${pad(m)}:${pad(s)}`, small: 'para o apito inicial' };
 }
 
-export function NextMatchHero({ match }: { match: Match }) {
+export function NextMatchHero({ match, onPress }: { match: Match; onPress?: () => void }) {
   const [now, setNow] = useState(() => new Date());
   const [timeline, setTimeline] = useState<LiveTimeline | null>(null);
   // Janela de tempo + status (trava status "preso"). Re-avalia a cada segundo (now).
@@ -83,6 +83,13 @@ export function NextMatchHero({ match }: { match: Match }) {
   const cd = countdown(ko, now);
 
   return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${teamName(match.home)} contra ${teamName(match.away)}, ver detalhes`}
+      style={({ pressed }) => (pressed && onPress ? styles.pressed : undefined)}
+    >
     <LinearGradient
       colors={live ? gradients.live : gradients.hero}
       start={{ x: 0, y: 0 }}
@@ -162,7 +169,14 @@ export function NextMatchHero({ match }: { match: Match }) {
       )}
 
       {match.venue && <Text style={styles.venue}>📍 {match.venue}</Text>}
+
+      {onPress && (
+        <View style={styles.detailsHint}>
+          <Text style={styles.detailsHintText}>Toque para ver detalhes ›</Text>
+        </View>
+      )}
     </LinearGradient>
+    </Pressable>
   );
 }
 
@@ -224,4 +238,13 @@ const styles = StyleSheet.create({
   },
   countdownSmall: { color: 'rgba(255,255,255,0.8)', fontFamily: fonts.medium, fontSize: 12, marginTop: 2 },
   venue: { color: 'rgba(255,255,255,0.78)', fontFamily: fonts.medium, fontSize: 12, textAlign: 'center', marginTop: spacing(3) },
+  pressed: { opacity: 0.85 },
+  detailsHint: {
+    marginTop: spacing(4),
+    paddingTop: spacing(3),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+  },
+  detailsHintText: { color: 'rgba(255,255,255,0.92)', fontFamily: fonts.bold, fontSize: 12, letterSpacing: 0.3 },
 });
