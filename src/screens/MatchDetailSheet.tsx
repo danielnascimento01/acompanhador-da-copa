@@ -12,6 +12,7 @@ import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { formatDayLong, formatTime } from '../lib/format';
 import { openUrl } from '../lib/links';
+import { shareMatch } from '../lib/share';
 import { useStore } from '../lib/store';
 import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
 
@@ -54,6 +55,15 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
   return (
     <View style={styles.sheet}>
       <View style={styles.grabber} />
+      <Pressable
+        style={styles.shareBtn}
+        onPress={() => shareMatch(match)}
+        accessibilityRole="button"
+        accessibilityLabel="Compartilhar no WhatsApp"
+        hitSlop={10}
+      >
+        <Text style={styles.shareText}>↗ Compartilhar</Text>
+      </Pressable>
       <Pressable style={styles.closeBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fechar" hitSlop={10}>
         <Text style={styles.closeText}>✕</Text>
       </Pressable>
@@ -206,6 +216,8 @@ const styles = StyleSheet.create({
   grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   closeBtn: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
   closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  shareBtn: { position: 'absolute', top: spacing(4), left: spacing(5), zIndex: 2 },
+  shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 13 },
   scoreCard: { borderRadius: radius.xl, padding: spacing(5), marginBottom: spacing(4) },
   headLabel: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.display, fontSize: 13, letterSpacing: 1, textAlign: 'center' },
   scoreRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing(4) },
