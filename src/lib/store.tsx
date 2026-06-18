@@ -29,6 +29,8 @@ type Store = {
   matches: Match[];
   refreshing: boolean;
   updatedAt: number | null;
+  /** Última tentativa de atualização alcançou a internet? (false = offline). */
+  online: boolean;
   predictions: PredictionMap;
   isSelected: (teamId: string) => boolean;
   toggleTeam: (teamId: string) => void;
@@ -51,6 +53,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [matches, setMatches] = useState<Match[]>(ALL_MATCHES);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [online, setOnline] = useState(true);
   const [predictions, setPredictions] = useState<PredictionMap>({});
 
   // Evita reagendar/persistir antes do carregamento inicial.
@@ -125,11 +128,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     () => async () => {
       setRefreshing(true);
       try {
-        const latest = await fetchLatestMatches();
-        setMatches(latest);
-        const now = Date.now();
-        setUpdatedAt(now);
-        await saveCachedMatches(latest, now);
+        const { matches: latest, ok } = await fetchLatestMatches();
+        setOnline(ok);
+        // Offline: preserva os jogos em cache (não sobrescreve com a grade vazia).
+        if (ok) {
+          setMatches(latest);
+          const now = Date.now();
+          setUpdatedAt(now);
+          await saveCachedMatches(latest, now);
+        }
       } finally {
         setRefreshing(false);
       }
@@ -177,6 +184,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       matches,
       refreshing,
       updatedAt,
+      online,
       predictions,
       isSelected: (id) => selected.has(id),
       toggleTeam: (id) =>
@@ -203,7 +211,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }),
       clearAllPredictions: () => mutatePredictions(() => ({})),
     }),
-    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, predictions, refresh],
+    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

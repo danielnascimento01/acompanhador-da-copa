@@ -48,6 +48,8 @@ export type Settings = {
   matchStart: boolean;
   /** Quantos minutos antes do apito inicial avisar. */
   matchStartLeadMinutes: number;
+  /** Economia de dados: desliga a atualização automática ao vivo (só manual). */
+  dataSaver: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -55,6 +57,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyDigestHour: 9,
   matchStart: true,
   matchStartLeadMinutes: 15,
+  dataSaver: false,
 };
 
 export async function loadSelectedTeams(): Promise<string[]> {

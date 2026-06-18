@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
@@ -56,7 +56,7 @@ function groupByDay(list: Match[], kind: 'upcoming' | 'past'): DaySection[] {
 }
 
 export function ScheduleScreen() {
-  const { selected, matches, refresh, refreshing, updatedAt, predictions } = useStore();
+  const { selected, matches, settings, refresh, refreshing, updatedAt, online, predictions } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
   const [showPast, setShowPast] = useState(false);
 
@@ -67,6 +67,37 @@ export function ScheduleScreen() {
 
   const myMatches = useMemo(() => filterByTeams(matches, selected), [matches, selected]);
   const hero = useMemo(() => nextRelevantMatch(myMatches), [myMatches]);
+  const hasLive = useMemo(() => myMatches.some((m) => isLive(m)), [myMatches]);
+
+  // Atualização automática enquanto há jogo AO VIVO: faz polling com backoff
+  // (30s → 120s) só com o app em primeiro plano e fora do modo economia. Pausa
+  // em background e quando não há jogo ao vivo. Evita o pull-to-refresh manual.
+  const autoOn = hasLive && !settings.dataSaver;
+  useEffect(() => {
+    if (!autoOn) return;
+    let alive = true;
+    let delay = 30000;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      if (AppState.currentState === 'active') await refresh();
+      if (!alive) return;
+      delay = Math.min(Math.round(delay * 1.5), 120000);
+      timer = setTimeout(tick, delay);
+    };
+    timer = setTimeout(tick, delay);
+    const sub = AppState.addEventListener('change', (s) => {
+      // ao voltar pro primeiro plano, atualiza já e reinicia o backoff
+      if (s === 'active' && alive) {
+        refresh();
+        delay = 30000;
+      }
+    });
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      sub.remove();
+    };
+  }, [autoOn, refresh]);
 
   // Abre o detalhe do próximo jogo (ainda não encerrado) de uma seleção.
   const openTeamNext = (teamId: string) => {
@@ -120,9 +151,10 @@ export function ScheduleScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Seus jogos</Text>
-        <Text style={styles.subtitle}>
-          {hero ? 'Próximo jogo em destaque' : 'Sem jogos à frente'} · seu fuso ·{' '}
-          {updatedLabel(updatedAt)}
+        <Text style={[styles.subtitle, !online && styles.subtitleOffline]}>
+          {!online
+            ? '⚠️ Sem internet · mostrando dados salvos'
+            : `${hasLive && autoOn ? '🟢 atualizando ao vivo' : hero ? 'Próximo jogo em destaque' : 'Sem jogos à frente'} · ${updatedLabel(updatedAt)}`}
         </Text>
       </View>
       <SectionList
@@ -189,6 +221,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 34 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
+  subtitleOffline: { color: colors.amber },
   day: {
     color: colors.accent,
     fontFamily: fonts.extrabold,

@@ -149,6 +149,24 @@ export function SettingsScreen() {
         Os avisos são agendados direto no seu aparelho e funcionam mesmo sem internet.
       </Text>
 
+      <Text style={styles.title}>Dados</Text>
+      <View style={styles.card}>
+        <View style={styles.rowBetween}>
+          <View style={styles.flex1}>
+            <Text style={styles.cardTitle}>📶 Modo economia de dados</Text>
+            <Text style={styles.cardText}>
+              Desliga a atualização automática ao vivo. Você continua atualizando ao puxar a tela.
+            </Text>
+          </View>
+          <Switch
+            value={settings.dataSaver}
+            onValueChange={(v) => updateSettings({ dataSaver: v })}
+            trackColor={{ true: colors.accentDeep, false: colors.border }}
+            thumbColor={colors.white}
+          />
+        </View>
+      </View>
+
       {/* Ícone do app */}
       <Pressable
         style={[styles.card, styles.iconCard]}

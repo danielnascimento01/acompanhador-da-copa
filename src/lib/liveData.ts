@@ -57,7 +57,7 @@ function normalize(e: ApiEvent): Match {
  * Busca os jogos atualizados (placar/status) na API e mescla por id com o
  * dataset embutido. Se a rede falhar, devolve o que já tínhamos.
  */
-async function fetchRound(round: number, timeoutMs = 8000): Promise<ApiEvent[]> {
+async function fetchRound(round: number, timeoutMs = 8000): Promise<ApiEvent[] | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -67,7 +67,7 @@ async function fetchRound(round: number, timeoutMs = 8000): Promise<ApiEvent[]> 
     const json = await res.json();
     return Array.isArray(json?.events) ? json.events : [];
   } catch {
-    return [];
+    return null; // null = falha de rede (distinto de [] = sucesso vazio) → detecta offline
   } finally {
     clearTimeout(timer);
   }
@@ -98,7 +98,7 @@ function espnStatusCode(e: EspnMatch): string {
  * request por dia (não por jogo); jogos futuros distantes não são consultados.
  * Se a ESPN falhar, devolve os jogos como estavam (nada quebra).
  */
-async function reconcileWithEspn(matches: Match[]): Promise<Match[]> {
+async function reconcileWithEspn(matches: Match[]): Promise<{ matches: Match[]; ok: boolean }> {
   const now = Date.now();
   // Só as DATAS dos jogos relevantes precisam de fetch (1 request por dia).
   // espnDatesFor inclui a data UTC + a anterior (cobre o fuso ET da ESPN); o
@@ -115,13 +115,13 @@ async function reconcileWithEspn(matches: Match[]): Promise<Match[]> {
       for (const d of espnDatesFor(m.utc)) dates.add(d);
     }
   }
-  if (dates.size === 0) return matches;
+  if (dates.size === 0) return { matches, ok: false };
 
   const days = await Promise.all([...dates].map((d) => fetchEspnDay(d)));
   const espn = days.flat();
-  if (espn.length === 0) return matches;
+  if (espn.length === 0) return { matches, ok: false };
 
-  return matches.map((m) => {
+  const reconciled = matches.map((m) => {
     const e = espn.find(
       (x) =>
         (teamMatches(x.homeName, m.home) && teamMatches(x.awayName, m.away)) ||
@@ -140,20 +140,28 @@ async function reconcileWithEspn(matches: Match[]): Promise<Match[]> {
       awayScore: started ? as ?? m.awayScore : null,
     };
   });
+  return { matches: reconciled, ok: true };
 }
 
-export async function fetchLatestMatches(): Promise<Match[]> {
+export type FetchResult = {
+  matches: Match[];
+  /** Algum request de rede teve sucesso? false = provavelmente offline. */
+  ok: boolean;
+};
+
+export async function fetchLatestMatches(): Promise<FetchResult> {
   const byId = new Map<string, Match>(ALL_MATCHES.map((m) => [m.id, m]));
   const rounds = await Promise.all(ROUNDS.map((r) => fetchRound(r)));
+  let ok = rounds.some((r) => r !== null); // TheSportsDB respondeu
   for (const events of rounds) {
-    for (const e of events) {
+    for (const e of events ?? []) {
       const m = normalize(e);
       if (m.id) byId.set(m.id, m);
     }
   }
   const merged = [...byId.values()].sort((a, b) => a.utc.localeCompare(b.utc));
-  const reconciled = await reconcileWithEspn(merged);
-  return sanitizeFutureScores(reconciled);
+  const { matches, ok: espnOk } = await reconcileWithEspn(merged);
+  return { matches: sanitizeFutureScores(matches), ok: ok || espnOk };
 }
 
 /**
