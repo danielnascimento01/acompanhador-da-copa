@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from '
 
 import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
+import { TeamStatusBanner } from '../components/TeamStatusBanner';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { FadeInUp } from '../components/Motion';
 import {
@@ -67,6 +68,15 @@ export function ScheduleScreen() {
   const myMatches = useMemo(() => filterByTeams(matches, selected), [matches, selected]);
   const hero = useMemo(() => nextRelevantMatch(myMatches), [myMatches]);
 
+  // Abre o detalhe do próximo jogo (ainda não encerrado) de uma seleção.
+  const openTeamNext = (teamId: string) => {
+    const now = Date.now();
+    const m = matches
+      .filter((x) => (x.home === teamId || x.away === teamId) && !isFinished(x) && kickoff(x).getTime() > now)
+      .sort((a, b) => a.utc.localeCompare(b.utc))[0];
+    if (m) setDetail(m);
+  };
+
   // Reparte os jogos: "próximos" (ao vivo/futuro, fora o hero) vão na lista;
   // "passados" (encerrados ou já iniciados que não estão ao vivo) ficam escondidos
   // atrás do botão "Ver jogos passados".
@@ -129,11 +139,14 @@ export function ScheduleScreen() {
           />
         }
         ListHeaderComponent={
-          hero ? (
-            <FadeInUp>
-              <NextMatchHero match={hero} onPress={() => setDetail(hero)} />
-            </FadeInUp>
-          ) : null
+          <>
+            <TeamStatusBanner matches={matches} selected={selected} onPressTeam={openTeamNext} />
+            {hero ? (
+              <FadeInUp>
+                <NextMatchHero match={hero} onPress={() => setDetail(hero)} />
+              </FadeInUp>
+            ) : null}
+          </>
         }
         renderSectionHeader={({ section }) =>
           (section as DaySection).toggle ? (

@@ -7,6 +7,7 @@ import { PredictionEditor } from '../components/PredictionEditor';
 import { Match, kickoff, isLive, isFinished, isPredictable } from '../data/fixtures';
 import { getTeam, teamFlag, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
+import { teamOutlook } from '../data/scenarios';
 import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
 import { MatchTimeline } from '../components/MatchTimeline';
 import { formatDayLong, formatTime } from '../lib/format';
@@ -43,6 +44,12 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
   const awayGroup = getTeam(match.away)?.group;
   const sameGroup = homeGroup && homeGroup === awayGroup ? homeGroup : null;
   const standings = sameGroup ? standingsForGroup(matches, sameGroup) : [];
+  // Cenário de classificação (100% provável) de cada time deste jogo de grupo.
+  const outlooks = sameGroup
+    ? [match.home, match.away]
+        .map((id) => ({ id, o: teamOutlook(matches, id) }))
+        .filter((x): x is { id: string; o: NonNullable<typeof x.o> } => !!x.o)
+    : [];
 
   return (
     <View style={styles.sheet}>
@@ -146,6 +153,23 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
             <StandingsTable standings={standings} selected={selected} />
           </View>
         )}
+
+        {outlooks.length > 0 && (
+          <View style={styles.tableCard}>
+            <Text style={styles.tableTitle}>📊 Cenário de classificação</Text>
+            {outlooks.map(({ id, o }) => (
+              <View key={id} style={styles.scenarioRow}>
+                <Text style={styles.scenarioTeam}>
+                  {teamFlag(id)} {teamName(id)}
+                </Text>
+                <Text style={styles.scenarioText}>{o.phraseLong}</Text>
+              </View>
+            ))}
+            <Text style={styles.scenarioNote}>
+              Cálculo automático sobre os resultados reais do grupo. "Vaga direta" = 1º ou 2º.
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -242,6 +266,10 @@ const styles = StyleSheet.create({
     padding: spacing(4),
   },
   tableTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
+  scenarioRow: { marginBottom: spacing(3) },
+  scenarioTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: 2 },
+  scenarioText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19 },
+  scenarioNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: spacing(1) },
   lockedNote: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
