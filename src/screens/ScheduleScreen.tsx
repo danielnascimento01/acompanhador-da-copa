@@ -5,6 +5,7 @@ import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
 import { TeamStatusBanner } from '../components/TeamStatusBanner';
 import { MatchDetailSheet } from './MatchDetailSheet';
+import { DayMatchesSheet } from './DayMatchesSheet';
 import { FadeInUp } from '../components/Motion';
 import {
   filterByTeams,
@@ -60,6 +61,7 @@ export function ScheduleScreen() {
   const { selected, matches, settings, refresh, refreshing, updatedAt, online, predictions } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
   const [showPast, setShowPast] = useState(false);
+  const [dayOpen, setDayOpen] = useState(false);
 
   useEffect(() => {
     if (!updatedAt && selected.size > 0) refresh();
@@ -73,6 +75,10 @@ export function ScheduleScreen() {
     const key = localDayKey(new Date());
     return myMatches.filter((m) => localDayKey(kickoff(m)) === key);
   }, [myMatches]);
+  const anyToday = useMemo(() => {
+    const key = localDayKey(new Date());
+    return matches.some((m) => localDayKey(kickoff(m)) === key);
+  }, [matches]);
 
   // Atualização automática enquanto há jogo AO VIVO: faz polling com backoff
   // (30s → 120s) só com o app em primeiro plano e fora do modo economia. Pausa
@@ -161,16 +167,28 @@ export function ScheduleScreen() {
             ? '⚠️ Sem internet · mostrando dados salvos'
             : `${hasLive && autoOn ? '🟢 atualizando ao vivo' : hero ? 'Próximo jogo em destaque' : 'Sem jogos à frente'} · ${updatedLabel(updatedAt)}`}
         </Text>
-        {todayMatches.length > 0 && (
-          <Pressable
-            onPress={() => shareMatches('⚽ Jogos das minhas seleções hoje:', todayMatches)}
-            accessibilityRole="button"
-            accessibilityLabel="Compartilhar os jogos de hoje no WhatsApp"
-            style={({ pressed }) => [styles.shareToday, pressed && styles.shareTodayPressed]}
-          >
-            <Text style={styles.shareTodayText}>↗ Compartilhar jogos de hoje</Text>
-          </Pressable>
-        )}
+        <View style={styles.headerBtns}>
+          {anyToday && (
+            <Pressable
+              onPress={() => setDayOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Ver todos os jogos de hoje"
+              style={({ pressed }) => [styles.headerBtn, pressed && styles.shareTodayPressed]}
+            >
+              <Text style={styles.shareTodayText}>📅 Jogos de hoje</Text>
+            </Pressable>
+          )}
+          {todayMatches.length > 0 && (
+            <Pressable
+              onPress={() => shareMatches('⚽ Jogos das minhas seleções hoje:', todayMatches)}
+              accessibilityRole="button"
+              accessibilityLabel="Compartilhar os jogos de hoje no WhatsApp"
+              style={({ pressed }) => [styles.headerBtn, pressed && styles.shareTodayPressed]}
+            >
+              <Text style={styles.shareTodayText}>↗ Compartilhar</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
       <SectionList
         sections={sections}
@@ -227,6 +245,16 @@ export function ScheduleScreen() {
         selected={selected}
         onClose={() => setDetail(null)}
       />
+      <DayMatchesSheet
+        visible={dayOpen}
+        matches={matches}
+        selected={selected}
+        onClose={() => setDayOpen(false)}
+        onSelectMatch={(m) => {
+          setDayOpen(false);
+          setDetail(m);
+        }}
+      />
     </View>
   );
 }
@@ -237,9 +265,8 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 34 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
   subtitleOffline: { color: colors.amber },
-  shareToday: {
-    alignSelf: 'flex-start',
-    marginTop: spacing(2),
+  headerBtns: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2), marginTop: spacing(2) },
+  headerBtn: {
     paddingVertical: 5,
     paddingHorizontal: spacing(3),
     borderRadius: radius.pill,
