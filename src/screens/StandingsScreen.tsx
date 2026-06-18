@@ -10,6 +10,7 @@ import { GROUPS, getTeam } from '../data/teams';
 import { ScorersSheet } from './ScorersSheet';
 import { HistorySheet } from './HistorySheet';
 import { VenuesSheet } from './VenuesSheet';
+import { BracketSheet } from './BracketSheet';
 import { useStore } from '../lib/store';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -21,6 +22,7 @@ export function StandingsScreen() {
   const [scorersOpen, setScorersOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [venuesOpen, setVenuesOpen] = useState(false);
+  const [bracketOpen, setBracketOpen] = useState(false);
 
   const activePredictions = useMemo(
     () => countActivePredictions(matches, predictions),
@@ -78,6 +80,10 @@ export function StandingsScreen() {
         <Pressable style={styles.moreBtn} onPress={() => setVenuesOpen(true)} accessibilityRole="button" accessibilityLabel="Ver sedes e estádios">
           <Text style={styles.moreEmoji}>🏟️</Text>
           <Text style={styles.moreText}>Sedes</Text>
+        </Pressable>
+        <Pressable style={styles.moreBtn} onPress={() => setBracketOpen(true)} accessibilityRole="button" accessibilityLabel="Ver o mata-mata, caminho até a final">
+          <Text style={styles.moreEmoji}>🔀</Text>
+          <Text style={styles.moreText}>Mata-mata</Text>
         </Pressable>
       </View>
 
@@ -170,6 +176,7 @@ export function StandingsScreen() {
       <ScorersSheet visible={scorersOpen} onClose={() => setScorersOpen(false)} />
       <HistorySheet visible={historyOpen} onClose={() => setHistoryOpen(false)} />
       <VenuesSheet visible={venuesOpen} onClose={() => setVenuesOpen(false)} />
+      <BracketSheet visible={bracketOpen} onClose={() => setBracketOpen(false)} />
     </>
   );
 }
