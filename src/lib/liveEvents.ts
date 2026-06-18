@@ -42,6 +42,7 @@ const ALIAS: Record<string, string> = {
   cotedivoire: 'ivorycoast',
   iriran: 'iran',
   korearepublic: 'southkorea',
+  congodr: 'drcongo',
 };
 
 export function teamMatches(espnName: string, ourId: string): boolean {

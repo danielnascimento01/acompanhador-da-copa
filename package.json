@@ -8,6 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "update-fixtures": "node scripts/update-fixtures.mjs",
+    "validate-data": "node scripts/validate-data.mjs",
+    "preflight": "tsc --noEmit && node scripts/validate-data.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {
