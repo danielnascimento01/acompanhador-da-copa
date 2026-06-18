@@ -9,8 +9,8 @@
     "web": "expo start --web",
     "update-fixtures": "node scripts/update-fixtures.mjs",
     "validate-data": "node scripts/validate-data.mjs",
-    "test-scenarios": "tsx scripts/scenarios.test.ts",
-    "preflight": "tsc --noEmit && tsx scripts/scenarios.test.ts && node scripts/validate-data.mjs",
+    "test-scenarios": "npx tsx scripts/scenarios.test.ts",
+    "preflight": "tsc --noEmit && npx tsx scripts/scenarios.test.ts && node scripts/validate-data.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {
