@@ -78,6 +78,11 @@ async function fetchRound(round: number, timeoutMs = 8000): Promise<ApiEvent[]> 
 // a ESPN: começou nas últimas 6h ou começa nas próximas 3h.
 const ESPN_PAST_MS = 6 * 60 * 60 * 1000;
 const ESPN_FUTURE_MS = 3 * 60 * 60 * 1000;
+// A fonte primária (TheSportsDB) às vezes NUNCA preenche o placar de jogos já
+// realizados (cobre só parte do torneio). Para esses, buscamos o resultado na
+// ESPN mesmo fora da janela de "ao vivo" — limitado aos últimos 30 dias (cobre
+// o torneio inteiro) para não consultar datas antigas à toa.
+const ESPN_BACKFILL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** ESPN → nosso código de status. A ESPN é a fonte confiável de ao vivo/fim. */
 function espnStatusCode(e: EspnMatch): string {
@@ -100,7 +105,12 @@ async function reconcileWithEspn(matches: Match[]): Promise<Match[]> {
   const dates = new Set<string>();
   for (const m of matches) {
     const delta = new Date(m.utc).getTime() - now; // >0 futuro, <0 passado
-    if (delta <= ESPN_FUTURE_MS && delta >= -ESPN_PAST_MS) {
+    const inLiveWindow = delta <= ESPN_FUTURE_MS && delta >= -ESPN_PAST_MS;
+    // Jogo que já começou e continua sem placar (a fonte primária não cobriu):
+    // busca na ESPN pra preencher o resultado, mesmo dias depois.
+    const startedUnresolved =
+      delta < 0 && delta >= -ESPN_BACKFILL_MS && (m.homeScore == null || m.awayScore == null);
+    if (inLiveWindow || startedUnresolved) {
       for (const d of espnDatesFor(m.utc)) dates.add(d);
     }
   }
