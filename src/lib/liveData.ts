@@ -92,25 +92,26 @@ function espnStatusCode(e: EspnMatch): string {
 }
 
 /**
- * Cruza os jogos "da janela" com o scoreboard da ESPN e corrige status/placar.
- * Faz UM request por dia (não por jogo) e só para os jogos perto do agora —
- * jogos antigos (FT estável) e distantes (NS) não precisam. Se a ESPN falhar,
- * devolve os jogos como estavam (nada quebra).
+ * ESPN como fonte PRIMÁRIA de status/placar: cruza os jogos com o scoreboard da
+ * ESPN (mais completo e confiável que a fonte secundária) e faz o resultado da
+ * ESPN prevalecer em todo jogo já iniciado dentro da janela do torneio. Faz UM
+ * request por dia (não por jogo); jogos futuros distantes não são consultados.
+ * Se a ESPN falhar, devolve os jogos como estavam (nada quebra).
  */
 async function reconcileWithEspn(matches: Match[]): Promise<Match[]> {
   const now = Date.now();
-  // Só as DATAS dos jogos perto do agora precisam de fetch (1 request por dia).
+  // Só as DATAS dos jogos relevantes precisam de fetch (1 request por dia).
   // espnDatesFor inclui a data UTC + a anterior (cobre o fuso ET da ESPN); o
   // Set deduplica os dias que se repetem entre jogos.
   const dates = new Set<string>();
   for (const m of matches) {
     const delta = new Date(m.utc).getTime() - now; // >0 futuro, <0 passado
     const inLiveWindow = delta <= ESPN_FUTURE_MS && delta >= -ESPN_PAST_MS;
-    // Jogo que já começou e continua sem placar (a fonte primária não cobriu):
-    // busca na ESPN pra preencher o resultado, mesmo dias depois.
-    const startedUnresolved =
-      delta < 0 && delta >= -ESPN_BACKFILL_MS && (m.homeScore == null || m.awayScore == null);
-    if (inLiveWindow || startedUnresolved) {
+    // ESPN é a fonte PRIMÁRIA: consultamos TODO jogo que já começou (dentro da
+    // janela do torneio), não só os sem placar — assim a ESPN também corrige um
+    // placar que a fonte secundária tenha trazido incompleto ou errado.
+    const startedInWindow = delta < 0 && delta >= -ESPN_BACKFILL_MS;
+    if (inLiveWindow || startedInWindow) {
       for (const d of espnDatesFor(m.utc)) dates.add(d);
     }
   }
@@ -151,5 +152,19 @@ export async function fetchLatestMatches(): Promise<Match[]> {
     }
   }
   const merged = [...byId.values()].sort((a, b) => a.utc.localeCompare(b.utc));
-  return reconcileWithEspn(merged);
+  const reconciled = await reconcileWithEspn(merged);
+  return sanitizeFutureScores(reconciled);
+}
+
+/**
+ * Invariante "falhar honesto": um jogo que ainda NÃO começou NUNCA exibe placar.
+ * Última linha de defesa contra placar fantasma (ex.: 0-0 que alguma fonte manda
+ * antes do apito) — na dúvida, melhor campo vazio do que número errado.
+ */
+function sanitizeFutureScores(matches: Match[], now: number = Date.now()): Match[] {
+  return matches.map((m) =>
+    new Date(m.utc).getTime() > now && (m.homeScore != null || m.awayScore != null)
+      ? { ...m, homeScore: null, awayScore: null }
+      : m,
+  );
 }
