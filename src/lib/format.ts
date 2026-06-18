@@ -48,6 +48,11 @@ export function isSameLocalDay(a: Date, b: Date): boolean {
   return localDayKey(a) === localDayKey(b);
 }
 
+/** Jogo de madrugada no fuso do aparelho (00h–05h59) — bom p/ avisar o torcedor. */
+export function isLateNight(d: Date): boolean {
+  return d.getHours() >= 0 && d.getHours() < 6;
+}
+
 /** "hoje" / "amanhã" / "em 3 dias" / "Quinta-feira, 11 de junho". */
 export function relativeDayLabel(d: Date, now: Date = new Date()): string {
   const a = new Date(now.getFullYear(), now.getMonth(), now.getDate());

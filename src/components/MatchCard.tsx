@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Match, kickoff, hasStarted, isLive, isFinished } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
-import { formatTime } from '../lib/format';
+import { formatTime, isLateNight } from '../lib/format';
 import { Prediction } from '../lib/storage';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -22,6 +22,7 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, predic
   const finished = isFinished(match);
   const started = hasStarted(match);
   const hasScore = match.homeScore != null && match.awayScore != null;
+  const lateNight = !started && !hasScore && isLateNight(ko);
 
   return (
     <Pressable
@@ -62,6 +63,8 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, predic
             <Text style={styles.predictionTag}>
               🔮 {prediction.home}–{prediction.away}
             </Text>
+          ) : lateNight ? (
+            <Text style={styles.lateNight}>🌙 madrugada</Text>
           ) : (
             <Text style={styles.statusDim}>Rodada {match.round}</Text>
           )}
@@ -119,6 +122,7 @@ const styles = StyleSheet.create({
   score: { color: colors.text, fontFamily: fonts.display, fontSize: 24 },
   statusDim: { color: colors.textFaint, fontFamily: fonts.medium, fontSize: 11, marginTop: 3 },
   predictionTag: { color: colors.amber, fontFamily: fonts.bold, fontSize: 11, marginTop: 3 },
+  lateNight: { color: colors.amber, fontFamily: fonts.bold, fontSize: 10.5, marginTop: 3, letterSpacing: 0.3 },
   liveBadge: { marginTop: 4, backgroundColor: 'rgba(255,77,94,0.16)', borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
   liveText: { color: colors.live, fontFamily: fonts.extrabold, fontSize: 10, letterSpacing: 0.4 },
 });

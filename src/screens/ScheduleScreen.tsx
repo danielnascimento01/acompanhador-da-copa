@@ -16,6 +16,7 @@ import {
   Match,
 } from '../data/fixtures';
 import { useStore } from '../lib/store';
+import { shareMatches } from '../lib/share';
 import { localDayKey, relativeDayLabel } from '../lib/format';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -68,6 +69,10 @@ export function ScheduleScreen() {
   const myMatches = useMemo(() => filterByTeams(matches, selected), [matches, selected]);
   const hero = useMemo(() => nextRelevantMatch(myMatches), [myMatches]);
   const hasLive = useMemo(() => myMatches.some((m) => isLive(m)), [myMatches]);
+  const todayMatches = useMemo(() => {
+    const key = localDayKey(new Date());
+    return myMatches.filter((m) => localDayKey(kickoff(m)) === key);
+  }, [myMatches]);
 
   // Atualização automática enquanto há jogo AO VIVO: faz polling com backoff
   // (30s → 120s) só com o app em primeiro plano e fora do modo economia. Pausa
@@ -156,6 +161,16 @@ export function ScheduleScreen() {
             ? '⚠️ Sem internet · mostrando dados salvos'
             : `${hasLive && autoOn ? '🟢 atualizando ao vivo' : hero ? 'Próximo jogo em destaque' : 'Sem jogos à frente'} · ${updatedLabel(updatedAt)}`}
         </Text>
+        {todayMatches.length > 0 && (
+          <Pressable
+            onPress={() => shareMatches('⚽ Jogos das minhas seleções hoje:', todayMatches)}
+            accessibilityRole="button"
+            accessibilityLabel="Compartilhar os jogos de hoje no WhatsApp"
+            style={({ pressed }) => [styles.shareToday, pressed && styles.shareTodayPressed]}
+          >
+            <Text style={styles.shareTodayText}>↗ Compartilhar jogos de hoje</Text>
+          </Pressable>
+        )}
       </View>
       <SectionList
         sections={sections}
@@ -222,6 +237,18 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 34 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
   subtitleOffline: { color: colors.amber },
+  shareToday: {
+    alignSelf: 'flex-start',
+    marginTop: spacing(2),
+    paddingVertical: 5,
+    paddingHorizontal: spacing(3),
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(20,224,138,0.08)',
+  },
+  shareTodayPressed: { opacity: 0.6 },
+  shareTodayText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 12.5 },
   day: {
     color: colors.accent,
     fontFamily: fonts.extrabold,
