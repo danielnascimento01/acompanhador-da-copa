@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useStore } from '../lib/store';
@@ -167,20 +167,24 @@ export function SettingsScreen() {
         </View>
       </View>
 
-      {/* Ícone do app */}
-      <Pressable
-        style={[styles.card, styles.iconCard]}
-        onPress={() => setIconOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={`Trocar o ícone do app. Atual: ${currentIcon.label}`}
-      >
-        <Image source={currentIcon.thumb} style={styles.iconPreview} />
-        <View style={styles.flex1}>
-          <Text style={styles.cardTitle}>🎨 Ícone do app</Text>
-          <Text style={styles.cardText}>Personalize como o app aparece na tela inicial.</Text>
-        </View>
-        <Text style={styles.iconChevron}>›</Text>
-      </Pressable>
+      {/* Ícone do app — troca de ícone só no iOS (a Apple permite ícones
+          alternativos; no Android o recurso fica desativado por compliance
+          da Play Store, então a opção nem aparece). */}
+      {Platform.OS === 'ios' && (
+        <Pressable
+          style={[styles.card, styles.iconCard]}
+          onPress={() => setIconOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Trocar o ícone do app. Atual: ${currentIcon.label}`}
+        >
+          <Image source={currentIcon.thumb} style={styles.iconPreview} />
+          <View style={styles.flex1}>
+            <Text style={styles.cardTitle}>🎨 Ícone do app</Text>
+            <Text style={styles.cardText}>Personalize como o app aparece na tela inicial.</Text>
+          </View>
+          <Text style={styles.iconChevron}>›</Text>
+        </Pressable>
+      )}
 
       {/* Ajuda / sugestões */}
       <View style={[styles.card, styles.supportCard]}>
@@ -203,7 +207,9 @@ export function SettingsScreen() {
       </Text>
       </ScrollView>
 
-      <AppIconSheet visible={iconOpen} onClose={() => setIconOpen(false)} />
+      {Platform.OS === 'ios' && (
+        <AppIconSheet visible={iconOpen} onClose={() => setIconOpen(false)} />
+      )}
     </>
   );
 }
