@@ -55,18 +55,19 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
   return (
     <View style={styles.sheet}>
       <View style={styles.grabber} />
-      <Pressable
-        style={styles.shareBtn}
-        onPress={() => shareMatch(match)}
-        accessibilityRole="button"
-        accessibilityLabel="Compartilhar no WhatsApp"
-        hitSlop={10}
-      >
-        <Text style={styles.shareText}>↗ Compartilhar</Text>
-      </Pressable>
-      <Pressable style={styles.closeBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fechar" hitSlop={10}>
-        <Text style={styles.closeText}>✕</Text>
-      </Pressable>
+      <View style={styles.sheetHeader}>
+        <Pressable
+          onPress={() => shareMatch(match)}
+          accessibilityRole="button"
+          accessibilityLabel="Compartilhar no WhatsApp"
+          hitSlop={8}
+        >
+          <Text style={styles.shareText}>↗ Compartilhar</Text>
+        </Pressable>
+        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Fechar" hitSlop={8}>
+          <Text style={styles.closeText}>✕</Text>
+        </Pressable>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
         <LinearGradient
@@ -214,9 +215,13 @@ const styles = StyleSheet.create({
     maxHeight: '88%',
   },
   grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
-  closeBtn: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing(3),
+  },
   closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  shareBtn: { position: 'absolute', top: spacing(4), left: spacing(5), zIndex: 2 },
   shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 13 },
   scoreCard: { borderRadius: radius.xl, padding: spacing(5), marginBottom: spacing(4) },
   headLabel: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.display, fontSize: 13, letterSpacing: 1, textAlign: 'center' },
@@ -225,8 +230,8 @@ const styles = StyleSheet.create({
   flag: { fontSize: 48 },
   teamName: { color: '#fff', fontFamily: fonts.bold, fontSize: 16, textAlign: 'center' },
   middle: { paddingHorizontal: spacing(2), minWidth: 70, alignItems: 'center' },
-  score: { color: '#fff', fontFamily: fonts.display, fontSize: 44 },
-  time: { color: '#fff', fontFamily: fonts.display, fontSize: 30 },
+  score: { color: '#fff', fontFamily: fonts.display, fontSize: 44, fontVariant: ['tabular-nums'] },
+  time: { color: '#fff', fontFamily: fonts.display, fontSize: 30, fontVariant: ['tabular-nums'] },
   infoCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

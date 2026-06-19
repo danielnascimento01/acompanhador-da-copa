@@ -79,10 +79,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing(2), gap: 2 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   posWrap: { width: 20, height: 20, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  pos: { color: colors.ink, fontFamily: fonts.extrabold, fontSize: 11 },
+  pos: { color: colors.ink, fontFamily: fonts.extrabold, fontSize: 11, fontVariant: ['tabular-nums'] },
   flag: { fontSize: 18, marginLeft: 2 },
   team: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 13, marginLeft: spacing(2) },
   teamMine: { color: colors.accent, fontFamily: fonts.bold },
-  num: { width: NUM_W, textAlign: 'center', color: colors.textDim, fontFamily: fonts.medium, fontSize: 12 },
+  num: { width: NUM_W, textAlign: 'center', color: colors.textDim, fontFamily: fonts.medium, fontSize: 12, fontVariant: ['tabular-nums'] },
   points: { color: colors.text, fontFamily: fonts.extrabold },
 });

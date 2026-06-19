@@ -20,6 +20,7 @@ export function TeamsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <Text style={styles.kicker}>RECEBA AVISOS</Text>
         <Text style={styles.title}>Seleções</Text>
         <Text style={styles.subtitle}>
           {selected.size === 0
@@ -79,7 +80,8 @@ function TeamRow({ team, active, onPress }: { team: Team; active: boolean; onPre
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 34 },
+  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 14, marginTop: 2 },
   note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, marginTop: spacing(2) },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginTop: spacing(5), marginBottom: spacing(2) },

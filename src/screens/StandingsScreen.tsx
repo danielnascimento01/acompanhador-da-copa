@@ -65,6 +65,7 @@ export function StandingsScreen() {
       style={styles.container}
       contentContainerStyle={{ padding: spacing(4), paddingBottom: spacing(10) }}
     >
+      <Text style={styles.kicker}>FASE DE GRUPOS</Text>
       <Text style={styles.title}>Grupos</Text>
 
       {/* Mais da Copa: Artilheiros + História + Sedes */}
@@ -183,7 +184,8 @@ export function StandingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 34, marginBottom: spacing(3) },
+  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3, marginBottom: spacing(3) },
   moreRow: { flexDirection: 'row', gap: spacing(2), marginBottom: spacing(3) },
   moreBtn: {
     flex: 1,

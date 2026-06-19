@@ -136,6 +136,7 @@ export function ScheduleScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <Text style={styles.kicker}>AO VIVO & PRÓXIMOS</Text>
         <Text style={styles.title}>Jogos da Copa</Text>
         <Text style={[styles.subtitle, !online && styles.subtitleOffline]}>
           {!online
@@ -227,7 +228,8 @@ export function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 34 },
+  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
   subtitleOffline: { color: colors.amber },
   headerBtns: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2), marginTop: spacing(2) },

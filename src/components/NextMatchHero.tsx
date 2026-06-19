@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   teamName: { color: '#fff', fontFamily: fonts.bold, fontSize: 15, textAlign: 'center' },
   middle: { paddingHorizontal: spacing(2), minWidth: 60, alignItems: 'center' },
   vs: { color: 'rgba(255,255,255,0.65)', fontFamily: fonts.display, fontSize: 22 },
-  score: { color: '#fff', fontFamily: fonts.display, fontSize: 40 },
+  score: { color: '#fff', fontFamily: fonts.display, fontSize: 40, fontVariant: ['tabular-nums'] },
   events: {
     marginTop: spacing(4),
     paddingTop: spacing(3),
