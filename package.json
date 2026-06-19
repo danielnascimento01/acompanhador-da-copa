@@ -10,7 +10,8 @@
     "update-fixtures": "node scripts/update-fixtures.mjs",
     "validate-data": "node scripts/validate-data.mjs",
     "test-scenarios": "npx tsx scripts/scenarios.test.ts",
-    "preflight": "tsc --noEmit && npx tsx scripts/scenarios.test.ts && node scripts/validate-data.mjs",
+    "test-bracket": "npx tsx scripts/bracket.test.ts",
+    "preflight": "tsc --noEmit && npx tsx scripts/scenarios.test.ts && npx tsx scripts/bracket.test.ts && node scripts/validate-data.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -38,7 +39,9 @@
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": ["expo-dynamic-app-icon"]
+        "exclude": [
+          "expo-dynamic-app-icon"
+        ]
       }
     }
   },
