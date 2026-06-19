@@ -4,14 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts } from 'expo-font';
-import { Anton_400Regular } from '@expo-google-fonts/anton';
+import { SairaCondensed_800ExtraBold } from '@expo-google-fonts/saira-condensed';
 import {
-  HankenGrotesk_400Regular,
-  HankenGrotesk_500Medium,
-  HankenGrotesk_600SemiBold,
-  HankenGrotesk_700Bold,
-  HankenGrotesk_800ExtraBold,
-} from '@expo-google-fonts/hanken-grotesk';
+  SairaSemiCondensed_400Regular,
+  SairaSemiCondensed_500Medium,
+  SairaSemiCondensed_600SemiBold,
+  SairaSemiCondensed_700Bold,
+  SairaSemiCondensed_800ExtraBold,
+} from '@expo-google-fonts/saira-semi-condensed';
 
 import { StoreProvider, useStore } from './src/lib/store';
 import { configureNotificationHandler, ensureAndroidChannel } from './src/lib/notifications';
@@ -106,12 +106,12 @@ function Shell() {
 export default function App() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [fontsLoaded] = useFonts({
-    Anton_400Regular,
-    HankenGrotesk_400Regular,
-    HankenGrotesk_500Medium,
-    HankenGrotesk_600SemiBold,
-    HankenGrotesk_700Bold,
-    HankenGrotesk_800ExtraBold,
+    SairaCondensed_800ExtraBold,
+    SairaSemiCondensed_400Regular,
+    SairaSemiCondensed_500Medium,
+    SairaSemiCondensed_600SemiBold,
+    SairaSemiCondensed_700Bold,
+    SairaSemiCondensed_800ExtraBold,
   });
 
   useEffect(() => {

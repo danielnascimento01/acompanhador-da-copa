@@ -29,14 +29,18 @@ export const gradients = {
   live: ['#FF4D5E', '#FF7A3D'] as const,
 };
 
-/** Famílias carregadas via useFonts em App.tsx. */
+/**
+ * Famílias carregadas via useFonts em App.tsx.
+ * Superfamília Saira (técnica, "painel de placar"): Condensed p/ impacto/números,
+ * Semi Condensed p/ corpo — coesa e legível. (Antes: Anton + Hanken Grotesk.)
+ */
 export const fonts = {
-  display: 'Anton_400Regular', // condensado, caixa alta, impacto
-  regular: 'HankenGrotesk_400Regular',
-  medium: 'HankenGrotesk_500Medium',
-  semibold: 'HankenGrotesk_600SemiBold',
-  bold: 'HankenGrotesk_700Bold',
-  extrabold: 'HankenGrotesk_800ExtraBold',
+  display: 'SairaCondensed_800ExtraBold', // condensada pesada — títulos e placar
+  regular: 'SairaSemiCondensed_400Regular',
+  medium: 'SairaSemiCondensed_500Medium',
+  semibold: 'SairaSemiCondensed_600SemiBold',
+  bold: 'SairaSemiCondensed_700Bold',
+  extrabold: 'SairaSemiCondensed_800ExtraBold',
 };
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
