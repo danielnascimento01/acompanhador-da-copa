@@ -7,7 +7,7 @@ import { TeamStatusBanner } from '../components/TeamStatusBanner';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
 import { FadeInUp } from '../components/Motion';
-import { hasStarted, isFinished, isLive, kickoff, nextRelevantMatch, Match } from '../data/fixtures';
+import { hasStarted, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
 import { useStore } from '../lib/store';
 import { localDayKey, relativeDayLabel } from '../lib/format';
 import { colors, fonts, radius, spacing } from '../lib/theme';
@@ -60,8 +60,12 @@ export function ScheduleScreen() {
   }, []);
 
   // Mostra TODOS os jogos (não filtra por seleção). As seleções marcadas servem
-  // só para notificações; os jogos de todo mundo aparecem aqui.
-  const hero = useMemo(() => nextRelevantMatch(matches), [matches]);
+  // só para notificações; os jogos de todo mundo aparecem aqui. O hero prioriza a
+  // seleção PRINCIPAL do usuário (modo "minha seleção"), se houver.
+  const hero = useMemo(
+    () => nextRelevantMatchFor(matches, settings.primaryTeam),
+    [matches, settings.primaryTeam],
+  );
   const hasLive = useMemo(() => matches.some((m) => isLive(m)), [matches]);
   const anyToday = useMemo(() => {
     const key = localDayKey(new Date());
@@ -171,7 +175,12 @@ export function ScheduleScreen() {
         }
         ListHeaderComponent={
           <>
-            <TeamStatusBanner matches={matches} selected={selected} onPressTeam={openTeamNext} />
+            <TeamStatusBanner
+              matches={matches}
+              selected={selected}
+              primaryTeam={settings.primaryTeam}
+              onPressTeam={openTeamNext}
+            />
             {hero ? (
               <FadeInUp>
                 <NextMatchHero match={hero} onPress={() => setDetail(hero)} />

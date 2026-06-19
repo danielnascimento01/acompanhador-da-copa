@@ -50,6 +50,8 @@ export type Settings = {
   matchStartLeadMinutes: number;
   /** Economia de dados: desliga a atualização automática ao vivo (só manual). */
   dataSaver: boolean;
+  /** Seleção PRINCIPAL do usuário (id da seleção) — vira o foco do app (hero/situação). null = nenhuma. */
+  primaryTeam: string | null;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -58,6 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   matchStart: true,
   matchStartLeadMinutes: 15,
   dataSaver: false,
+  primaryTeam: null,
 };
 
 export async function loadSelectedTeams(): Promise<string[]> {

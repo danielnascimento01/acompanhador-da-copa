@@ -92,6 +92,32 @@ export function nextRelevantMatch(matches: Match[], now: Date = new Date()): Mat
   return upcoming ?? null;
 }
 
+/**
+ * Próximo jogo "relevante" priorizando a SELEÇÃO PRINCIPAL do usuário (modo "minha
+ * seleção"). Prioridade: 1) meu time ao vivo, 2) qualquer jogo ao vivo (a emoção
+ * do momento não some), 3) próximo jogo do meu time, 4) próximo jogo geral da Copa.
+ */
+export function nextRelevantMatchFor(
+  matches: Match[],
+  primaryTeam: string | null,
+  now: Date = new Date(),
+): Match | null {
+  const isMine = (m: Match) => !!primaryTeam && (m.home === primaryTeam || m.away === primaryTeam);
+  if (primaryTeam) {
+    const myLive = matches.find((m) => isMine(m) && isLive(m, now));
+    if (myLive) return myLive;
+  }
+  const anyLive = matches.find((m) => isLive(m, now));
+  if (anyLive) return anyLive;
+  if (primaryTeam) {
+    const myNext = matches
+      .filter((m) => isMine(m) && !isFinished(m) && kickoff(m).getTime() > now.getTime())
+      .sort((a, b) => a.utc.localeCompare(b.utc))[0];
+    if (myNext) return myNext;
+  }
+  return nextRelevantMatch(matches, now);
+}
+
 /** O timestamp de início como objeto Date. */
 export function kickoff(match: Match): Date {
   return new Date(match.utc);

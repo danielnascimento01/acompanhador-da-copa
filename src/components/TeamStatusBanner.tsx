@@ -23,6 +23,7 @@ function shortLabel(o: TeamOutlook): string {
 type Props = {
   matches: Match[];
   selected: Set<string>;
+  primaryTeam?: string | null;
   onPressTeam?: (teamId: string) => void;
 };
 
@@ -30,14 +31,17 @@ type Props = {
  * Faixa "Situação das suas seleções": UMA linha horizontal de chips (rola para o
  * lado), um por seleção marcada — não polui mesmo com muitas seleções. Cada chip
  * mostra a situação 100%-provável (motor de cenários). Toca → abre o próximo jogo.
+ * A seleção PRINCIPAL (modo "minha seleção") vem primeiro, com ⭐ e destaque.
  */
-export function TeamStatusBanner({ matches, selected, onPressTeam }: Props) {
+export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }: Props) {
   const rows = useMemo(
     () =>
       [...selected]
         .map((id) => ({ id, o: teamOutlook(matches, id) }))
-        .filter((x): x is { id: string; o: TeamOutlook } => !!x.o),
-    [matches, selected],
+        .filter((x): x is { id: string; o: TeamOutlook } => !!x.o)
+        // seleção principal primeiro
+        .sort((a, b) => (a.id === primaryTeam ? -1 : b.id === primaryTeam ? 1 : 0)),
+    [matches, selected, primaryTeam],
   );
 
   if (rows.length === 0) return null;
@@ -52,18 +56,25 @@ export function TeamStatusBanner({ matches, selected, onPressTeam }: Props) {
       >
         {rows.map(({ id, o }) => {
           const color = statusColor(o);
+          const isPrimary = id === primaryTeam;
           return (
             <Pressable
               key={id}
               onPress={onPressTeam ? () => onPressTeam(id) : undefined}
               disabled={!onPressTeam}
-              style={({ pressed }) => [styles.chip, { borderColor: color }, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.chip,
+                { borderColor: color },
+                isPrimary && styles.chipPrimary,
+                pressed && styles.pressed,
+              ]}
               accessibilityRole={onPressTeam ? 'button' : 'text'}
-              accessibilityLabel={`${teamName(id)}: ${o.phraseShort}`}
+              accessibilityLabel={`${isPrimary ? 'Sua seleção principal, ' : ''}${teamName(id)}: ${o.phraseShort}`}
             >
               <Text style={styles.flag}>{teamFlag(id)}</Text>
               <View>
                 <Text style={styles.team} numberOfLines={1}>
+                  {isPrimary ? '⭐ ' : ''}
                   {teamName(id)}
                 </Text>
                 <Text style={[styles.status, { color }]} numberOfLines={1}>
@@ -99,6 +110,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(3),
   },
+  chipPrimary: { backgroundColor: colors.surface2, borderWidth: 1.5 },
   pressed: { opacity: 0.6 },
   flag: { fontSize: 22 },
   team: { color: colors.text, fontFamily: fonts.bold, fontSize: 13 },

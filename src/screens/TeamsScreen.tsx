@@ -6,7 +6,19 @@ import { useStore } from '../lib/store';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 export function TeamsScreen() {
-  const { selected, toggleTeam } = useStore();
+  const { selected, toggleTeam, settings, updateSettings } = useStore();
+  const primaryTeam = settings.primaryTeam;
+
+  // Elege (ou desmarca) a seleção principal. Eleger garante que ela também esteja
+  // marcada (para receber os avisos) — o foco do app passa a ser ela.
+  const setPrimary = (id: string) => {
+    if (primaryTeam === id) {
+      updateSettings({ primaryTeam: null });
+    } else {
+      if (!selected.has(id)) toggleTeam(id);
+      updateSettings({ primaryTeam: id });
+    }
+  };
 
   const sections = useMemo(
     () =>
@@ -29,6 +41,7 @@ export function TeamsScreen() {
         </Text>
         <Text style={styles.note}>
           Todos os jogos da Copa aparecem na aba Jogos. Aqui você escolhe só de quais quer ser lembrado.
+          Toque na ⭐ para definir sua seleção principal — ela vira o foco do app.
         </Text>
       </View>
 
@@ -47,14 +60,32 @@ export function TeamsScreen() {
           </View>
         )}
         renderItem={({ item }) => (
-          <TeamRow team={item} active={selected.has(item.id)} onPress={() => toggleTeam(item.id)} />
+          <TeamRow
+            team={item}
+            active={selected.has(item.id)}
+            primary={primaryTeam === item.id}
+            onPress={() => toggleTeam(item.id)}
+            onStar={() => setPrimary(item.id)}
+          />
         )}
       />
     </View>
   );
 }
 
-function TeamRow({ team, active, onPress }: { team: Team; active: boolean; onPress: () => void }) {
+function TeamRow({
+  team,
+  active,
+  primary,
+  onPress,
+  onStar,
+}: {
+  team: Team;
+  active: boolean;
+  primary: boolean;
+  onPress: () => void;
+  onStar: () => void;
+}) {
   return (
     <Pressable
       onPress={onPress}
@@ -62,7 +93,7 @@ function TeamRow({ team, active, onPress }: { team: Team; active: boolean; onPre
       accessibilityState={{ checked: active }}
       accessibilityLabel={team.name}
       hitSlop={6}
-      style={({ pressed }) => [styles.row, active && styles.rowActive, pressed && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, active && styles.rowActive, primary && styles.rowPrimary, pressed && styles.rowPressed]}
     >
       <View style={[styles.flagWrap, active && styles.flagWrapActive]}>
         <Text style={styles.flag}>{team.flag}</Text>
@@ -70,6 +101,15 @@ function TeamRow({ team, active, onPress }: { team: Team; active: boolean; onPre
       <Text style={[styles.name, active && styles.nameActive]} numberOfLines={1}>
         {team.name}
       </Text>
+      <Pressable
+        onPress={onStar}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={primary ? `Remover ${team.name} como seleção principal` : `Definir ${team.name} como seleção principal`}
+        style={({ pressed }) => [styles.star, pressed && styles.rowPressed]}
+      >
+        <Text style={[styles.starText, primary && styles.starActive]}>{primary ? '⭐' : '☆'}</Text>
+      </Pressable>
       <View style={[styles.check, active && styles.checkActive]}>
         {active && <Text style={styles.checkMark}>✓</Text>}
       </View>
@@ -110,7 +150,11 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   rowActive: { borderColor: colors.accent, backgroundColor: colors.surface2 },
+  rowPrimary: { borderColor: colors.amber },
   rowPressed: { opacity: 0.6 },
+  star: { paddingHorizontal: spacing(1), alignItems: 'center', justifyContent: 'center' },
+  starText: { fontSize: 20, color: colors.textFaint },
+  starActive: { color: colors.amber },
   flagWrap: {
     width: 44,
     height: 44,
