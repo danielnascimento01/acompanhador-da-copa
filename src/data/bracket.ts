@@ -1,14 +1,13 @@
 /**
- * Estrutura OFICIAL do mata-mata da Copa 2026 (48 seleções).
+ * Estrutura OFICIAL do mata-mata da Copa 2026 (48 seleções), derivada da API da
+ * ESPN (fifa.world scoreboard), que traz cada confronto com data/hora (UTC) e a
+ * árvore completa. ⚠️ Importante: a 1ª versão veio de um resumo do Wikipedia e a
+ * ÁRVORE das oitavas em diante estava errada; a ESPN corrigiu (cruzamento por
+ * assinatura de slot + referências de vencedor). As datas/horas saem em UTC e são
+ * convertidas para o fuso do aparelho na tela.
  *
- * Fonte: regulamento FIFA / "2026 FIFA World Cup knockout stage" (Wikipedia),
- * jogos 73–104. Os cruzamentos por COLOCAÇÃO de grupo são fixos; o adversário
- * "melhor 3º" de cada slot depende de quais 8 terceiros se classificam (Anexo C,
- * 495 combinações) — por isso esses slots listam os grupos candidatos e só são
- * preenchidos com o time real quando a definição oficial sair (não inventamos).
- *
- * Os vencedores/2º de cada grupo são preenchidos quando o grupo TERMINA e a
- * posição é inequívoca (pontos+saldo+gols) — senão fica "a definir" (zero chute).
+ * Slots de "melhor 3º" listam os grupos candidatos; o time real só entra com a
+ * definição oficial (Anexo C, 495 combinações) — nunca inventamos.
  */
 import { Match, isFinished } from './fixtures';
 import { computeStandings } from './standings';
@@ -17,67 +16,78 @@ export type Slot =
   | { kind: 'winner'; group: string }
   | { kind: 'runner'; group: string }
   | { kind: 'third'; groups: string[] }
-  | { kind: 'winnerOf'; match: number }
-  | { kind: 'loserOf'; match: number };
+  | { kind: 'winnerOf'; ref: string }
+  | { kind: 'loserOf'; ref: string };
 
 export type StageKey = 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final';
 
-export type BracketMatch = { n: number; stage: StageKey; date: string; a: Slot; b: Slot };
+export type BracketMatch = { id: string; stage: StageKey; idx: number; utc: string; a: Slot; b: Slot };
 
-export const STAGE_META: { key: StageKey; name: string }[] = [
-  { key: 'r32', name: '32 avos de final' },
-  { key: 'r16', name: 'Oitavas de final' },
-  { key: 'qf', name: 'Quartas de final' },
-  { key: 'sf', name: 'Semifinais' },
-  { key: 'third', name: 'Disputa de 3º lugar' },
-  { key: 'final', name: 'Final' },
+export const STAGE_META: { key: StageKey; name: string; abbrev: string }[] = [
+  { key: 'r32', name: '32 avos de final', abbrev: '32-avos' },
+  { key: 'r16', name: 'Oitavas de final', abbrev: 'Oitavas' },
+  { key: 'qf', name: 'Quartas de final', abbrev: 'Quartas' },
+  { key: 'sf', name: 'Semifinais', abbrev: 'Semi' },
+  { key: 'third', name: 'Disputa de 3º lugar', abbrev: '3º lugar' },
+  { key: 'final', name: 'Final', abbrev: 'Final' },
 ];
 
 const W = (group: string): Slot => ({ kind: 'winner', group });
 const R = (group: string): Slot => ({ kind: 'runner', group });
 const T = (groups: string): Slot => ({ kind: 'third', groups: groups.split('') });
-const Wm = (match: number): Slot => ({ kind: 'winnerOf', match });
-const Lm = (match: number): Slot => ({ kind: 'loserOf', match });
+const Wof = (ref: string): Slot => ({ kind: 'winnerOf', ref });
+const Lof = (ref: string): Slot => ({ kind: 'loserOf', ref });
 
 export const BRACKET: BracketMatch[] = [
-  // 32 avos (73–88)
-  { n: 73, stage: 'r32', date: '28/06', a: R('A'), b: R('B') },
-  { n: 74, stage: 'r32', date: '29/06', a: W('E'), b: T('ABCDF') },
-  { n: 75, stage: 'r32', date: '29/06', a: W('F'), b: R('C') },
-  { n: 76, stage: 'r32', date: '29/06', a: W('C'), b: R('F') },
-  { n: 77, stage: 'r32', date: '30/06', a: W('I'), b: T('CDFGH') },
-  { n: 78, stage: 'r32', date: '30/06', a: R('E'), b: R('I') },
-  { n: 79, stage: 'r32', date: '30/06', a: W('A'), b: T('CEFHI') },
-  { n: 80, stage: 'r32', date: '01/07', a: W('L'), b: T('EHIJK') },
-  { n: 81, stage: 'r32', date: '01/07', a: W('D'), b: T('BEFIJ') },
-  { n: 82, stage: 'r32', date: '01/07', a: W('G'), b: T('AEHIJ') },
-  { n: 83, stage: 'r32', date: '02/07', a: R('K'), b: R('L') },
-  { n: 84, stage: 'r32', date: '02/07', a: W('H'), b: R('J') },
-  { n: 85, stage: 'r32', date: '02/07', a: W('B'), b: T('EFGIJ') },
-  { n: 86, stage: 'r32', date: '03/07', a: W('J'), b: R('H') },
-  { n: 87, stage: 'r32', date: '03/07', a: W('K'), b: T('DEIJL') },
-  { n: 88, stage: 'r32', date: '03/07', a: R('D'), b: R('G') },
-  // Oitavas (89–96)
-  { n: 89, stage: 'r16', date: '04/07', a: Wm(74), b: Wm(77) },
-  { n: 90, stage: 'r16', date: '04/07', a: Wm(73), b: Wm(75) },
-  { n: 91, stage: 'r16', date: '05/07', a: Wm(76), b: Wm(78) },
-  { n: 92, stage: 'r16', date: '05/07', a: Wm(79), b: Wm(80) },
-  { n: 93, stage: 'r16', date: '06/07', a: Wm(83), b: Wm(84) },
-  { n: 94, stage: 'r16', date: '06/07', a: Wm(81), b: Wm(82) },
-  { n: 95, stage: 'r16', date: '07/07', a: Wm(86), b: Wm(88) },
-  { n: 96, stage: 'r16', date: '07/07', a: Wm(85), b: Wm(87) },
-  // Quartas (97–100)
-  { n: 97, stage: 'qf', date: '09/07', a: Wm(89), b: Wm(90) },
-  { n: 98, stage: 'qf', date: '10/07', a: Wm(93), b: Wm(94) },
-  { n: 99, stage: 'qf', date: '11/07', a: Wm(91), b: Wm(92) },
-  { n: 100, stage: 'qf', date: '11/07', a: Wm(95), b: Wm(96) },
-  // Semis (101–102)
-  { n: 101, stage: 'sf', date: '14/07', a: Wm(97), b: Wm(98) },
-  { n: 102, stage: 'sf', date: '15/07', a: Wm(99), b: Wm(100) },
-  // 3º lugar (103) e Final (104)
-  { n: 103, stage: 'third', date: '18/07', a: Lm(101), b: Lm(102) },
-  { n: 104, stage: 'final', date: '19/07', a: Wm(101), b: Wm(102) },
+  // 32 avos (ordem cronológica da ESPN)
+  { id: 'r32-1', stage: 'r32', idx: 1, utc: '2026-06-28T19:00:00Z', a: R('A'), b: R('B') },
+  { id: 'r32-2', stage: 'r32', idx: 2, utc: '2026-06-29T17:00:00Z', a: W('C'), b: R('F') },
+  { id: 'r32-3', stage: 'r32', idx: 3, utc: '2026-06-29T20:30:00Z', a: W('E'), b: T('ABCDF') },
+  { id: 'r32-4', stage: 'r32', idx: 4, utc: '2026-06-30T01:00:00Z', a: W('F'), b: R('C') },
+  { id: 'r32-5', stage: 'r32', idx: 5, utc: '2026-06-30T17:00:00Z', a: R('E'), b: R('I') },
+  { id: 'r32-6', stage: 'r32', idx: 6, utc: '2026-06-30T21:00:00Z', a: W('I'), b: T('CDFGH') },
+  { id: 'r32-7', stage: 'r32', idx: 7, utc: '2026-07-01T01:00:00Z', a: W('A'), b: T('CEFHI') },
+  { id: 'r32-8', stage: 'r32', idx: 8, utc: '2026-07-01T16:00:00Z', a: W('L'), b: T('EHIJK') },
+  { id: 'r32-9', stage: 'r32', idx: 9, utc: '2026-07-01T20:00:00Z', a: W('G'), b: T('AEHIJ') },
+  { id: 'r32-10', stage: 'r32', idx: 10, utc: '2026-07-02T00:00:00Z', a: W('D'), b: T('BEFIJ') },
+  { id: 'r32-11', stage: 'r32', idx: 11, utc: '2026-07-02T19:00:00Z', a: W('H'), b: R('J') },
+  { id: 'r32-12', stage: 'r32', idx: 12, utc: '2026-07-02T23:00:00Z', a: R('K'), b: R('L') },
+  { id: 'r32-13', stage: 'r32', idx: 13, utc: '2026-07-03T03:00:00Z', a: W('B'), b: T('EFGIJ') },
+  { id: 'r32-14', stage: 'r32', idx: 14, utc: '2026-07-03T18:00:00Z', a: R('D'), b: R('G') },
+  { id: 'r32-15', stage: 'r32', idx: 15, utc: '2026-07-03T22:00:00Z', a: W('J'), b: R('H') },
+  { id: 'r32-16', stage: 'r32', idx: 16, utc: '2026-07-04T01:30:00Z', a: W('K'), b: T('DEIJL') },
+  // Oitavas
+  { id: 'r16-1', stage: 'r16', idx: 1, utc: '2026-07-04T17:00:00Z', a: Wof('r32-3'), b: Wof('r32-1') },
+  { id: 'r16-2', stage: 'r16', idx: 2, utc: '2026-07-04T21:00:00Z', a: Wof('r32-5'), b: Wof('r32-2') },
+  { id: 'r16-3', stage: 'r16', idx: 3, utc: '2026-07-05T20:00:00Z', a: Wof('r32-6'), b: Wof('r32-4') },
+  { id: 'r16-4', stage: 'r16', idx: 4, utc: '2026-07-06T00:00:00Z', a: Wof('r32-8'), b: Wof('r32-7') },
+  { id: 'r16-5', stage: 'r16', idx: 5, utc: '2026-07-06T19:00:00Z', a: Wof('r32-12'), b: Wof('r32-11') },
+  { id: 'r16-6', stage: 'r16', idx: 6, utc: '2026-07-07T00:00:00Z', a: Wof('r32-10'), b: Wof('r32-9') },
+  { id: 'r16-7', stage: 'r16', idx: 7, utc: '2026-07-07T16:00:00Z', a: Wof('r32-16'), b: Wof('r32-14') },
+  { id: 'r16-8', stage: 'r16', idx: 8, utc: '2026-07-07T20:00:00Z', a: Wof('r32-15'), b: Wof('r32-13') },
+  // Quartas
+  { id: 'qf-1', stage: 'qf', idx: 1, utc: '2026-07-09T20:00:00Z', a: Wof('r16-2'), b: Wof('r16-1') },
+  { id: 'qf-2', stage: 'qf', idx: 2, utc: '2026-07-10T19:00:00Z', a: Wof('r16-6'), b: Wof('r16-5') },
+  { id: 'qf-3', stage: 'qf', idx: 3, utc: '2026-07-11T21:00:00Z', a: Wof('r16-4'), b: Wof('r16-3') },
+  { id: 'qf-4', stage: 'qf', idx: 4, utc: '2026-07-12T01:00:00Z', a: Wof('r16-8'), b: Wof('r16-7') },
+  // Semis
+  { id: 'sf-1', stage: 'sf', idx: 1, utc: '2026-07-14T19:00:00Z', a: Wof('qf-2'), b: Wof('qf-1') },
+  { id: 'sf-2', stage: 'sf', idx: 2, utc: '2026-07-15T19:00:00Z', a: Wof('qf-4'), b: Wof('qf-3') },
+  // 3º lugar e Final
+  { id: 'third', stage: 'third', idx: 1, utc: '2026-07-18T21:00:00Z', a: Lof('sf-2'), b: Lof('sf-1') },
+  { id: 'final', stage: 'final', idx: 1, utc: '2026-07-19T19:00:00Z', a: Wof('sf-2'), b: Wof('sf-1') },
 ];
+
+const BY_ID = new Map(BRACKET.map((m) => [m.id, m]));
+const abbrevOf = (stage: StageKey): string => STAGE_META.find((s) => s.key === stage)?.abbrev ?? '';
+
+/** Etiqueta curta de um jogo para referência (ex.: "32-avos J3", "Oitavas J1"). */
+function refTag(id: string): string {
+  const m = BY_ID.get(id);
+  if (!m) return '';
+  if (m.stage === 'third' || m.stage === 'final') return abbrevOf(m.stage);
+  return `${abbrevOf(m.stage)} J${m.idx}`;
+}
 
 /** a está estritamente à frente de b por pontos+saldo+gols (sem desempate fino). */
 function strictlyAhead(
@@ -86,13 +96,13 @@ function strictlyAhead(
 ): boolean {
   if (a.points !== b.points) return a.points > b.points;
   if (a.gd !== b.gd) return a.gd > b.gd;
-  return a.gf > b.gf; // empate total aqui = depende de confronto direto → NÃO resolvemos
+  return a.gf > b.gf;
 }
 
 /**
- * 1º e 2º de cada grupo — SÓ quando o grupo terminou e a posição é inequívoca
- * por pontos+saldo+gols. Empate total na fronteira (precisaria de confronto
- * direto, que não computamos) → fica indefinido. Garante zero erro.
+ * 1º e 2º de cada grupo — SÓ quando o grupo terminou e a posição é inequívoca por
+ * pontos+saldo+gols (empate na fronteira precisaria de confronto direto, que não
+ * computamos → fica indefinido). O 2º só sai se o 1º também já está resolvido.
  */
 export function groupPositions(matches: Match[]): Record<string, { first?: string; second?: string }> {
   const byGroup = computeStandings(matches);
@@ -100,16 +110,10 @@ export function groupPositions(matches: Match[]): Record<string, { first?: strin
   for (const [group, table] of Object.entries(byGroup)) {
     out[group] = {};
     if (table.length < 3) continue;
-    const groupMatches = matches.filter((m) => {
-      // jogo é desse grupo se ambos os times pertencem a ele (todos da tabela)
-      const ids = new Set(table.map((s) => s.teamId));
-      return ids.has(m.home) && ids.has(m.away);
-    });
+    const ids = new Set(table.map((s) => s.teamId));
+    const groupMatches = matches.filter((m) => ids.has(m.home) && ids.has(m.away));
     const finished = groupMatches.length > 0 && groupMatches.every(isFinished);
     if (!finished) continue;
-    // 1º só é certo se está à frente do 2º. O 2º só é certo se o 1º JÁ está
-    // resolvido (senão não dá pra saber quem é 1º e quem é 2º entre os empatados)
-    // E o 2º está à frente do 3º.
     const firstClear = strictlyAhead(table[0], table[1]);
     if (firstClear) out[group].first = table[0].teamId;
     if (firstClear && strictlyAhead(table[1], table[2])) out[group].second = table[1].teamId;
@@ -127,13 +131,13 @@ export function slotLabel(slot: Slot): string {
     case 'third':
       return `3º (${slot.groups.join('/')})`;
     case 'winnerOf':
-      return `Vencedor do jogo ${slot.match}`;
+      return `Vencedor ${refTag(slot.ref)}`;
     case 'loserOf':
-      return `Perdedor do jogo ${slot.match}`;
+      return `Perdedor ${refTag(slot.ref)}`;
   }
 }
 
-/** Resolve um slot para um teamId, se já for conhecido com certeza (senão null). */
+/** Resolve um slot para um teamId, se já conhecido com certeza (senão null). */
 export function resolveSlot(
   slot: Slot,
   positions: Record<string, { first?: string; second?: string }>,

@@ -3,7 +3,14 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { teamFlag, teamName } from '../data/teams';
 import { BRACKET, STAGE_META, Slot, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
+import { formatDayShort, formatTime } from '../lib/format';
 import { useStore } from '../lib/store';
+
+/** Data + hora do jogo no fuso do aparelho (ex.: "dom., 28/06 · 16:00"). */
+function whenLabel(utc: string): string {
+  const d = new Date(utc);
+  return `${formatDayShort(d)} · ${formatTime(d)}`;
+}
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 /**
@@ -51,10 +58,12 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
               <View key={stage.key} style={styles.stageBlock}>
                 <Text style={styles.stageName}>{stage.name}</Text>
                 {BRACKET.filter((m) => m.stage === stage.key).map((m) => (
-                  <View key={m.n} style={[styles.match, stage.key === 'final' && styles.matchFinal]}>
+                  <View key={m.id} style={[styles.match, stage.key === 'final' && styles.matchFinal]}>
                     <View style={styles.matchHead}>
-                      <Text style={styles.matchN}>Jogo {m.n}</Text>
-                      <Text style={styles.matchDate}>{m.date}</Text>
+                      <Text style={styles.matchN}>
+                        {stage.key === 'third' || stage.key === 'final' ? stage.name : `Jogo ${m.idx}`}
+                      </Text>
+                      <Text style={styles.matchDate}>{whenLabel(m.utc)}</Text>
                     </View>
                     <SlotView slot={m.a} positions={positions} selected={selected} />
                     <Text style={styles.vs}>×</Text>

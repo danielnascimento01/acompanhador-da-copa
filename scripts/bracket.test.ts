@@ -4,7 +4,7 @@
  * Garante que só preenchemos 1º/2º quando é INEQUÍVOCO (zero chute).
  */
 import type { Match } from '../src/data/fixtures';
-import { groupPositions } from '../src/data/bracket';
+import { BRACKET, Slot, groupPositions } from '../src/data/bracket';
 
 let id = 0;
 function gm(home: string, away: string, hs: number | null, as: number | null): Match {
@@ -30,6 +30,38 @@ function check(label: string, got: unknown, want: unknown) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
   console.log(`${ok ? '✅' : '❌'} ${label}${ok ? '' : `  → got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`}`);
   if (!ok) fails++;
+}
+
+// ===== Sanidade estrutural da chave (pega erro de transcrição) =====
+console.log('— Estrutura do bracket —');
+{
+  const ids = new Set<string>();
+  let dup = false;
+  for (const m of BRACKET) {
+    if (ids.has(m.id)) dup = true;
+    ids.add(m.id);
+  }
+  const refsOf = (s: Slot): string[] => (s.kind === 'winnerOf' || s.kind === 'loserOf' ? [s.ref] : []);
+  let badRef = false;
+  for (const m of BRACKET) for (const r of [...refsOf(m.a), ...refsOf(m.b)]) if (!ids.has(r)) badRef = true;
+  check('ids únicos', dup, false);
+  check('refs de vencedor/perdedor válidos', badRef, false);
+  check('32 jogos no mata-mata', BRACKET.length, 32);
+
+  const r32 = BRACKET.filter((m) => m.stage === 'r32');
+  const winners: Record<string, number> = {};
+  const runners: Record<string, number> = {};
+  let thirds = 0;
+  for (const m of r32)
+    for (const s of [m.a, m.b]) {
+      if (s.kind === 'winner') winners[s.group] = (winners[s.group] ?? 0) + 1;
+      if (s.kind === 'runner') runners[s.group] = (runners[s.group] ?? 0) + 1;
+      if (s.kind === 'third') thirds++;
+    }
+  const groups = 'ABCDEFGHIJKL'.split('');
+  check('cada grupo aparece 1x como vencedor', groups.every((g) => winners[g] === 1), true);
+  check('cada grupo aparece 1x como 2º', groups.every((g) => runners[g] === 1), true);
+  check('8 slots de melhor 3º', thirds, 8);
 }
 
 const MEX = 'Mexico';
