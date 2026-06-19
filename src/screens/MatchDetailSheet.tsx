@@ -10,6 +10,7 @@ import { standingsForGroup } from '../data/standings';
 import { teamOutlook } from '../data/scenarios';
 import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
 import { MatchTimeline } from '../components/MatchTimeline';
+import { MatchStats } from '../components/MatchStats';
 import { formatDayLong, formatTime } from '../lib/format';
 import { openUrl } from '../lib/links';
 import { shareMatch } from '../lib/share';
@@ -106,6 +107,9 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
 
         {/* Lance a lance ao vivo (ESPN) — minuto, gols, cartões. Só p/ jogos iniciados. */}
         <MatchTimeline match={match} />
+
+        {/* Escalações + estatísticas (ESPN summary). Só p/ jogos iniciados. */}
+        <MatchStats match={match} />
 
         {isPredictable(match) ? (
           <PredictionEditor

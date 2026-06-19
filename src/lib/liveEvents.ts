@@ -9,6 +9,7 @@
 import type { Match } from '../data/fixtures';
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+const SUMMARY = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary';
 
 export type LiveEventType = 'goal' | 'own-goal' | 'yellow' | 'red';
 export type TimelineEvent = {
@@ -148,6 +149,140 @@ export async function fetchEspnDay(date: string, timeoutMs = 8000): Promise<Espn
     });
   }
   return out;
+}
+
+/** Acha o evento da ESPN correspondente ao nosso jogo (aceita mando invertido). */
+function findEspnEvent(events: any[], match: Match): any | null {
+  return (
+    events.find((e) => {
+      const comps = e?.competitions?.[0]?.competitors ?? [];
+      const h = comps.find((c: any) => c.homeAway === 'home')?.team?.displayName;
+      const a = comps.find((c: any) => c.homeAway === 'away')?.team?.displayName;
+      if (!h || !a) return false;
+      return (
+        (teamMatches(h, match.home) && teamMatches(a, match.away)) ||
+        (teamMatches(h, match.away) && teamMatches(a, match.home))
+      );
+    }) ?? null
+  );
+}
+
+// ===== Escalações + estatísticas (endpoint summary da ESPN) =====
+export type TeamStat = { key: string; label: string; home: string; away: string };
+export type LineupPlayer = { name: string; number: string | null; pos: string | null; starter: boolean };
+export type TeamLineup = { formation: string | null; starters: LineupPlayer[]; subs: LineupPlayer[] };
+export type MatchSummary = { stats: TeamStat[]; home: TeamLineup | null; away: TeamLineup | null };
+
+/** Estatísticas que mostramos, na ordem, com rótulo PT. `pct` = sufixo "%". */
+const STAT_MAP: { name: string; label: string; pct?: boolean }[] = [
+  { name: 'possessionPct', label: 'Posse de bola', pct: true },
+  { name: 'totalShots', label: 'Finalizações' },
+  { name: 'shotsOnTarget', label: 'No alvo' },
+  { name: 'wonCorners', label: 'Escanteios' },
+  { name: 'foulsCommitted', label: 'Faltas' },
+  { name: 'offsides', label: 'Impedimentos' },
+  { name: 'yellowCards', label: 'Amarelos' },
+];
+
+function statMapOf(team: any): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const s of team?.statistics ?? []) {
+    if (s?.name != null) out[String(s.name)] = String(s.displayValue ?? s.value ?? '');
+  }
+  return out;
+}
+
+function fmtStat(v: string | undefined, pct?: boolean): string {
+  if (v == null || v === '') return '–';
+  return pct && !v.includes('%') ? `${v}%` : v;
+}
+
+/** Formação pode vir como string ("4-3-3") ou objeto { name }. */
+function formationOf(r: any): string | null {
+  if (typeof r?.formation === 'string') return r.formation;
+  if (r?.formation?.name) return String(r.formation.name);
+  return null;
+}
+
+function parseRoster(r: any): TeamLineup {
+  const players: LineupPlayer[] = (Array.isArray(r?.roster) ? r.roster : [])
+    .map((p: any) => ({
+      name: String(p?.athlete?.displayName || ''),
+      number: p?.jersey != null && p.jersey !== '' ? String(p.jersey) : null,
+      pos: p?.position?.abbreviation ? String(p.position.abbreviation) : null,
+      starter: !!p?.starter,
+    }))
+    .filter((p: LineupPlayer) => p.name);
+  return {
+    formation: formationOf(r),
+    starters: players.filter((p) => p.starter),
+    subs: players.filter((p) => !p.starter),
+  };
+}
+
+/**
+ * Escalações (titulares + reservas) e estatísticas do jogo, via endpoint `summary`
+ * da ESPN. Acha o id do jogo no scoreboard e então puxa o resumo. Orienta tudo ao
+ * NOSSO mando (match.home/away). `null` se não achar ou a rede falhar. Defensivo:
+ * qualquer campo ausente vira vazio, nunca derruba a tela.
+ */
+export async function fetchMatchSummary(match: Match, timeoutMs = 8000): Promise<MatchSummary | null> {
+  try {
+    const days = await Promise.all(espnDatesFor(match.utc).map((d) => fetchRawDay(d, timeoutMs)));
+    const ev = findEspnEvent(days.flat(), match);
+    const eventId = ev?.id;
+    if (!eventId) return null;
+
+    const comps: any[] = ev?.competitions?.[0]?.competitors ?? [];
+    const homeC = comps.find((c) => c.homeAway === 'home');
+    const awayC = comps.find((c) => c.homeAway === 'away');
+    const homeId = String(homeC?.team?.id || '');
+    const awayId = String(awayC?.team?.id || '');
+    const homeIsOurHome = teamMatches(homeC?.team?.displayName || '', match.home);
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    let json: any;
+    try {
+      const res = await fetch(`${SUMMARY}?event=${eventId}`, { signal: ctrl.signal });
+      json = await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // Estatísticas (boxscore.teams[].statistics), orientadas ao nosso mando.
+    const boxTeams: any[] = json?.boxscore?.teams ?? [];
+    const homeStats = statMapOf(boxTeams.find((t) => String(t?.team?.id || '') === homeId));
+    const awayStats = statMapOf(boxTeams.find((t) => String(t?.team?.id || '') === awayId));
+    const stats: TeamStat[] = [];
+    for (const { name, label, pct } of STAT_MAP) {
+      const h = homeStats[name];
+      const a = awayStats[name];
+      if (h == null && a == null) continue;
+      stats.push({
+        key: name,
+        label,
+        home: fmtStat(homeIsOurHome ? h : a, pct),
+        away: fmtStat(homeIsOurHome ? a : h, pct),
+      });
+    }
+
+    // Escalações (rosters[]), orientadas ao nosso mando.
+    const rosters: any[] = json?.rosters ?? [];
+    const rHome = rosters.find((r) => String(r?.homeAway || '') === 'home');
+    const rAway = rosters.find((r) => String(r?.homeAway || '') === 'away');
+    const espnHome = rHome ? parseRoster(rHome) : null;
+    const espnAway = rAway ? parseRoster(rAway) : null;
+    const home = homeIsOurHome ? espnHome : espnAway;
+    const away = homeIsOurHome ? espnAway : espnHome;
+
+    const hasLineup = (l: TeamLineup | null) => !!l && (l.starters.length > 0 || l.subs.length > 0);
+    if (stats.length === 0 && !hasLineup(home) && !hasLineup(away)) return null;
+
+    return { stats, home: hasLineup(home) ? home : null, away: hasLineup(away) ? away : null };
+  } catch {
+    return null;
+  }
 }
 
 /**
