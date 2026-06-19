@@ -11,7 +11,8 @@
     "validate-data": "node scripts/validate-data.mjs",
     "test-scenarios": "npx tsx scripts/scenarios.test.ts",
     "test-bracket": "npx tsx scripts/bracket.test.ts",
-    "preflight": "tsc --noEmit && npx tsx scripts/scenarios.test.ts && npx tsx scripts/bracket.test.ts && node scripts/validate-data.mjs",
+    "test-thirds": "npx tsx scripts/best-thirds.test.ts",
+    "preflight": "tsc --noEmit && npx tsx scripts/scenarios.test.ts && npx tsx scripts/bracket.test.ts && npx tsx scripts/best-thirds.test.ts && node scripts/validate-data.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {

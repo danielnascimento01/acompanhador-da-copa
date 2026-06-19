@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { teamFlag, teamName } from '../data/teams';
 import { BRACKET, STAGE_META, Slot, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
+import { bestThirds, ThirdRow } from '../data/bestThirds';
 import { formatDayShort, formatTime } from '../lib/format';
 import { useStore } from '../lib/store';
 
@@ -22,6 +23,7 @@ import { colors, fonts, radius, spacing } from '../lib/theme';
 export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { matches, selected } = useStore();
   const positions = useMemo(() => groupPositions(matches), [matches]);
+  const thirds = useMemo(() => bestThirds(matches), [matches]);
 
   const resolved = useMemo(() => {
     let n = 0;
@@ -54,6 +56,8 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
               </Text>
             </View>
 
+            <BestThirdsBlock result={thirds} selected={selected} />
+
             {STAGE_META.map((stage) => (
               <View key={stage.key} style={styles.stageBlock}>
                 <Text style={styles.stageName}>{stage.name}</Text>
@@ -81,6 +85,71 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
         </View>
       </View>
     </Modal>
+  );
+}
+
+/**
+ * Calculadora dos 8 melhores terceiros — a parte do formato de 48 que "ninguém
+ * mostra direito". Ranqueia os 12 terceiros e marca quem avança, SEM nunca chutar:
+ * empate na fronteira 8/9 vira "disputa"; grupos em andamento ficam provisórios.
+ */
+function BestThirdsBlock({ result, selected }: { result: ReturnType<typeof bestThirds>; selected: Set<string> }) {
+  return (
+    <View style={styles.thirdsBlock}>
+      <Text style={styles.stageName}>Os 8 melhores terceiros</Text>
+      <Text style={styles.thirdsCriterio}>
+        Avançam os 8 melhores 3ºs entre os 12 grupos. Critério: 1) pontos · 2) saldo de gols · 3) gols
+        marcados · depois fair-play e sorteio.
+      </Text>
+      <View style={[styles.thirdsNote, result.definitive && styles.thirdsNoteOk]}>
+        <Text style={[styles.thirdsNoteText, result.definitive && styles.thirdsNoteTextOk]}>{result.note}</Text>
+      </View>
+
+      {result.rows.map((row, i) => (
+        <React.Fragment key={row.group}>
+          {i === 8 && <View style={styles.thirdsCut} />}
+          <ThirdRowView row={row} selected={selected} />
+        </React.Fragment>
+      ))}
+    </View>
+  );
+}
+
+function ThirdRowView({ row, selected }: { row: ThirdRow; selected: Set<string> }) {
+  const fav = row.played > 0 && selected.has(row.teamId);
+  const status =
+    row.qualifies === 'in'
+      ? { label: 'avança', style: styles.pillIn, text: styles.pillInText }
+      : row.qualifies === 'tie'
+        ? { label: 'disputa', style: styles.pillTie, text: styles.pillTieText }
+        : { label: 'fora', style: styles.pillOut, text: styles.pillOutText };
+  const gd = row.gd > 0 ? `+${row.gd}` : `${row.gd}`;
+  return (
+    <View style={[styles.thirdRow, row.qualifies === 'in' && styles.thirdRowIn, fav && styles.thirdRowFav]}>
+      <Text style={[styles.thirdRank, row.qualifies === 'in' && styles.thirdRankIn]}>{row.rank}º</Text>
+      <View style={styles.thirdGroupTag}>
+        <Text style={styles.thirdGroupTagText}>{row.group}</Text>
+      </View>
+      {row.played > 0 ? (
+        <>
+          <Text style={styles.thirdFlag}>{teamFlag(row.teamId)}</Text>
+          <Text style={[styles.thirdName, fav && styles.thirdNameFav]} numberOfLines={1}>
+            {teamName(row.teamId)}
+            {!row.locked ? <Text style={styles.thirdProv}>  · parcial</Text> : null}
+          </Text>
+        </>
+      ) : (
+        <Text style={styles.thirdName} numberOfLines={1}>
+          3º do Grupo {row.group} <Text style={styles.thirdProv}>· a definir</Text>
+        </Text>
+      )}
+      <Text style={styles.thirdStats}>
+        {row.points} pt{row.points === 1 ? '' : 's'} · SG {gd}
+      </Text>
+      <View style={[styles.pill, status.style]}>
+        <Text style={[styles.pillText, status.text]}>{status.label}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -180,4 +249,67 @@ const styles = StyleSheet.create({
   slotLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, flex: 1 },
   vs: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, textAlign: 'center', paddingVertical: 3 },
   footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
+
+  // Calculadora dos melhores terceiros
+  thirdsBlock: { marginBottom: spacing(5) },
+  thirdsCriterio: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, marginBottom: spacing(2) },
+  thirdsNote: {
+    backgroundColor: 'rgba(255,194,51,0.10)',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,194,51,0.30)',
+    paddingVertical: spacing(2),
+    paddingHorizontal: spacing(3),
+    marginBottom: spacing(3),
+  },
+  thirdsNoteOk: { backgroundColor: 'rgba(20,224,138,0.10)', borderColor: 'rgba(20,224,138,0.30)' },
+  thirdsNoteText: { color: colors.amber, fontFamily: fonts.semibold, fontSize: 12.5, lineHeight: 18 },
+  thirdsNoteTextOk: { color: colors.accent },
+  thirdsCut: {
+    height: 1,
+    backgroundColor: colors.accent,
+    opacity: 0.5,
+    marginVertical: spacing(2),
+  },
+  thirdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2),
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: spacing(2),
+    paddingHorizontal: spacing(2),
+    marginBottom: 6,
+    minHeight: 40,
+  },
+  thirdRowIn: { borderColor: 'rgba(20,224,138,0.35)', backgroundColor: 'rgba(20,224,138,0.05)' },
+  thirdRowFav: { borderColor: colors.accent },
+  thirdRank: { color: colors.textFaint, fontFamily: fonts.extrabold, fontSize: 12, width: 24, fontVariant: ['tabular-nums'] },
+  thirdRankIn: { color: colors.accent },
+  thirdGroupTag: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thirdGroupTagText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 11 },
+  thirdFlag: { fontSize: 17 },
+  thirdName: { color: colors.text, fontFamily: fonts.bold, fontSize: 13.5, flex: 1 },
+  thirdNameFav: { color: colors.accent },
+  thirdProv: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11 },
+  thirdStats: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 11.5, fontVariant: ['tabular-nums'] },
+  pill: { borderRadius: radius.pill, paddingVertical: 2, paddingHorizontal: spacing(2), minWidth: 56, alignItems: 'center' },
+  pillText: { fontFamily: fonts.bold, fontSize: 10.5, letterSpacing: 0.3, textTransform: 'uppercase' },
+  pillIn: { backgroundColor: colors.accent },
+  pillInText: { color: colors.ink },
+  pillTie: { backgroundColor: 'rgba(255,194,51,0.18)', borderWidth: 1, borderColor: colors.amber },
+  pillTieText: { color: colors.amber },
+  pillOut: { backgroundColor: colors.surface2 },
+  pillOutText: { color: colors.textFaint },
 });
