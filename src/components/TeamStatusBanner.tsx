@@ -1,16 +1,23 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Match } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
 import { teamOutlook, TeamOutlook } from '../data/scenarios';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
-/** Cor da faixa pela situação (verde=classificado, vermelho=eliminado, âmbar=em disputa). */
+/** Cor pela situação (verde=classificado, vermelho=eliminado, âmbar=em disputa/3º). */
 function statusColor(o: TeamOutlook): string {
   if (o.guaranteedTop2) return colors.accent;
   if (o.eliminatedFromTop2 && !o.canFinishThird) return colors.live;
   return colors.amber;
+}
+
+/** Rótulo curto pro chip. */
+function shortLabel(o: TeamOutlook): string {
+  if (o.guaranteedTop2) return 'Classificado';
+  if (o.eliminatedFromTop2) return o.canFinishThird ? 'Via 3º' : 'Eliminado';
+  return `${o.rank}º Grupo ${o.group}`;
 }
 
 type Props = {
@@ -20,9 +27,9 @@ type Props = {
 };
 
 /**
- * Faixa "Situação das suas seleções": uma linha por seleção marcada com a frase
- * de status (100% provável — vinda do motor de cenários). Só aparece quando há
- * seleções marcadas que estão na fase de grupos.
+ * Faixa "Situação das suas seleções": UMA linha horizontal de chips (rola para o
+ * lado), um por seleção marcada — não polui mesmo com muitas seleções. Cada chip
+ * mostra a situação 100%-provável (motor de cenários). Toca → abre o próximo jogo.
  */
 export function TeamStatusBanner({ matches, selected, onPressTeam }: Props) {
   const rows = useMemo(
@@ -38,29 +45,35 @@ export function TeamStatusBanner({ matches, selected, onPressTeam }: Props) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>Situação das suas seleções</Text>
-      {rows.map(({ id, o }) => {
-        const color = statusColor(o);
-        return (
-          <Pressable
-            key={id}
-            onPress={onPressTeam ? () => onPressTeam(id) : undefined}
-            disabled={!onPressTeam}
-            style={({ pressed }) => [styles.row, { borderLeftColor: color }, pressed && styles.pressed]}
-            accessibilityRole={onPressTeam ? 'button' : 'text'}
-            accessibilityLabel={`${teamName(id)}: ${o.phraseShort}`}
-          >
-            <Text style={styles.flag}>{teamFlag(id)}</Text>
-            <View style={styles.flex1}>
-              <Text style={styles.team} numberOfLines={1}>
-                {teamName(id)}
-              </Text>
-              <Text style={[styles.phrase, { color }]} numberOfLines={2}>
-                {o.phraseShort}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+      >
+        {rows.map(({ id, o }) => {
+          const color = statusColor(o);
+          return (
+            <Pressable
+              key={id}
+              onPress={onPressTeam ? () => onPressTeam(id) : undefined}
+              disabled={!onPressTeam}
+              style={({ pressed }) => [styles.chip, { borderColor: color }, pressed && styles.pressed]}
+              accessibilityRole={onPressTeam ? 'button' : 'text'}
+              accessibilityLabel={`${teamName(id)}: ${o.phraseShort}`}
+            >
+              <Text style={styles.flag}>{teamFlag(id)}</Text>
+              <View>
+                <Text style={styles.team} numberOfLines={1}>
+                  {teamName(id)}
+                </Text>
+                <Text style={[styles.status, { color }]} numberOfLines={1}>
+                  {shortLabel(o)}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
@@ -75,22 +88,19 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: spacing(2),
   },
-  row: {
+  row: { gap: spacing(2), paddingRight: spacing(2) },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing(3),
+    gap: spacing(2),
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderLeftWidth: 3,
     borderRadius: radius.md,
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(3),
-    marginBottom: spacing(2),
   },
   pressed: { opacity: 0.6 },
-  flag: { fontSize: 26 },
-  flex1: { flex: 1 },
-  team: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
-  phrase: { fontFamily: fonts.semibold, fontSize: 12.5, marginTop: 1 },
+  flag: { fontSize: 22 },
+  team: { color: colors.text, fontFamily: fonts.bold, fontSize: 13 },
+  status: { fontFamily: fonts.semibold, fontSize: 11.5, marginTop: 1 },
 });

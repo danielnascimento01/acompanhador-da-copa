@@ -7,17 +7,8 @@ import { TeamStatusBanner } from '../components/TeamStatusBanner';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
 import { FadeInUp } from '../components/Motion';
-import {
-  filterByTeams,
-  hasStarted,
-  isFinished,
-  isLive,
-  kickoff,
-  nextRelevantMatch,
-  Match,
-} from '../data/fixtures';
+import { hasStarted, isFinished, isLive, kickoff, nextRelevantMatch, Match } from '../data/fixtures';
 import { useStore } from '../lib/store';
-import { shareMatches } from '../lib/share';
 import { localDayKey, relativeDayLabel } from '../lib/format';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -68,13 +59,10 @@ export function ScheduleScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const myMatches = useMemo(() => filterByTeams(matches, selected), [matches, selected]);
-  const hero = useMemo(() => nextRelevantMatch(myMatches), [myMatches]);
-  const hasLive = useMemo(() => myMatches.some((m) => isLive(m)), [myMatches]);
-  const todayMatches = useMemo(() => {
-    const key = localDayKey(new Date());
-    return myMatches.filter((m) => localDayKey(kickoff(m)) === key);
-  }, [myMatches]);
+  // Mostra TODOS os jogos (não filtra por seleção). As seleções marcadas servem
+  // só para notificações; os jogos de todo mundo aparecem aqui.
+  const hero = useMemo(() => nextRelevantMatch(matches), [matches]);
+  const hasLive = useMemo(() => matches.some((m) => isLive(m)), [matches]);
   const anyToday = useMemo(() => {
     const key = localDayKey(new Date());
     return matches.some((m) => localDayKey(kickoff(m)) === key);
@@ -126,7 +114,7 @@ export function ScheduleScreen() {
     const now = new Date();
     const upcoming: Match[] = [];
     const past: Match[] = [];
-    for (const m of myMatches) {
+    for (const m of matches) {
       if (hero && m.id === hero.id) continue; // já aparece em destaque no topo
       if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) past.push(m);
       else upcoming.push(m);
@@ -135,7 +123,7 @@ export function ScheduleScreen() {
       upcomingSections: groupByDay(upcoming, 'upcoming'),
       pastSections: groupByDay(past, 'past'),
     };
-  }, [myMatches, hero]);
+  }, [matches, hero]);
 
   const sections = useMemo<DaySection[]>(() => {
     if (pastSections.length === 0) return upcomingSections;
@@ -145,23 +133,10 @@ export function ScheduleScreen() {
       : [...upcomingSections, toggle];
   }, [upcomingSections, pastSections, showPast]);
 
-  if (selected.size === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyEmoji}>📡</Text>
-        <Text style={styles.emptyTitle}>Comece escolhendo seus times</Text>
-        <Text style={styles.emptyText}>
-          Vá na aba <Text style={styles.bold}>Seleções</Text> e marque quem você quer acompanhar. Os
-          jogos aparecem aqui, com lembretes antes de cada partida.
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Seus jogos</Text>
+        <Text style={styles.title}>Jogos da Copa</Text>
         <Text style={[styles.subtitle, !online && styles.subtitleOffline]}>
           {!online
             ? '⚠️ Sem internet · mostrando dados salvos'
@@ -176,16 +151,6 @@ export function ScheduleScreen() {
               style={({ pressed }) => [styles.headerBtn, pressed && styles.shareTodayPressed]}
             >
               <Text style={styles.shareTodayText}>📅 Jogos de hoje</Text>
-            </Pressable>
-          )}
-          {todayMatches.length > 0 && (
-            <Pressable
-              onPress={() => shareMatches('⚽ Jogos das minhas seleções hoje:', todayMatches)}
-              accessibilityRole="button"
-              accessibilityLabel="Compartilhar os jogos de hoje no WhatsApp"
-              style={({ pressed }) => [styles.headerBtn, pressed && styles.shareTodayPressed]}
-            >
-              <Text style={styles.shareTodayText}>↗ Compartilhar</Text>
             </Pressable>
           )}
         </View>

@@ -7,7 +7,7 @@ import { requestPermission } from '../lib/notifications';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
 
 const FEATURES = [
-  { icon: '🌎', title: 'Suas seleções', text: 'Marque os times que você quer acompanhar.' },
+  { icon: '🔔', title: 'Avisos das suas seleções', text: 'Marque os times pra ser avisado dos jogos deles.' },
   { icon: '📅', title: 'Resumo do dia', text: 'De manhã, os jogos das suas seleções naquele dia.' },
   { icon: '⏰', title: 'Jogo começando', text: 'Um lembrete pouco antes de cada partida.' },
 ];

@@ -23,8 +23,11 @@ export function TeamsScreen() {
         <Text style={styles.title}>Seleções</Text>
         <Text style={styles.subtitle}>
           {selected.size === 0
-            ? 'Toque nas seleções que você quer acompanhar.'
-            : `${selected.size} ${selected.size === 1 ? 'seleção marcada' : 'seleções marcadas'}`}
+            ? 'Marque as seleções para receber avisos dos jogos delas.'
+            : `🔔 ${selected.size} ${selected.size === 1 ? 'seleção' : 'seleções'} · você será avisado dos jogos`}
+        </Text>
+        <Text style={styles.note}>
+          Todos os jogos da Copa aparecem na aba Jogos. Aqui você escolhe só de quais quer ser lembrado.
         </Text>
       </View>
 
@@ -78,6 +81,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 34 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 14, marginTop: 2 },
+  note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, marginTop: spacing(2) },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginTop: spacing(5), marginBottom: spacing(2) },
   groupTag: {
     width: 26,
