@@ -1,27 +1,30 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { teamFlag, teamName } from '../data/teams';
+import { BRACKET, STAGE_META, Slot, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
+import { useStore } from '../lib/store';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 /**
- * "Caminho até a final" — estrutura do mata-mata da Copa de 48 seleções.
- *
- * Honestidade de dados (regra: 100% correto): os CONFRONTOS do mata-mata só
- * existem depois que a fase de grupos termina e os 8 melhores terceiros são
- * definidos. O cruzamento exato vem de uma tabela oficial condicional — então
- * aqui NÃO inventamos confrontos. Mostramos a estrutura real (quantos jogos em
- * cada fase) e o app preenche os confrontos quando os dados oficiais saírem.
+ * "Caminho até a final" — chave OFICIAL do mata-mata (jogos 73–104). Mostra qual
+ * colocado de qual grupo pega quem. Os vencedores/2º aparecem conforme os grupos
+ * terminam (com certeza matemática); os "melhores terceiros" e as fases seguintes
+ * ficam como rótulo até a definição oficial. Nunca inventa um confronto.
  */
-const STAGES = [
-  { key: 'r32', name: '32 avos de final', games: 16, note: '16 confrontos · 32 seleções' },
-  { key: 'r16', name: 'Oitavas de final', games: 8, note: '8 confrontos · 16 seleções' },
-  { key: 'qf', name: 'Quartas de final', games: 4, note: '4 confrontos · 8 seleções' },
-  { key: 'sf', name: 'Semifinais', games: 2, note: '2 confrontos · 4 seleções' },
-  { key: 'third', name: 'Disputa de 3º lugar', games: 1, note: 'Os perdedores das semis' },
-  { key: 'final', name: 'Final', games: 1, note: 'Os 2 finalistas' },
-] as const;
-
 export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { matches, selected } = useStore();
+  const positions = useMemo(() => groupPositions(matches), [matches]);
+
+  const resolved = useMemo(() => {
+    let n = 0;
+    for (const m of BRACKET) {
+      if (resolveSlot(m.a, positions)) n++;
+      if (resolveSlot(m.b, positions)) n++;
+    }
+    return n;
+  }, [positions]);
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -33,41 +36,72 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
           </Pressable>
 
           <Text style={styles.title}>Caminho até a final</Text>
-          <Text style={styles.sub}>O mata-mata da Copa, fase a fase</Text>
+          <Text style={styles.sub}>Quem pega quem, do mata-mata à final</Text>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
             <View style={styles.banner}>
               <Text style={styles.bannerText}>
-                Os confrontos são definidos quando a fase de grupos terminar — incluindo os 8 melhores
-                terceiros. Esta tela preenche sozinha com os jogos oficiais assim que saírem. Por
-                enquanto, mostramos a estrutura de cada fase.
+                {resolved === 0
+                  ? 'As seleções aparecem aqui conforme se classificam. Os "melhores terceiros" e as fases seguintes preenchem com a definição oficial — nunca um confronto chutado.'
+                  : `${resolved} ${resolved === 1 ? 'vaga já definida' : 'vagas já definidas'}. O resto preenche conforme os grupos terminam.`}
               </Text>
             </View>
 
-            {STAGES.map((s, i) => (
-              <View key={s.key}>
-                <View style={[styles.stage, s.key === 'final' && styles.stageFinal]}>
-                  <View style={[styles.badge, s.key === 'final' && styles.badgeFinal]}>
-                    <Text style={[styles.badgeNum, s.key === 'final' && styles.badgeNumFinal]}>{s.games}</Text>
+            {STAGE_META.map((stage) => (
+              <View key={stage.key} style={styles.stageBlock}>
+                <Text style={styles.stageName}>{stage.name}</Text>
+                {BRACKET.filter((m) => m.stage === stage.key).map((m) => (
+                  <View key={m.n} style={[styles.match, stage.key === 'final' && styles.matchFinal]}>
+                    <View style={styles.matchHead}>
+                      <Text style={styles.matchN}>Jogo {m.n}</Text>
+                      <Text style={styles.matchDate}>{m.date}</Text>
+                    </View>
+                    <SlotView slot={m.a} positions={positions} selected={selected} />
+                    <Text style={styles.vs}>×</Text>
+                    <SlotView slot={m.b} positions={positions} selected={selected} />
                   </View>
-                  <View style={styles.flex1}>
-                    <Text style={[styles.stageName, s.key === 'final' && styles.stageNameFinal]}>{s.name}</Text>
-                    <Text style={styles.stageNote}>{s.note}</Text>
-                  </View>
-                  <Text style={styles.tbd}>a definir</Text>
-                </View>
-                {i < STAGES.length - 1 && <View style={styles.connector} />}
+                ))}
               </View>
             ))}
 
             <Text style={styles.footer}>
-              Formato de 48 seleções: os 2 primeiros de cada grupo e os 8 melhores terceiros avançam
-              para os 32 avos de final.
+              Estrutura oficial (jogos 73–104). Avançam os 2 primeiros de cada grupo + os 8 melhores
+              terceiros.
             </Text>
           </ScrollView>
         </View>
       </View>
     </Modal>
+  );
+}
+
+function SlotView({
+  slot,
+  positions,
+  selected,
+}: {
+  slot: Slot;
+  positions: Record<string, { first?: string; second?: string }>;
+  selected: Set<string>;
+}) {
+  const teamId = resolveSlot(slot, positions);
+  if (teamId) {
+    const fav = selected.has(teamId);
+    return (
+      <View style={[styles.slot, styles.slotResolved, fav && styles.slotFav]}>
+        <Text style={styles.slotFlag}>{teamFlag(teamId)}</Text>
+        <Text style={[styles.slotTeam, fav && styles.slotTeamFav]} numberOfLines={1}>
+          {teamName(teamId)}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.slot}>
+      <Text style={styles.slotLabel} numberOfLines={1}>
+        {slotLabel(slot)}
+      </Text>
+    </View>
   );
 }
 
@@ -82,7 +116,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
-    maxHeight: '88%',
+    maxHeight: '90%',
   },
   grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
@@ -98,27 +132,43 @@ const styles = StyleSheet.create({
     marginBottom: spacing(4),
   },
   bannerText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
-  stage: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(3),
+  stageBlock: { marginBottom: spacing(4) },
+  stageName: {
+    color: colors.accent,
+    fontFamily: fonts.extrabold,
+    fontSize: 13,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: spacing(2),
+  },
+  match: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    paddingVertical: spacing(3),
-    paddingHorizontal: spacing(3),
+    padding: spacing(3),
+    marginBottom: spacing(2),
   },
-  stageFinal: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.07)' },
-  badge: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
-  badgeFinal: { backgroundColor: colors.accent, borderColor: colors.accent },
-  badgeNum: { color: colors.text, fontFamily: fonts.display, fontSize: 18 },
-  badgeNumFinal: { color: colors.ink },
-  flex1: { flex: 1 },
-  stageName: { color: colors.text, fontFamily: fonts.bold, fontSize: 15.5 },
-  stageNameFinal: { color: colors.accent },
-  stageNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
-  tbd: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 11.5, fontStyle: 'italic' },
-  connector: { width: 2, height: spacing(3), backgroundColor: colors.border, alignSelf: 'center' },
-  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(4), textAlign: 'center' },
+  matchFinal: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.06)' },
+  matchHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing(2) },
+  matchN: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.3 },
+  matchDate: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 11 },
+  slot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2),
+    backgroundColor: colors.surface2,
+    borderRadius: radius.sm,
+    paddingVertical: spacing(2),
+    paddingHorizontal: spacing(3),
+    minHeight: 38,
+  },
+  slotResolved: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: colors.border },
+  slotFav: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
+  slotFlag: { fontSize: 20 },
+  slotTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
+  slotTeamFav: { color: colors.accent },
+  slotLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, flex: 1 },
+  vs: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, textAlign: 'center', paddingVertical: 3 },
+  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
 });
