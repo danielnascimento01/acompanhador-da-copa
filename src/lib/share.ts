@@ -19,9 +19,12 @@ const SIG = `\n\nvia ${APP}\n${LINK}`;
 export function matchShareText(m: Match): string {
   const home = `${teamFlag(m.home)} ${teamName(m.home)}`;
   const away = `${teamName(m.away)} ${teamFlag(m.away)}`;
-  const hasScore = m.homeScore != null && m.awayScore != null;
+  // Só compartilha placar de estado CONFIRMADO (ao vivo/encerrado) — nunca de
+  // status preso/dado velho (que cairia no ramo de data/hora, neutro).
+  const confirmed = isLive(m) || isFinished(m);
+  const hasScore = confirmed && m.homeScore != null && m.awayScore != null;
   if (hasScore) {
-    const tag = isLive(m) ? ' ⚽ ao vivo' : isFinished(m) ? ' (encerrado)' : '';
+    const tag = isLive(m) ? ' ⚽ ao vivo' : ' (encerrado)';
     return `${home} ${m.homeScore}–${m.awayScore} ${away}${tag}${SIG}`;
   }
   const ko = kickoff(m);
@@ -31,7 +34,8 @@ export function matchShareText(m: Match): string {
 /** Lista de jogos (ex.: "o que tem hoje") já formatada pra colar no grupo. */
 export function matchesShareText(title: string, matches: Match[]): string {
   const lines = matches.map((m) => {
-    const hasScore = m.homeScore != null && m.awayScore != null;
+    const confirmed = isLive(m) || isFinished(m);
+    const hasScore = confirmed && m.homeScore != null && m.awayScore != null;
     const score = hasScore ? `${m.homeScore}–${m.awayScore}` : formatTime(kickoff(m));
     return `${teamFlag(m.home)} ${teamName(m.home)} ${score} ${teamName(m.away)} ${teamFlag(m.away)}`;
   });

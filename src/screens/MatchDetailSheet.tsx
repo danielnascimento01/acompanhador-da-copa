@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { StandingsTable } from '../components/StandingsTable';
 import { PredictionEditor } from '../components/PredictionEditor';
-import { Match, kickoff, isLive, isFinished, isPredictable } from '../data/fixtures';
+import { Match, kickoff, isPredictable, matchDisplay } from '../data/fixtures';
 import { getTeam, teamFlag, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { teamOutlook } from '../data/scenarios';
@@ -38,9 +38,12 @@ export function MatchDetailSheet({ match, matches, selected, onClose }: Props) {
 function Content({ match, matches, selected, onClose }: { match: Match } & Omit<Props, 'match'>) {
   const { predictions, setPrediction, clearPrediction } = useStore();
   const ko = kickoff(match);
-  const live = isLive(match);
-  const finished = isFinished(match);
-  const hasScore = match.homeScore != null && match.awayScore != null;
+  // Estado confirmado (nunca pelo relógio): 'unconfirmed' (apito passou mas sem
+  // status reconciliado) cai em neutro 'RODADA N' e esconde placar parcial/preso.
+  const d = matchDisplay(match);
+  const live = d.state === 'live';
+  const finished = d.state === 'finished' || d.state === 'awaiting';
+  const hasScore = d.showScore;
 
   const homeGroup = getTeam(match.home)?.group;
   const awayGroup = getTeam(match.away)?.group;

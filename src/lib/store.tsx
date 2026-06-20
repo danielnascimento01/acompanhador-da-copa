@@ -19,7 +19,8 @@ import {
 } from './storage';
 import { rescheduleAll } from './notifications';
 import { fetchLatestMatches } from './liveData';
-import { ALL_MATCHES, Match } from '../data/fixtures';
+import { isStale } from './freshness';
+import { ALL_MATCHES, Match, hasMatchInPlayWindow } from '../data/fixtures';
 
 type Store = {
   ready: boolean;
@@ -143,6 +144,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
     [],
   );
+
+  // 🔄 FRESCURA: dispara refresh por IDADE do cache — no load e a cada retorno ao
+  // primeiro plano. Quebra o "cache velho eterno" (bug das 39h) e, por estar no
+  // provider (sempre montado), vale em TODAS as abas, não só na de Jogos. A decisão
+  // é por idade + janela de relógio (freshness.ts), nunca por isLive() do cache.
+  // Refs evitam closure velha nos handlers de AppState (refresh é estável).
+  const updatedAtRef = useRef<number | null>(null);
+  const refreshingRef = useRef(false);
+  const matchesRef = useRef<Match[]>(matches);
+  const dataSaverRef = useRef(settings.dataSaver);
+  useEffect(() => { updatedAtRef.current = updatedAt; }, [updatedAt]);
+  useEffect(() => { refreshingRef.current = refreshing; }, [refreshing]);
+  useEffect(() => { matchesRef.current = matches; }, [matches]);
+  useEffect(() => { dataSaverRef.current = settings.dataSaver; }, [settings.dataSaver]);
+
+  const refreshIfStale = useMemo(
+    () => () => {
+      if (refreshingRef.current) return; // evita fetch concorrente
+      const now = Date.now();
+      const inWindow = hasMatchInPlayWindow(matchesRef.current, new Date(now));
+      if (isStale(updatedAtRef.current, now, inWindow, dataSaverRef.current)) refresh();
+    },
+    [refresh],
+  );
+
+  useEffect(() => {
+    if (ready) refreshIfStale();
+  }, [ready, refreshIfStale]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && loaded.current) refreshIfStale();
+    });
+    return () => sub.remove();
+  }, [refreshIfStale]);
 
   // Palpites são salvos apenas em MUTAÇÕES do usuário (nunca no load),
   // com debounce — toques rápidos no stepper não geram uma escrita por toque.

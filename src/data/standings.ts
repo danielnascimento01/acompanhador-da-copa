@@ -1,5 +1,5 @@
 import { GROUPS, TEAMS, teamName } from './teams';
-import { Match, isPredictable } from './fixtures';
+import { Match, isPredictable, isFinished, isLive } from './fixtures';
 import type { PredictionMap } from '../lib/storage';
 
 export type Standing = {
@@ -36,6 +36,10 @@ export function computeStandings(matches: Match[]): Record<string, Standing[]> {
 
   for (const m of matches) {
     if (m.homeScore == null || m.awayScore == null) continue;
+    // Só conta placar CONFIRMADO: jogo encerrado, ou ao vivo genuíno (dentro da
+    // janela). Placar preso num status "ao vivo" fora da janela (dado velho) NÃO
+    // entra — senão vira ponto/posição errados na tabela.
+    if (!isFinished(m) && !isLive(m)) continue;
     const h = table.get(m.home);
     const a = table.get(m.away);
     if (!h || !a || h.group !== a.group) continue; // só fase de grupos, mesmo grupo

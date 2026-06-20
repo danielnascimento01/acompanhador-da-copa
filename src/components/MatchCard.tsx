@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Match, kickoff, hasStarted, isLive, isFinished } from '../data/fixtures';
+import { Match, kickoff, matchDisplay } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
 import { formatTime, isLateNight } from '../lib/format';
 import { Prediction } from '../lib/storage';
@@ -18,11 +18,12 @@ type Props = {
 
 export const MatchCard = React.memo(function MatchCard({ match, selected, prediction, onPress }: Props) {
   const ko = kickoff(match);
-  const live = isLive(match);
-  const finished = isFinished(match);
-  const started = hasStarted(match);
-  const hasScore = match.homeScore != null && match.awayScore != null;
-  const lateNight = !started && !hasScore && isLateNight(ko);
+  // Estado de exibição confirmado (nunca pelo relógio): live só sob isLive,
+  // placar só sob (ao vivo|encerrado)&&placar — senão neutro. Mata o "Em andamento"
+  // fantasma de jogo encerrado com dado velho.
+  const d = matchDisplay(match);
+  const live = d.state === 'live';
+  const lateNight = d.state === 'upcoming' && isLateNight(ko);
 
   return (
     <Pressable
@@ -44,22 +45,24 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, predic
         </View>
 
         <View style={styles.center}>
-          {hasScore ? (
+          {d.showScore ? (
             <Text style={styles.score}>
               {match.homeScore}–{match.awayScore}
             </Text>
           ) : (
             <Text style={styles.time}>{formatTime(ko)}</Text>
           )}
-          {live ? (
+          {d.state === 'live' ? (
             <View style={styles.liveBadge}>
               <Text style={styles.liveText}>● AO VIVO</Text>
             </View>
-          ) : finished ? (
+          ) : d.state === 'finished' ? (
             <Text style={styles.statusDim}>Encerrado</Text>
-          ) : started ? (
-            <Text style={styles.statusDim}>Em andamento</Text>
-          ) : !hasScore && prediction ? (
+          ) : d.state === 'awaiting' ? (
+            <Text style={styles.statusDim}>aguardando resultado</Text>
+          ) : d.state === 'unconfirmed' ? (
+            <Text style={styles.statusDim}>atualizando…</Text>
+          ) : prediction ? (
             <Text style={styles.predictionTag}>
               🔮 {prediction.home}–{prediction.away}
             </Text>

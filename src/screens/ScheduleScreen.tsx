@@ -7,7 +7,8 @@ import { TeamStatusBanner } from '../components/TeamStatusBanner';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
 import { FadeInUp } from '../components/Motion';
-import { hasStarted, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
+import { hasStarted, hasMatchInPlayWindow, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
+import { isStale } from '../lib/freshness';
 import { useStore } from '../lib/store';
 import { localDayKey, relativeDayLabel } from '../lib/format';
 import { colors, fonts, radius, spacing } from '../lib/theme';
@@ -54,8 +55,13 @@ export function ScheduleScreen() {
   const [showPast, setShowPast] = useState(false);
   const [dayOpen, setDayOpen] = useState(false);
 
+  // Ao abrir a aba (mount), reatualiza se o cache estiver VELHO (por idade, não só
+  // se estiver vazio) — cobre a troca de aba com dados defasados. Independe de
+  // seleção: a grade é global; seleção só afeta avisos/hero.
   useEffect(() => {
-    if (!updatedAt && selected.size > 0) refresh();
+    const now = Date.now();
+    const inWindow = hasMatchInPlayWindow(matches, new Date(now));
+    if (!refreshing && isStale(updatedAt, now, inWindow, settings.dataSaver)) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -67,6 +73,9 @@ export function ScheduleScreen() {
     [matches, settings.primaryTeam],
   );
   const hasLive = useMemo(() => matches.some((m) => isLive(m)), [matches]);
+  // Janela de relógio: liga o poll perto do horário dos jogos mesmo que o status
+  // no cache ainda não diga "ao vivo" — é a rede que confirma ao vivo/encerrado.
+  const hasMatchInWindow = useMemo(() => hasMatchInPlayWindow(matches), [matches]);
   const anyToday = useMemo(() => {
     const key = localDayKey(new Date());
     return matches.some((m) => localDayKey(kickoff(m)) === key);
@@ -75,7 +84,7 @@ export function ScheduleScreen() {
   // Atualização automática enquanto há jogo AO VIVO: faz polling com backoff
   // (30s → 120s) só com o app em primeiro plano e fora do modo economia. Pausa
   // em background e quando não há jogo ao vivo. Evita o pull-to-refresh manual.
-  const autoOn = hasLive && !settings.dataSaver;
+  const autoOn = (hasLive || hasMatchInWindow) && !settings.dataSaver;
   useEffect(() => {
     if (!autoOn) return;
     let alive = true;

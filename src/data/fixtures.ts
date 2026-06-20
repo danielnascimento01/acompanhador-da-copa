@@ -127,3 +127,43 @@ export function kickoff(match: Match): Date {
 export function hasStarted(match: Match, now: Date = new Date()): boolean {
   return kickoff(match).getTime() <= now.getTime();
 }
+
+/**
+ * Janela de "tempo de jogo" em torno do apito (3h antes / 3h depois — cobre
+ * 90'+acréscimos+prorrogação+pênaltis). Serve para decidir polling/frescura pelo
+ * RELÓGIO, e não pelo status já buscado (que pode estar velho e criar o deadlock:
+ * "só atualizo se já sei que tem jogo ao vivo, mas só sei depois de atualizar").
+ */
+const PLAY_WINDOW_MS = 3 * 60 * 60 * 1000;
+
+export function inPlayWindow(match: Match, now: Date = new Date()): boolean {
+  const diff = now.getTime() - kickoff(match).getTime();
+  return diff >= -PLAY_WINDOW_MS && diff <= PLAY_WINDOW_MS;
+}
+
+export function hasMatchInPlayWindow(matches: Match[], now: Date = new Date()): boolean {
+  return matches.some((m) => inPlayWindow(m, now));
+}
+
+/**
+ * Estado de EXIBIÇÃO do jogo — derivado SÓ do que foi confirmado por fetch
+ * (isLive/isFinished + placar presente), NUNCA do relógio. Centraliza o mandato
+ * zero-bug: a UI só afirma "ao vivo"/"encerrado"/placar quando isso foi confirmado.
+ *
+ * - 'live'        → status ao vivo confirmado dentro da janela (mostra placar se houver)
+ * - 'finished'    → encerrado COM placar (mostra placar)
+ * - 'awaiting'    → encerrado mas SEM placar carregado (neutro: "aguardando resultado")
+ * - 'unconfirmed' → o apito já passou mas a fonte não confirmou ao vivo nem encerrado
+ *                   (dado velho/status preso): NEUTRO — nunca "Em andamento" nem placar
+ * - 'upcoming'    → ainda não começou (futuro)
+ */
+export type MatchDisplayState = 'live' | 'finished' | 'awaiting' | 'unconfirmed' | 'upcoming';
+export type MatchDisplay = { state: MatchDisplayState; showScore: boolean };
+
+export function matchDisplay(match: Match, now: Date = new Date()): MatchDisplay {
+  const hasScore = match.homeScore != null && match.awayScore != null;
+  if (isLive(match, now)) return { state: 'live', showScore: hasScore };
+  if (isFinished(match)) return { state: hasScore ? 'finished' : 'awaiting', showScore: hasScore };
+  if (hasStarted(match, now)) return { state: 'unconfirmed', showScore: false };
+  return { state: 'upcoming', showScore: false };
+}
