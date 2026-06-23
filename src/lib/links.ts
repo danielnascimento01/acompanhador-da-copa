@@ -8,7 +8,7 @@ export const LINKS = {
   privacy: 'https://danielnascimento01.github.io/acompanhador-da-copa/privacy-policy.html',
   // E-mail de contato opcional: se preenchido, "Enviar sugestão" abre o e-mail;
   // caso contrário, abre a página de suporte (que tem FAQ + contato).
-  contactEmail: '',
+  contactEmail: 'nascimento.daniel00@gmail.com',
 };
 
 const APP_NAME = 'Acompanhador da Copa';

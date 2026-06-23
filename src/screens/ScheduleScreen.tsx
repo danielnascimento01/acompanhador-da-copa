@@ -8,6 +8,7 @@ import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
 import { FadeInUp } from '../components/Motion';
 import { hasStarted, hasMatchInPlayWindow, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
+import { openSuggestion } from '../lib/links';
 import { isStale } from '../lib/freshness';
 import { useStore } from '../lib/store';
 import { localDayKey, relativeDayLabel } from '../lib/format';
@@ -128,7 +129,6 @@ export function ScheduleScreen() {
     const upcoming: Match[] = [];
     const past: Match[] = [];
     for (const m of matches) {
-      if (hero && m.id === hero.id) continue; // já aparece em destaque no topo
       if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) past.push(m);
       else upcoming.push(m);
     }
@@ -149,12 +149,11 @@ export function ScheduleScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>AO VIVO & PRÓXIMOS</Text>
         <Text style={styles.title}>Jogos da Copa</Text>
         <Text style={[styles.subtitle, !online && styles.subtitleOffline]}>
           {!online
             ? '⚠️ Sem internet · mostrando dados salvos'
-            : `${hasLive && autoOn ? '🟢 atualizando ao vivo' : hero ? 'Próximo jogo em destaque' : 'Sem jogos à frente'} · ${updatedLabel(updatedAt)}`}
+            : `${hasLive && autoOn ? '🟢 ao vivo · ' : ''}${updatedLabel(updatedAt)}`}
         </Text>
         <View style={styles.headerBtns}>
           {anyToday && (
@@ -167,6 +166,14 @@ export function ScheduleScreen() {
               <Text style={styles.shareTodayText}>📅 Jogos de hoje</Text>
             </Pressable>
           )}
+          <Pressable
+            onPress={openSuggestion}
+            accessibilityRole="button"
+            accessibilityLabel="Enviar sugestão"
+            style={({ pressed }) => [styles.headerBtn, styles.suggestionBtn, pressed && styles.shareTodayPressed]}
+          >
+            <Text style={styles.suggestionText}>💬 Sugestão</Text>
+          </Pressable>
         </View>
       </View>
       <SectionList
@@ -246,7 +253,6 @@ export function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
-  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
   subtitleOffline: { color: colors.amber },
@@ -259,8 +265,10 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: 'rgba(20,224,138,0.08)',
   },
+  suggestionBtn: { borderColor: colors.border, backgroundColor: 'transparent' },
   shareTodayPressed: { opacity: 0.6 },
   shareTodayText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 12.5 },
+  suggestionText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
   day: {
     color: colors.accent,
     fontFamily: fonts.extrabold,

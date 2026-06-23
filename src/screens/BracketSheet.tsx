@@ -144,7 +144,7 @@ function ThirdRowView({ row, selected }: { row: ThirdRow; selected: Set<string> 
         </Text>
       )}
       <Text style={styles.thirdStats}>
-        {row.points} pt{row.points === 1 ? '' : 's'} · SG {gd}
+        {row.points} pt{row.points === 1 ? '' : 's'} · SG {gd} · G {row.gf}
       </Text>
       <View style={[styles.pill, status.style]}>
         <Text style={[styles.pillText, status.text]}>{status.label}</Text>
