@@ -1,0 +1,22 @@
+name = "copa2026-worker"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Executa a cada minuto durante a Copa (Cloudflare cron mínimo: 1 min)
+[triggers]
+crons = ["* * * * *"]
+
+# KV: tokens de push, placar visto, artilheiros agregados
+# Crie com: wrangler kv namespace create COPA_KV
+# Substitua os IDs abaixo após criar.
+[[kv_namespaces]]
+binding = "KV"
+id = "SUBSTITUA_COM_KV_ID"
+preview_id = "SUBSTITUA_COM_KV_PREVIEW_ID"
+
+[vars]
+# URL pública deste worker (atualizar após o primeiro deploy)
+WORKER_URL = "https://copa2026-worker.SEU_USER.workers.dev"
+# Token de acesso Expo (opcional — https://expo.dev/accounts/SEU_USER/settings/access-tokens)
+# Configure via: wrangler secret put EXPO_ACCESS_TOKEN

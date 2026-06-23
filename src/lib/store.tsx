@@ -16,8 +16,11 @@ import {
   saveOnboarded,
   loadPredictions,
   savePredictions,
+  loadPushToken,
+  savePushToken,
 } from './storage';
-import { rescheduleAll } from './notifications';
+import { rescheduleAll, getExpoPushToken } from './notifications';
+import { registerPushToken } from './liveScorers';
 import { fetchLatestMatches } from './liveData';
 import { isStale } from './freshness';
 import { ALL_MATCHES, Match, hasMatchInPlayWindow } from '../data/fixtures';
@@ -81,8 +84,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
       loaded.current = true;
       setReady(true);
+
+      // Registra push token no servidor (fire-and-forget, não bloqueia o boot).
+      // Só refaz se o token mudou (raro, mas acontece quando o app é reinstalado).
+      registerExpoPushToken();
     })();
   }, []);
+
+  async function registerExpoPushToken() {
+    const token = await getExpoPushToken();
+    if (!token) return;
+    const stored = await loadPushToken();
+    if (stored === token) return; // Token não mudou — não bate no servidor
+    await registerPushToken(token);
+    await savePushToken(token);
+  }
 
   // Persiste seleção/preferências assim que mudam — pulando a primeira
   // execução pós-load (se a leitura falhou, regravar aqui apagaria o disco).

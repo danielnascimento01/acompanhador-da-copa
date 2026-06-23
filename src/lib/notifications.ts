@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
@@ -190,6 +191,30 @@ export async function rescheduleAll(
 export async function countScheduled(): Promise<number> {
   const list = await Notifications.getAllScheduledNotificationsAsync();
   return list.length;
+}
+
+/**
+ * Obtém o Expo Push Token do dispositivo (necessário para push remoto).
+ * Retorna null em simulador, emulador ou se a permissão foi negada.
+ * Requer projectId do app (configurado no app.json via expo-constants).
+ */
+export async function getExpoPushToken(): Promise<string | null> {
+  if (!Device.isDevice) return null; // Simulador/emulador não tem token real
+
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return null;
+
+  try {
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+    if (!projectId) return null;
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    return tokenData.data;
+  } catch {
+    return null;
+  }
 }
 
 /** Dispara um teste imediato para o usuário ver como fica. */

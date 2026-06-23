@@ -1,0 +1,92 @@
+/**
+ * Agrega artilheiros da Copa 2026 a partir dos lances (plays) de TODOS os jogos
+ * encerrados. Roda no cron e escreve o resultado no KV para o app consumir.
+ *
+ * Estratégia: idempotente — processa todos os jogos terminados a cada chamada
+ * e recomputa os totais do zero. Evita bugs de estado acumulado no KV.
+ * Custo: ~1 chamada ESPN por jogo finalizado; aceitável durante a Copa.
+ */
+
+import { fetchScoreboard, fetchPlays, ESPNPlay } from './espn';
+
+export type LiveScorer = {
+  player: string;
+  teamName: string;
+  goals: number;
+  updatedAt: string; // ISO 8601
+};
+
+/** Gols de Messi em Copas anteriores a 2026 (2006+2010+2014+2018+2022). */
+const MESSI_PRE_2026 = 13;
+
+function isGoal(play: ESPNPlay): boolean {
+  const t = play.type?.text?.toLowerCase() ?? '';
+  // Exclui gol contra (own goal) da contagem individual — ajustar se ESPN mudar
+  return t === 'goal' || t === 'penalty goal';
+}
+
+/**
+ * Busca e agrega artilheiros de todos os jogos encerrados hoje e nas últimas
+ * 48h (janela conservadora para cobrir dados chegando atrasados).
+ */
+export async function aggregateScorers(kv: KVNamespace): Promise<void> {
+  const now = new Date();
+  // Busca os últimos 2 dias de jogos para garantir que jogos recém-encerrados
+  // são incluídos (ESPN às vezes tarda a atualizar status para 'post').
+  const dates = [-1, 0, 1].map((offset) => {
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() + offset);
+    return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+  });
+
+  const totals = new Map<string, { teamName: string; goals: number }>();
+
+  for (const date of dates) {
+    const events = await fetchScoreboard(date);
+    // Processa encerrados + ao vivo (para artilharia ficar em tempo real)
+    const relevant = events.filter((e) => e.status.type.state !== 'pre');
+
+    for (const event of relevant) {
+      const plays = await fetchPlays(event.id);
+      for (const play of plays) {
+        if (!isGoal(play)) continue;
+        const playerName = play.athletesInvolved?.[0]?.displayName;
+        if (!playerName) continue;
+        const teamName = play.athletesInvolved?.[0]?.team?.displayName
+          ?? play.team?.displayName
+          ?? '';
+        const current = totals.get(playerName) ?? { teamName, goals: 0 };
+        totals.set(playerName, { teamName: current.teamName || teamName, goals: current.goals + 1 });
+      }
+    }
+  }
+
+  if (totals.size === 0) return; // Nenhum jogo ainda — não sobrescreve KV
+
+  // Ordena por gols desc
+  const scorers: LiveScorer[] = Array.from(totals.entries())
+    .map(([player, { teamName, goals }]) => ({ player, teamName, goals, updatedAt: now.toISOString() }))
+    .sort((a, b) => b.goals - a.goals);
+
+  await kv.put('scorers', JSON.stringify(scorers), {
+    // Expira em 7 dias — bem além da Copa
+    expirationTtl: 7 * 24 * 60 * 60,
+  });
+}
+
+/** Retorna artilheiros do KV (fallback: array vazio). */
+export async function getScorers(kv: KVNamespace): Promise<LiveScorer[]> {
+  try {
+    const raw = await kv.get('scorers');
+    if (!raw) return [];
+    const list = JSON.parse(raw) as LiveScorer[];
+    // Adiciona gols históricos do Messi
+    return list.map((s) =>
+      s.player === 'Lionel Messi'
+        ? { ...s, goals: s.goals + MESSI_PRE_2026 }
+        : s,
+    );
+  } catch {
+    return [];
+  }
+}

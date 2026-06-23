@@ -20,7 +20,8 @@
       "buildNumber": "1",
       "bundleIdentifier": "com.danielnascimento.copa2026",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {

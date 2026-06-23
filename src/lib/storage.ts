@@ -2,11 +2,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Match } from '../data/fixtures';
 
-const KEY_TEAMS = 'copa2026:selectedTeams';
-const KEY_SETTINGS = 'copa2026:settings';
-const KEY_MATCHES = 'copa2026:cachedMatches';
-const KEY_ONBOARDED = 'copa2026:onboarded';
+const KEY_TEAMS       = 'copa2026:selectedTeams';
+const KEY_SETTINGS    = 'copa2026:settings';
+const KEY_MATCHES     = 'copa2026:cachedMatches';
+const KEY_ONBOARDED   = 'copa2026:onboarded';
 const KEY_PREDICTIONS = 'copa2026:predictions';
+const KEY_PUSH_TOKEN  = 'copa2026:pushToken';
+
+/**
+ * URL do Cloudflare Worker que gerencia push de gol e artilheiros ao vivo.
+ * Atualizar após o primeiro `wrangler deploy` em server/.
+ */
+export const SERVER_URL = 'https://copa2026-worker.danielnascimento.workers.dev';
 
 /** Palpite do usuário para um jogo (placar simulado). `at` = quando palpitou. */
 export type Prediction = { home: number; away: number; at?: number };
@@ -131,4 +138,16 @@ export async function loadOnboarded(): Promise<boolean> {
 
 export async function saveOnboarded(value: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY_ONBOARDED, value ? '1' : '0');
+}
+
+export async function loadPushToken(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(KEY_PUSH_TOKEN);
+  } catch {
+    return null;
+  }
+}
+
+export async function savePushToken(token: string): Promise<void> {
+  await AsyncStorage.setItem(KEY_PUSH_TOKEN, token);
 }

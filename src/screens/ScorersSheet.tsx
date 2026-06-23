@@ -1,11 +1,31 @@
-import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { SCORERS, SCORERS_UPDATED, topScorers } from '../data/scorers';
+import { SCORERS_UPDATED } from '../data/scorers';
+import { fetchLiveScorers, type LiveScorer } from '../lib/liveScorers';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const ranked = topScorers(SCORERS);
+  const [scorers, setScorers] = useState<LiveScorer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<string>('');
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    setLoading(true);
+    fetchLiveScorers().then((data) => {
+      if (cancelled) return;
+      setScorers(data);
+      // Usa a data do servidor se disponível, senão a data do bundle
+      const serverDate = data[0]?.updatedAt;
+      setUpdatedAt(serverDate ? formatUpdatedAt(serverDate) : SCORERS_UPDATED);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [visible]);
+
+  const ranked = scorers.map((s, i) => ({ ...s, rank: i + 1 }));
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -20,7 +40,11 @@ export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: 
           <Text style={styles.title}>ARTILHEIROS</Text>
           <Text style={styles.subtitle}>Chuteira de Ouro da Copa 2026</Text>
 
-          {ranked.length === 0 ? (
+          {loading ? (
+            <View style={styles.empty}>
+              <ActivityIndicator color={colors.accent} size="large" />
+            </View>
+          ) : ranked.length === 0 ? (
             <View style={styles.empty}>
               <Text style={styles.emptyEmoji}>🥅</Text>
               <Text style={styles.emptyTitle}>A artilharia começa com o 1º gol</Text>
@@ -45,13 +69,28 @@ export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: 
                   </View>
                 </View>
               ))}
-              <Text style={styles.updated}>Atualizado em {SCORERS_UPDATED}</Text>
+              <Text style={styles.updated}>Atualizado em {updatedAt}</Text>
             </ScrollView>
           )}
         </View>
       </View>
     </Modal>
   );
+}
+
+/** "23/06/2026 15:42" a partir de ISO 8601, no fuso local. */
+function formatUpdatedAt(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  } catch {
+    return iso;
+  }
 }
 
 const styles = StyleSheet.create({
