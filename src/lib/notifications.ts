@@ -256,7 +256,9 @@ export async function getPushDiagnostic(): Promise<string> {
     return `ERRO ao obter token de push:\n${e instanceof Error ? e.message : String(e)}`;
   }
 
-  // Testa o registro no servidor PONTA A PONTA (mesmo caminho corrigido).
+  const lines: string[] = ['TOKEN OK ✅'];
+
+  // 1. Registro no servidor (mesmo caminho corrigido).
   try {
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 10_000);
@@ -266,9 +268,34 @@ export async function getPushDiagnostic(): Promise<string> {
       body: JSON.stringify({ token, mode: 'all', teams: [], matches: [] }),
       signal: ctrl.signal,
     });
-    const text = await res.text();
-    return `TOKEN OK ✅\nRegistro no servidor: HTTP ${res.status}\n${text}`;
+    lines.push(`Registro: HTTP ${res.status} ${await res.text()}`);
   } catch (e) {
-    return `TOKEN OK, mas FALHOU ao registrar:\n${e instanceof Error ? e.message : String(e)}`;
+    lines.push(`Registro FALHOU: ${e instanceof Error ? e.message : String(e)}`);
   }
+
+  // 2. ENTREGA: manda um push de teste para o próprio aparelho via Expo (usa o
+  //    token EXATO). Se a Expo responder "ok", uma notificação deve chegar.
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 10_000);
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        to: token,
+        title: '⚽ Teste de entrega',
+        body: 'Se chegou, o push remoto está 100%! 🇧🇷',
+        sound: 'default',
+        priority: 'high',
+      }),
+      signal: ctrl.signal,
+    });
+    const j = (await res.json()) as { data?: { status?: string; message?: string } };
+    const st = j?.data?.status ?? '?';
+    lines.push(`Entrega Expo: ${st}${j?.data?.message ? ` — ${j.data.message}` : ''}`);
+  } catch (e) {
+    lines.push(`Entrega FALHOU: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  return lines.join('\n');
 }
