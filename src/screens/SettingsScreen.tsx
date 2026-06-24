@@ -15,6 +15,7 @@ import { appVersion, otaStatus } from '../lib/appInfo';
 import { getCurrentIconKey } from '../lib/appIcon';
 import { APP_ICONS, DEFAULT_ICON_KEY } from '../data/appIcons';
 import { AppIconSheet } from './AppIconSheet';
+import { ApoioCard } from '../components/ApoioCard';
 import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
 
 const LEAD_OPTIONS = [5, 10, 15, 30, 60];
@@ -185,6 +186,9 @@ export function SettingsScreen() {
           <Text style={styles.iconChevron}>›</Text>
         </Pressable>
       )}
+
+      {/* Apoie o projeto (IAP opcional — some se indisponível ou já apoiou) */}
+      <ApoioCard />
 
       {/* Ajuda / sugestões */}
       <View style={[styles.card, styles.supportCard]}>

@@ -59,6 +59,8 @@ export type Settings = {
   dataSaver: boolean;
   /** Seleção PRINCIPAL do usuário (id da seleção) — vira o foco do app (hero/situação). null = nenhuma. */
   primaryTeam: string | null;
+  /** Apoiou o projeto via IAP "Apoie o projeto". Cosmético/gratidão — NUNCA libera função. */
+  supporter: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -68,6 +70,7 @@ export const DEFAULT_SETTINGS: Settings = {
   matchStartLeadMinutes: 15,
   dataSaver: false,
   primaryTeam: null,
+  supporter: false,
 };
 
 export async function loadSelectedTeams(): Promise<string[]> {

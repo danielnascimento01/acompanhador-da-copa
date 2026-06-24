@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import {
@@ -21,6 +21,7 @@ import {
 } from './storage';
 import { rescheduleAll, getExpoPushToken } from './notifications';
 import { registerPushToken } from './liveScorers';
+import { initBilling, restoreApoio, endBilling } from './billing';
 import { fetchLatestMatches } from './liveData';
 import { isStale } from './freshness';
 import { ALL_MATCHES, Match, hasMatchInPlayWindow } from '../data/fixtures';
@@ -40,6 +41,8 @@ type Store = {
   toggleTeam: (teamId: string) => void;
   setSelected: (ids: string[]) => void;
   updateSettings: (patch: Partial<Settings>) => void;
+  /** Marca o usuário como apoiador (IAP confirmado/restaurado) e persiste. */
+  grantSupporter: () => void;
   completeOnboarding: () => void;
   refresh: () => Promise<void>;
   setPrediction: (matchId: string, p: Prediction) => void;
@@ -62,6 +65,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // Evita reagendar/persistir antes do carregamento inicial.
   const loaded = useRef(false);
+
+  // Concede o status de apoiador e PERSISTE na hora (não depende do efeito de
+  // persistência, que pula a 1ª escrita pós-load). Idempotente.
+  const grantSupporter = useCallback(() => {
+    setSettings((prev) => {
+      if (prev.supporter) return prev;
+      const next = { ...prev, supporter: true };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -88,8 +102,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // Registra push token no servidor (fire-and-forget, não bloqueia o boot).
       // Só refaz se o token mudou (raro, mas acontece quando o app é reinstalado).
       registerExpoPushToken();
+
+      // IAP de apoio: liga listeners e reconcilia a posse com a loja (fonte da
+      // verdade — sobrevive a reinstalação). Fire-and-forget, no-op em Expo Go.
+      initApoioBilling();
     })();
   }, []);
+
+  async function initApoioBilling() {
+    await initBilling(grantSupporter); // compra confirmada → vira apoiador
+    if (await restoreApoio()) grantSupporter(); // já comprou antes → reconcilia
+  }
+
+  // Encerra a conexão com a loja ao desmontar o provider.
+  useEffect(() => () => { endBilling(); }, []);
 
   async function registerExpoPushToken() {
     const token = await getExpoPushToken();
@@ -248,6 +274,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }),
       setSelected: (ids) => setSelectedState(new Set(ids)),
       updateSettings: (patch) => setSettings((prev) => ({ ...prev, ...patch })),
+      grantSupporter,
       completeOnboarding: () => {
         setOnboarded(true);
         saveOnboarded(true);
@@ -263,7 +290,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }),
       clearAllPredictions: () => mutatePredictions(() => ({})),
     }),
-    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh],
+    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh, grantSupporter],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
