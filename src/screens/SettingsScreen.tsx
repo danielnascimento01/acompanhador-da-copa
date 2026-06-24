@@ -6,6 +6,7 @@ import { useStore } from '../lib/store';
 import {
   countScheduled,
   getPermissionGranted,
+  getPushDiagnostic,
   requestPermission,
   rescheduleAll,
   sendTestNotification,
@@ -253,6 +254,19 @@ export function SettingsScreen() {
       <Text style={styles.versionLine}>
         Acompanhador da Copa · v{appVersion()} · {otaStatus()}
       </Text>
+
+      {/* DIAGNÓSTICO temporário do push remoto — remover após investigar */}
+      <Pressable
+        onPress={async () => {
+          const detail = await getPushDiagnostic();
+          Alert.alert('Diagnóstico de push', detail);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Diagnosticar push remoto"
+        hitSlop={8}
+      >
+        <Text style={styles.diagLink}>🔧 Diagnosticar push</Text>
+      </Pressable>
       </ScrollView>
 
       {Platform.OS === 'ios' && (
@@ -365,5 +379,6 @@ const styles = StyleSheet.create({
   },
   supportGhostText: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
   versionLine: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11, textAlign: 'center', marginTop: spacing(5) },
+  diagLink: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(3), textDecorationLine: 'underline' },
 });
 

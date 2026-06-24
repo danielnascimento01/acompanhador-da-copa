@@ -233,3 +233,25 @@ export async function sendTestNotification() {
     },
   });
 }
+
+/**
+ * DIAGNÓSTICO (temporário): tenta obter o token de push remoto e devolve o
+ * resultado em texto — token OK ou a mensagem de erro exata. Usado para
+ * descobrir por que o registro de push falha (getExpoPushTokenAsync engole o
+ * erro no fluxo normal). Remover depois de diagnosticar.
+ */
+export async function getPushDiagnostic(): Promise<string> {
+  if (!Device.isDevice) return 'Não é um aparelho físico (simulador).';
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return `Permissão não concedida (status: ${status}).`;
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  if (!projectId) return 'projectId ausente no app.json.';
+  try {
+    const t = await Notifications.getExpoPushTokenAsync({ projectId });
+    return `TOKEN OK:\n${t.data}`;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return `ERRO ao obter token de push:\n${msg}`;
+  }
+}
