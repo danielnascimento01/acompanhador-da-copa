@@ -8,6 +8,13 @@ const KEY_MATCHES     = 'copa2026:cachedMatches';
 const KEY_ONBOARDED   = 'copa2026:onboarded';
 const KEY_PREDICTIONS = 'copa2026:predictions';
 const KEY_PUSH_TOKEN  = 'copa2026:pushToken';
+const KEY_ANNOUNCE    = 'copa2026:lastAnnounce';
+
+/**
+ * Id do aviso (popup de novidade) ATUAL. Para lançar um novo aviso no futuro,
+ * basta mudar este id — o popup volta a aparecer uma vez para todos.
+ */
+export const CURRENT_ANNOUNCE_ID = 'goal-push-v1';
 
 /**
  * URL do Cloudflare Worker que gerencia push de gol e artilheiros ao vivo.
@@ -160,4 +167,21 @@ export async function loadPushToken(): Promise<string | null> {
 
 export async function savePushToken(token: string): Promise<void> {
   await AsyncStorage.setItem(KEY_PUSH_TOKEN, token);
+}
+
+/** Id do último aviso (popup) que o usuário já viu. null = nunca viu nenhum. */
+export async function loadLastAnnounce(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(KEY_ANNOUNCE);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLastAnnounce(id: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEY_ANNOUNCE, id);
+  } catch {
+    // Falha de escrita não é crítica — o popup pode reaparecer no próximo boot.
+  }
 }

@@ -18,6 +18,9 @@ import {
   savePredictions,
   loadPushToken,
   savePushToken,
+  loadLastAnnounce,
+  saveLastAnnounce,
+  CURRENT_ANNOUNCE_ID,
 } from './storage';
 import { rescheduleAll, getExpoPushToken } from './notifications';
 import { registerPushToken, type PushPrefs } from './liveScorers';
@@ -46,6 +49,9 @@ type Store = {
   /** Segue/deixa de seguir um jogo específico para push de gol. */
   toggleFollowMatch: (matchId: string) => void;
   isFollowingMatch: (matchId: string) => boolean;
+  /** Popup de novidade deve aparecer? (uma vez, só p/ quem já usava o app). */
+  announceVisible: boolean;
+  dismissAnnounce: () => void;
   completeOnboarding: () => void;
   refresh: () => Promise<void>;
   setPrediction: (matchId: string, p: Prediction) => void;
@@ -65,6 +71,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [online, setOnline] = useState(true);
   const [predictions, setPredictions] = useState<PredictionMap>({});
+  const [announceVisible, setAnnounceVisible] = useState(false);
 
   // Evita reagendar/persistir antes do carregamento inicial.
   const loaded = useRef(false);
@@ -80,18 +87,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Fecha o popup de novidade e marca como visto (não volta a aparecer).
+  const dismissAnnounce = useCallback(() => {
+    setAnnounceVisible(false);
+    saveLastAnnounce(CURRENT_ANNOUNCE_ID);
+  }, []);
+
   useEffect(() => {
     (async () => {
-      const [teams, s, cached, ob, preds] = await Promise.all([
+      const [teams, s, cached, ob, preds, lastAnnounce] = await Promise.all([
         loadSelectedTeams(),
         loadSettings(),
         loadCachedMatches(),
         loadOnboarded(),
         loadPredictions(),
+        loadLastAnnounce(),
       ]);
       setSelectedState(new Set(teams));
       setSettings(s);
       setOnboarded(ob);
+      // Popup de novidade: só para quem JÁ usava o app (onboarded numa sessão
+      // anterior) e ainda não viu este aviso. Usuário novo nunca vê (a novidade
+      // já faz parte do app para ele).
+      if (ob && lastAnnounce !== CURRENT_ANNOUNCE_ID) setAnnounceVisible(true);
       // null = falha de leitura: começa vazio em memória, mas NÃO regrava o
       // disco até o usuário mexer (protege os palpites salvos).
       setPredictions(preds ?? {});
@@ -314,9 +332,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ...prev, followedMatches: [...set] };
         }),
       isFollowingMatch: (matchId) => settings.followedMatches.includes(matchId),
+      announceVisible,
+      dismissAnnounce,
       completeOnboarding: () => {
         setOnboarded(true);
         saveOnboarded(true);
+        // Usuário novo já entra com a novidade "vista" — não recebe o popup depois.
+        saveLastAnnounce(CURRENT_ANNOUNCE_ID);
       },
       refresh,
       setPrediction: (matchId, p) =>
@@ -329,7 +351,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }),
       clearAllPredictions: () => mutatePredictions(() => ({})),
     }),
-    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh, grantSupporter],
+    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh, grantSupporter, announceVisible, dismissAnnounce],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
