@@ -7,9 +7,9 @@ const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
 const LEAGUE_ID = extra.thesportsdbLeagueId ?? '4429';
 const SEASON = extra.thesportsdbSeason ?? '2026';
 
-// Rodadas a buscar: 1-3 = fase de grupos. Quando os mata-matas saírem,
-// é só incluir mais rodadas aqui (as vazias são ignoradas).
-const ROUNDS = [1, 2, 3];
+// 1-3 = fase de grupos; 4-8 = mata-matas (oitavas→final).
+// Rodadas vazias retornam [] e são ignoradas — seguro buscar adiantado.
+const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8];
 const BASE = 'https://www.thesportsdb.com/api/v1/json/3';
 
 type ApiEvent = {
@@ -131,13 +131,16 @@ async function reconcileWithEspn(matches: Match[]): Promise<{ matches: Match[]; 
     const homeIsOurHome = teamMatches(e.homeName, m.home);
     const hs = homeIsOurHome ? e.homeScore : e.awayScore;
     const as = homeIsOurHome ? e.awayScore : e.homeScore;
-    // Antes do apito (state 'pre'), zera o placar: nenhum ponto na tabela até começar.
-    const started = e.state === 'in' || e.state === 'post';
+    // 'pre': sem placar.
+    // 'in': fallback no placar anterior se ESPN retornar null temporariamente.
+    // 'post': ESPN é autoritativa — se mandou null, melhor mostrar null do que dado errado.
+    const itsIn = e.state === 'in';
+    const itsPost = e.state === 'post';
     return {
       ...m,
       status: espnStatusCode(e),
-      homeScore: started ? hs ?? m.homeScore : null,
-      awayScore: started ? as ?? m.awayScore : null,
+      homeScore: itsIn ? (hs ?? m.homeScore) : (itsPost ? hs : null),
+      awayScore: itsIn ? (as ?? m.awayScore) : (itsPost ? as : null),
     };
   });
   return { matches: reconciled, ok: true };

@@ -5,19 +5,21 @@ import { StandingsTable } from '../components/StandingsTable';
 import { QuickPredictRow } from '../components/QuickPredictRow';
 import { FadeInUp } from '../components/Motion';
 import { applyPredictions, computeStandings, countActivePredictions } from '../data/standings';
-import { Match, isPredictable } from '../data/fixtures';
+import { Match, isPredictable, hasMatchInPlayWindow } from '../data/fixtures';
 import { GROUPS, getTeam } from '../data/teams';
 import { ScorersSheet } from './ScorersSheet';
 import { HistorySheet } from './HistorySheet';
 import { VenuesSheet } from './VenuesSheet';
 import { BracketSheet } from './BracketSheet';
 import { useStore } from '../lib/store';
+import { isStale } from '../lib/freshness';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 type Mode = 'official' | 'predicted';
 
 export function StandingsScreen() {
-  const { matches, selected, predictions, setPrediction, clearAllPredictions } = useStore();
+  const { matches, selected, predictions, setPrediction, clearAllPredictions, updatedAt, settings } = useStore();
+  const dataStale = isStale(updatedAt, Date.now(), hasMatchInPlayWindow(matches), settings.dataSaver);
   const [mode, setMode] = useState<Mode>('official');
   const [scorersOpen, setScorersOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -67,6 +69,12 @@ export function StandingsScreen() {
     >
       <Text style={styles.kicker}>FASE DE GRUPOS</Text>
       <Text style={styles.title}>Grupos</Text>
+
+      {dataStale && (
+        <View style={styles.staleBadge}>
+          <Text style={styles.staleBadgeText}>⚠ Classificação pode estar desatualizada — atualize na aba Jogos</Text>
+        </View>
+      )}
 
       {/* Mais da Copa: Artilheiros + História + Sedes */}
       <View style={styles.moreRow}>
@@ -186,6 +194,16 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3, marginBottom: spacing(3) },
+  staleBadge: {
+    backgroundColor: 'rgba(255,194,51,0.10)',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,194,51,0.35)',
+    paddingHorizontal: spacing(3),
+    paddingVertical: spacing(2),
+    marginBottom: spacing(3),
+  },
+  staleBadgeText: { color: colors.amber, fontFamily: fonts.semibold, fontSize: 13 },
   moreRow: { flexDirection: 'row', gap: spacing(2), marginBottom: spacing(3) },
   moreBtn: {
     flex: 1,

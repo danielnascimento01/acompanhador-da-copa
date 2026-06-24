@@ -13,7 +13,7 @@ export type Scorer = {
 };
 
 /** Data da última atualização da artilharia (mostrada na tela). */
-export const SCORERS_UPDATED = '23/06/2026';
+export const SCORERS_UPDATED = '24/06/2026';
 
 /**
  * Gols do Messi em todas as Copas ANTES de 2026 (2006+2010+2014+2018+2022 = 13).
