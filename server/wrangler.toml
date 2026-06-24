@@ -12,11 +12,11 @@ crons = ["* * * * *"]
 # Substitua os IDs abaixo após criar.
 [[kv_namespaces]]
 binding = "KV"
-id = "SUBSTITUA_COM_KV_ID"
-preview_id = "SUBSTITUA_COM_KV_PREVIEW_ID"
+id = "eb1e9b02308546c2be7c2cbf453ae1c0"
+preview_id = "bce8188ada6b49abafb391eb9573d8a4"
 
 [vars]
 # URL pública deste worker (atualizar após o primeiro deploy)
-WORKER_URL = "https://copa2026-worker.SEU_USER.workers.dev"
+WORKER_URL = "https://copa2026-worker.nascimentodaniel.workers.dev"
 # Token de acesso Expo (opcional — https://expo.dev/accounts/SEU_USER/settings/access-tokens)
 # Configure via: wrangler secret put EXPO_ACCESS_TOKEN

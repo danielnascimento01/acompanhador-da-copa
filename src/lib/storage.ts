@@ -13,7 +13,7 @@ const KEY_PUSH_TOKEN  = 'copa2026:pushToken';
  * URL do Cloudflare Worker que gerencia push de gol e artilheiros ao vivo.
  * Atualizar após o primeiro `wrangler deploy` em server/.
  */
-export const SERVER_URL = 'https://copa2026-worker.danielnascimento.workers.dev';
+export const SERVER_URL = 'https://copa2026-worker.nascimentodaniel.workers.dev';
 
 /** Palpite do usuário para um jogo (placar simulado). `at` = quando palpitou. */
 export type Prediction = { home: number; away: number; at?: number };
