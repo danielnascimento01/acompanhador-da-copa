@@ -36,8 +36,17 @@ export function MatchDetailSheet({ match, matches, selected, onClose }: Props) {
 }
 
 function Content({ match, matches, selected, onClose }: { match: Match } & Omit<Props, 'match'>) {
-  const { predictions, setPrediction, clearPrediction } = useStore();
+  const { predictions, setPrediction, clearPrediction, settings, updateSettings, toggleFollowMatch, isFollowingMatch } = useStore();
   const ko = kickoff(match);
+  const following = isFollowingMatch(match.id);
+
+  // Seguir os gols deste jogo. Se o push de gol estiver desligado, ligar no modo
+  // "minhas seleções" (senão o 🔔 não teria efeito — evita confusão).
+  const onToggleFollow = () => {
+    const willFollow = !following;
+    toggleFollowMatch(match.id);
+    if (willFollow && settings.goalPush === 'off') updateSettings({ goalPush: 'mine' });
+  };
   // Estado confirmado (nunca pelo relógio): 'unconfirmed' (apito passou mas sem
   // status reconciliado) cai em neutro 'RODADA N' e esconde placar parcial/preso.
   const d = matchDisplay(match);
@@ -60,14 +69,29 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
     <View style={styles.sheet}>
       <View style={styles.grabber} />
       <View style={styles.sheetHeader}>
-        <Pressable
-          onPress={() => shareMatch(match)}
-          accessibilityRole="button"
-          accessibilityLabel="Compartilhar no WhatsApp"
-          hitSlop={8}
-        >
-          <Text style={styles.shareText}>↗ Compartilhar</Text>
-        </Pressable>
+        <View style={styles.headerLeft}>
+          <Pressable
+            onPress={() => shareMatch(match)}
+            accessibilityRole="button"
+            accessibilityLabel="Compartilhar no WhatsApp"
+            hitSlop={8}
+          >
+            <Text style={styles.shareText}>↗ Compartilhar</Text>
+          </Pressable>
+          {!finished && (
+            <Pressable
+              onPress={onToggleFollow}
+              accessibilityRole="button"
+              accessibilityState={{ selected: following }}
+              accessibilityLabel={following ? 'Deixar de seguir os gols deste jogo' : 'Seguir os gols deste jogo'}
+              hitSlop={8}
+            >
+              <Text style={[styles.followText, following && styles.followTextActive]}>
+                {following ? '🔔 Seguindo' : '🔕 Seguir gols'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
         <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Fechar" hitSlop={8}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
@@ -228,8 +252,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing(3),
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing(4) },
   closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
   shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 13 },
+  followText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  followTextActive: { color: colors.amber },
   scoreCard: { borderRadius: radius.xl, padding: spacing(5), marginBottom: spacing(4) },
   headLabel: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.display, fontSize: 13, letterSpacing: 1, textAlign: 'center' },
   scoreRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing(4) },

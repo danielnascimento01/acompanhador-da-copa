@@ -20,7 +20,7 @@ import {
   savePushToken,
 } from './storage';
 import { rescheduleAll, getExpoPushToken } from './notifications';
-import { registerPushToken } from './liveScorers';
+import { registerPushToken, type PushPrefs } from './liveScorers';
 import { initBilling, restoreApoio, endBilling } from './billing';
 import { fetchLatestMatches } from './liveData';
 import { isStale } from './freshness';
@@ -43,6 +43,9 @@ type Store = {
   updateSettings: (patch: Partial<Settings>) => void;
   /** Marca o usuário como apoiador (IAP confirmado/restaurado) e persiste. */
   grantSupporter: () => void;
+  /** Segue/deixa de seguir um jogo específico para push de gol. */
+  toggleFollowMatch: (matchId: string) => void;
+  isFollowingMatch: (matchId: string) => boolean;
   completeOnboarding: () => void;
   refresh: () => Promise<void>;
   setPrediction: (matchId: string, p: Prediction) => void;
@@ -99,9 +102,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loaded.current = true;
       setReady(true);
 
-      // Registra push token no servidor (fire-and-forget, não bloqueia o boot).
-      // Só refaz se o token mudou (raro, mas acontece quando o app é reinstalado).
-      registerExpoPushToken();
+      // Registra push token + preferências de gol no servidor (fire-and-forget).
+      registerExpoPushToken(buildPushPrefs(s, teams));
 
       // IAP de apoio: liga listeners e reconcilia a posse com a loja (fonte da
       // verdade — sobrevive a reinstalação). Fire-and-forget, no-op em Expo Go.
@@ -117,13 +119,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // Encerra a conexão com a loja ao desmontar o provider.
   useEffect(() => () => { endBilling(); }, []);
 
-  async function registerExpoPushToken() {
+  // Reenvia as preferências de push de gol quando mudam (modo, seleções
+  // marcadas ou jogos seguidos). Debounce evita um POST por toque.
+  const pushPrefsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!loaded.current) return;
+    if (pushPrefsTimer.current) clearTimeout(pushPrefsTimer.current);
+    pushPrefsTimer.current = setTimeout(async () => {
+      const token = await loadPushToken();
+      if (!token) return; // sem permissão ainda — registra quando ativar
+      await registerPushToken(token, buildPushPrefs(settings, [...selected]));
+    }, 800);
+    return () => {
+      if (pushPrefsTimer.current) clearTimeout(pushPrefsTimer.current);
+    };
+  }, [settings.goalPush, settings.followedMatches, selected]);
+
+  // Monta as preferências de push de gol a partir das seleções + jogos seguidos.
+  // Jogos seguidos viram PARES de times (o servidor casa por nome, evitando o
+  // conflito de ids ESPN↔TheSportsDB).
+  function buildPushPrefs(s: Settings, teamIds: string[]): PushPrefs {
+    // A seleção FAVORITA sempre recebe push de gol — mesmo que tenha sido
+    // desmarcada de `selected` (eleger favorita marca, mas desmarcar não desfaz).
+    const teams =
+      s.primaryTeam && !teamIds.includes(s.primaryTeam) ? [...teamIds, s.primaryTeam] : teamIds;
+    const matches = s.followedMatches
+      .map((id) => ALL_MATCHES.find((m) => m.id === id))
+      .filter((m): m is Match => !!m)
+      .map((m): [string, string] => [m.home, m.away]);
+    return { mode: s.goalPush, teams, matches };
+  }
+
+  async function registerExpoPushToken(prefs: PushPrefs) {
     const token = await getExpoPushToken();
-    if (!token) return;
-    const stored = await loadPushToken();
-    if (stored === token) return; // Token não mudou — não bate no servidor
-    await registerPushToken(token);
+    if (!token) return; // sem permissão/dispositivo — nada a registrar
     await savePushToken(token);
+    await registerPushToken(token, prefs);
   }
 
   // Persiste seleção/preferências assim que mudam — pulando a primeira
@@ -275,6 +306,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSelected: (ids) => setSelectedState(new Set(ids)),
       updateSettings: (patch) => setSettings((prev) => ({ ...prev, ...patch })),
       grantSupporter,
+      toggleFollowMatch: (matchId) =>
+        setSettings((prev) => {
+          const set = new Set(prev.followedMatches);
+          if (set.has(matchId)) set.delete(matchId);
+          else set.add(matchId);
+          return { ...prev, followedMatches: [...set] };
+        }),
+      isFollowingMatch: (matchId) => settings.followedMatches.includes(matchId),
       completeOnboarding: () => {
         setOnboarded(true);
         saveOnboarded(true);

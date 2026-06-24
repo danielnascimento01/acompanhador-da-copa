@@ -61,6 +61,11 @@ export type Settings = {
   primaryTeam: string | null;
   /** Apoiou o projeto via IAP "Apoie o projeto". Cosmético/gratidão — NUNCA libera função. */
   supporter: boolean;
+  /** Push de GOL (remoto, app fechado): 'all' = todos os jogos · 'mine' = só as
+   *  minhas seleções + jogos seguidos · 'off' = nenhum. Independe dos avisos locais. */
+  goalPush: 'all' | 'mine' | 'off';
+  /** Jogos específicos seguidos para push de gol (ids de Match), além das seleções. */
+  followedMatches: string[];
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -71,6 +76,8 @@ export const DEFAULT_SETTINGS: Settings = {
   dataSaver: false,
   primaryTeam: null,
   supporter: false,
+  goalPush: 'mine',
+  followedMatches: [],
 };
 
 export async function loadSelectedTeams(): Promise<string[]> {

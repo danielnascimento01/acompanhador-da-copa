@@ -13,14 +13,26 @@
 
 export const APOIO_SKU = 'copa_apoio';
 
+/**
+ * Tip jar DESLIGADO por enquanto (decisão de 24/06: adiado até o pivô ano-todo).
+ * Mantém o código pronto, mas garante que NADA do IAP aparece nem é tocado —
+ * crucial pro OTA na 1.2.0, cujo binário não tem o módulo nativo do expo-iap.
+ * Religar = `true` + build nativo (1.3.0) + SKU cadastrado nas lojas.
+ */
+const TIP_JAR_ENABLED = false;
+
 type IapModule = typeof import('expo-iap');
 
-// require preguiçoso: a ausência do módulo nativo não pode derrubar o bundle.
+// require preguiçoso E gateado pelo flag: enquanto desligado, NEM tentamos
+// requerer o expo-iap — assim, num binário sem o módulo nativo (ex.: a 1.2.0
+// que recebe este código via OTA), o código nativo nunca é tocado.
 let iap: IapModule | null = null;
-try {
-  iap = require('expo-iap') as IapModule;
-} catch {
-  iap = null;
+if (TIP_JAR_ENABLED) {
+  try {
+    iap = require('expo-iap') as IapModule;
+  } catch {
+    iap = null;
+  }
 }
 
 let purchaseSub: { remove: () => void } | null = null;
@@ -29,9 +41,9 @@ let connected = false;
 
 export type ApoioProduct = { id: string; price: string; title: string };
 
-/** Há suporte a IAP neste runtime? (false em Expo Go/web). */
+/** Há suporte a IAP neste runtime? (false se desligado, ou em Expo Go/web). */
 export function isBillingAvailable(): boolean {
-  return iap != null;
+  return TIP_JAR_ENABLED && iap != null;
 }
 
 /** Esta compra/posse é do SKU de apoio? (cobre os formatos de id do expo-iap). */

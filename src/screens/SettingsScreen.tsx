@@ -20,6 +20,12 @@ import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
 
 const LEAD_OPTIONS = [5, 10, 15, 30, 60];
 
+const GOAL_PUSH_OPTIONS: { key: 'mine' | 'all' | 'off'; label: string }[] = [
+  { key: 'mine', label: 'Minhas seleções' },
+  { key: 'all', label: 'Todos os jogos' },
+  { key: 'off', label: 'Desligado' },
+];
+
 export function SettingsScreen() {
   const { settings, updateSettings, selected, matches } = useStore();
   const [granted, setGranted] = useState<boolean | null>(null);
@@ -146,8 +152,46 @@ export function SettingsScreen() {
         )}
       </View>
 
+      {/* Push de gol (remoto, via servidor — funciona com o app fechado) */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>⚽ Push de gol</Text>
+        <Text style={styles.cardText}>
+          Avisa na hora que sai gol, mesmo com o app fechado. Escolha de quais jogos quer receber.
+        </Text>
+        <View style={styles.chipsRow}>
+          {GOAL_PUSH_OPTIONS.map((opt) => {
+            const active = settings.goalPush === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => updateSettings({ goalPush: opt.key })}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Push de gol: ${opt.label}`}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {settings.goalPush === 'mine' && selected.size === 0 && !settings.primaryTeam && (
+          <Text style={styles.goalHint}>
+            Você ainda não marcou seleções. Marque na aba Seleções para receber os gols delas — ou
+            escolha “Todos os jogos”. Também dá para seguir um jogo específico tocando no 🔔 dentro do jogo.
+          </Text>
+        )}
+        {settings.goalPush === 'mine' && (selected.size > 0 || settings.primaryTeam) && (
+          <Text style={styles.goalHint}>
+            Você recebe os gols das suas seleções e da sua favorita. Para um jogo fora da sua lista,
+            toque no 🔔 dentro do jogo.
+          </Text>
+        )}
+      </View>
+
       <Text style={styles.note}>
-        Os avisos são agendados direto no seu aparelho e funcionam mesmo sem internet.
+        Os avisos de jogo são agendados no seu aparelho e funcionam sem internet. O push de gol vem do
+        nosso servidor — precisa de internet no momento do gol.
       </Text>
 
       <Text style={styles.title}>Dados</Text>
@@ -296,6 +340,7 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 14 },
   chipTextActive: { color: colors.ink, fontFamily: fonts.bold },
   note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2) },
+  goalHint: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, marginTop: spacing(3) },
   iconCard: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), marginTop: spacing(4) },
   iconPreview: { width: 52, height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   iconChevron: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 28, marginTop: -4 },

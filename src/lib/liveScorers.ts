@@ -72,13 +72,26 @@ function staticScorers(): LiveScorer[] {
   }));
 }
 
-/** Registra o push token no servidor. Fire-and-forget — não bloqueia o app. */
-export async function registerPushToken(token: string): Promise<void> {
+/** Preferências de push de gol enviadas ao servidor junto com o token. */
+export type PushPrefs = {
+  mode: 'all' | 'mine' | 'off';
+  /** ids internos das seleções seguidas. */
+  teams: string[];
+  /** jogos específicos seguidos, como pares de ids de time [home, away]. */
+  matches: [string, string][];
+};
+
+/**
+ * Registra o token + as preferências de push de gol no servidor.
+ * Fire-and-forget — não bloqueia o app. O servidor usa as prefs para filtrar
+ * quais gols notificam este aparelho.
+ */
+export async function registerPushToken(token: string, prefs?: PushPrefs): Promise<void> {
   try {
     await fetch(`${SERVER_URL}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify(prefs ? { token, ...prefs } : { token }),
       signal: AbortSignal.timeout(10_000),
     });
   } catch {

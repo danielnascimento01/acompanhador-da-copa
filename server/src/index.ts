@@ -13,6 +13,7 @@
 import { fetchScoreboard, extractScore, fetchPlays } from './espn';
 import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
+import { wantsGoal, type SubscriberPrefs } from './filter';
 
 export interface Env {
   KV: KVNamespace;
@@ -22,10 +23,38 @@ export interface Env {
 
 // ── KV key helpers ─────────────────────────────────────────────────────────────
 const K = {
-  tokens: 'tokens',
+  tokens: 'tokens',   // legado (string[]) — migrado para `subs`
+  subs: 'subs',       // Record<token, SubscriberPrefs>
   scorers: 'scorers',
   lastScore: (matchId: string) => `lastScore:${matchId}`,
 };
+
+type Subscribers = Record<string, SubscriberPrefs>;
+
+const DEFAULT_PREFS: SubscriberPrefs = { mode: 'all', teams: [], matches: [] };
+
+/**
+ * Carrega os assinantes. Migra os tokens legados (string[] do `K.tokens`,
+ * registrados antes desta feature) como mode 'all' — preserva o comportamento
+ * atual de quem ainda não atualizou o app (OTA).
+ */
+async function loadSubscribers(env: Env): Promise<Subscribers> {
+  const subsRaw = await env.KV.get(K.subs);
+  const subs: Subscribers = subsRaw ? (JSON.parse(subsRaw) as Subscribers) : {};
+
+  const legacyRaw = await env.KV.get(K.tokens);
+  if (legacyRaw) {
+    const legacy = JSON.parse(legacyRaw) as string[];
+    for (const t of legacy) {
+      if (!subs[t]) subs[t] = { ...DEFAULT_PREFS };
+    }
+  }
+  return subs;
+}
+
+async function saveSubscribers(env: Env, subs: Subscribers): Promise<void> {
+  await env.KV.put(K.subs, JSON.stringify(subs), { expirationTtl: 365 * 24 * 60 * 60 });
+}
 
 // ── Cron ───────────────────────────────────────────────────────────────────────
 
@@ -38,10 +67,10 @@ async function runCron(env: Env): Promise<void> {
   const liveEvents = events.filter((e) => e.status.type.state === 'in');
   if (liveEvents.length === 0) return;
 
-  // Carrega tokens uma vez para usar em todos os gols
-  const tokensRaw = await env.KV.get(K.tokens);
-  const tokens: string[] = tokensRaw ? (JSON.parse(tokensRaw) as string[]) : [];
-  if (tokens.length === 0) return;
+  // Carrega os assinantes (com preferências) uma vez para todos os gols.
+  const subs = await loadSubscribers(env);
+  if (Object.keys(subs).length === 0) return;
+  let subsDirty = false; // só persiste o `subs` se removermos algum token inválido
 
   for (const event of liveEvents) {
     const { home, away, homeTeam, awayTeam } = extractScore(event);
@@ -82,6 +111,11 @@ async function runCron(env: Env): Promise<void> {
     // (os últimos N plays de gol onde N = totalNewGoals)
     const newGoalPlays = goals.slice(-Math.max(totalNewGoals, 1));
 
+    // Destinatários deste jogo: só quem segue uma das seleções em campo
+    // (ou o jogo específico), conforme a preferência de cada aparelho.
+    const recipients = Object.keys(subs).filter((t) => wantsGoal(subs[t], homeTeam, awayTeam));
+    if (recipients.length === 0) continue;
+
     for (const play of newGoalPlays) {
       const scorer = play.athletesInvolved?.[0]?.displayName;
       const minute = play.clock?.displayValue ?? '';
@@ -93,19 +127,21 @@ async function runCron(env: Env): Promise<void> {
         ? `${scorer}${minute ? ` (${minute})` : ''}`
         : `${homeTeam} ${scoreStr} ${awayTeam}`;
 
-      const { invalidTokens } = await sendPush(tokens, { title, body, data: { matchId: event.id } }, env.EXPO_ACCESS_TOKEN);
+      const { invalidTokens } = await sendPush(recipients, { title, body, data: { matchId: event.id } }, env.EXPO_ACCESS_TOKEN);
 
-      // Remove tokens inválidos (dispositivos desinstalaram o app)
-      if (invalidTokens.length > 0) {
-        const updated = tokens.filter((t) => !invalidTokens.includes(t));
-        await env.KV.put(K.tokens, JSON.stringify(updated), {
-          expirationTtl: 365 * 24 * 60 * 60,
-        });
-        // Atualiza array local para os próximos gols deste ciclo
-        tokens.splice(0, tokens.length, ...updated);
+      // Remove tokens inválidos (dispositivos que desinstalaram o app).
+      for (const t of invalidTokens) {
+        if (subs[t]) {
+          delete subs[t];
+          subsDirty = true;
+        }
+        const i = recipients.indexOf(t);
+        if (i >= 0) recipients.splice(i, 1); // não reenvia neste ciclo
       }
     }
   }
+
+  if (subsDirty) await saveSubscribers(env, subs);
 }
 
 // ── HTTP API ───────────────────────────────────────────────────────────────────
@@ -120,12 +156,36 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+/** Sanitiza o modo recebido; default 'all' (compatível com app antigo). */
+function parseMode(m: unknown): SubscriberPrefs['mode'] {
+  return m === 'mine' || m === 'off' || m === 'all' ? m : 'all';
+}
+
+/** Sanitiza uma lista de ids de time (strings curtas, sem lixo). */
+function parseTeams(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 40).slice(0, 64);
+}
+
+/** Sanitiza a lista de jogos seguidos (pares de ids de time). */
+function parseMatches(v: unknown): [string, string][] {
+  if (!Array.isArray(v)) return [];
+  const out: [string, string][] = [];
+  for (const p of v) {
+    if (Array.isArray(p) && typeof p[0] === 'string' && typeof p[1] === 'string' && p[0] && p[1]) {
+      out.push([p[0].slice(0, 40), p[1].slice(0, 40)]);
+    }
+    if (out.length >= 128) break;
+  }
+  return out;
+}
+
 async function handleRegister(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  let body: { token?: string; platform?: string };
+  let body: { token?: string; mode?: unknown; teams?: unknown; matches?: unknown };
   try {
-    body = await request.json() as { token?: string; platform?: string };
+    body = (await request.json()) as typeof body;
   } catch {
     return json({ error: 'Invalid JSON' }, 400);
   }
@@ -135,17 +195,17 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
     return json({ error: 'Invalid Expo push token' }, 400);
   }
 
-  const raw = await env.KV.get(K.tokens);
-  const tokens: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+  const subs = await loadSubscribers(env);
+  // App antigo (só manda token) → mantém/assume 'all'. App novo manda as prefs.
+  const prefs: SubscriberPrefs =
+    body.mode === undefined && body.teams === undefined && body.matches === undefined
+      ? subs[token] ?? { ...DEFAULT_PREFS }
+      : { mode: parseMode(body.mode), teams: parseTeams(body.teams), matches: parseMatches(body.matches) };
 
-  if (!tokens.includes(token)) {
-    tokens.push(token);
-    await env.KV.put(K.tokens, JSON.stringify(tokens), {
-      expirationTtl: 365 * 24 * 60 * 60,
-    });
-  }
+  subs[token] = prefs;
+  await saveSubscribers(env, subs);
 
-  return json({ ok: true, total: tokens.length });
+  return json({ ok: true, total: Object.keys(subs).length });
 }
 
 async function handleScorers(env: Env): Promise<Response> {
@@ -154,9 +214,12 @@ async function handleScorers(env: Env): Promise<Response> {
 }
 
 async function handleHealth(env: Env): Promise<Response> {
-  const tokenCount = await env.KV.get(K.tokens).then((r: string | null) => (r ? JSON.parse(r).length : 0));
+  const subs = await loadSubscribers(env);
+  const tokens = Object.keys(subs);
+  const byMode = { all: 0, mine: 0, off: 0 };
+  for (const t of tokens) byMode[subs[t].mode]++;
   const hasScorers = (await env.KV.get(K.scorers)) !== null;
-  return json({ ok: true, tokens: tokenCount, hasScorers });
+  return json({ ok: true, tokens: tokens.length, byMode, hasScorers });
 }
 
 // ── Entry point ────────────────────────────────────────────────────────────────
