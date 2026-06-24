@@ -101,42 +101,43 @@ async function runCron(env: Env): Promise<void> {
 
     if (totalNewGoals <= 0) continue; // Gol anulado ou erro de dados — ignora
 
-    // Busca plays para identificar o(s) artilheiro(s)
-    const plays = await fetchPlays(event.id);
-    const goals = plays.filter(
-      (p) => p.type?.text === 'Goal' || p.type?.text === 'Penalty Goal',
-    );
-
-    // Encontra os gols novos comparando placar acumulado
-    // (os últimos N plays de gol onde N = totalNewGoals)
-    const newGoalPlays = goals.slice(-Math.max(totalNewGoals, 1));
-
     // Destinatários deste jogo: só quem segue uma das seleções em campo
     // (ou o jogo específico), conforme a preferência de cada aparelho.
     const recipients = Object.keys(subs).filter((t) => wantsGoal(subs[t], homeTeam, awayTeam));
     if (recipients.length === 0) continue;
 
-    for (const play of newGoalPlays) {
-      const scorer = play.athletesInvolved?.[0]?.displayName;
-      const minute = play.clock?.displayValue ?? '';
-      const playHome = play.homeScore ?? home;
-      const playAway = play.awayScore ?? away;
-      const scoreStr = `${playHome}–${playAway}`;
-      const title = `⚽ GOL! ${homeTeam} ${playHome}–${playAway} ${awayTeam}`;
-      const body = scorer
-        ? `${scorer}${minute ? ` (${minute})` : ''}`
-        : `${homeTeam} ${scoreStr} ${awayTeam}`;
+    // Tenta identificar o(s) artilheiro(s) pelos lances — MAS o push sai mesmo se
+    // não achar (robustez: o GOL já está CONFIRMADO pela mudança de placar). Antes,
+    // se fetchPlays não retornasse o lance, o loop ficava vazio e NENHUM push saía.
+    let scorerLine = '';
+    try {
+      const plays = await fetchPlays(event.id);
+      const goals = plays.filter(
+        (p) => (p.type?.text ?? '').toLowerCase().includes('goal'),
+      );
+      const names = goals
+        .slice(-totalNewGoals)
+        .map((p) => p.athletesInvolved?.[0]?.displayName)
+        .filter((n): n is string => !!n);
+      if (names.length > 0) scorerLine = names.join(', ');
+    } catch {
+      // Sem lance-a-lance — segue com push genérico.
+    }
 
-      const { invalidTokens } = await sendPush(recipients, { title, body, data: { matchId: event.id } }, env.EXPO_ACCESS_TOKEN);
+    const title = `⚽ GOL! ${homeTeam} ${home}–${away} ${awayTeam}`;
+    const body = scorerLine || `Saiu gol em ${homeTeam} x ${awayTeam}!`;
 
-      // Remove tokens inválidos (dispositivos que desinstalaram o app).
-      for (const t of invalidTokens) {
-        if (subs[t]) {
-          delete subs[t];
-          subsDirty = true;
-        }
-        const i = recipients.indexOf(t);
-        if (i >= 0) recipients.splice(i, 1); // não reenvia neste ciclo
+    const { invalidTokens } = await sendPush(
+      recipients,
+      { title, body, data: { matchId: event.id } },
+      env.EXPO_ACCESS_TOKEN,
+    );
+
+    // Remove tokens inválidos (dispositivos que desinstalaram o app).
+    for (const t of invalidTokens) {
+      if (subs[t]) {
+        delete subs[t];
+        subsDirty = true;
       }
     }
   }
@@ -222,6 +223,42 @@ async function handleHealth(env: Env): Promise<Response> {
   return json({ ok: true, tokens: tokens.length, byMode, hasScorers });
 }
 
+/**
+ * DIAGNÓSTICO (temporário): mostra o que o worker enxerga AGORA — jogos ao vivo,
+ * placar guardado no KV (revela se o cron já rodou e rastreou o jogo) e a
+ * estrutura dos lances (revela se fetchPlays acha os gols). Remover depois.
+ */
+async function handleDebug(env: Env): Promise<Response> {
+  const events = await fetchScoreboard();
+  const live = events.filter((e) => e.status.type.state === 'in');
+  const out: Array<Record<string, unknown>> = [];
+  for (const e of live) {
+    const { home, away, homeTeam, awayTeam } = extractScore(e);
+    const storedLastScore = await env.KV.get(K.lastScore(e.id));
+    let totalPlays = -1;
+    let goalPlays = -1;
+    let playTypes: string[] = [];
+    try {
+      const plays = await fetchPlays(e.id);
+      totalPlays = plays.length;
+      goalPlays = plays.filter((p) => (p.type?.text ?? '').toLowerCase().includes('goal')).length;
+      playTypes = Array.from(new Set(plays.map((p) => p.type?.text).filter((t): t is string => !!t))).slice(0, 25);
+    } catch (err) {
+      playTypes = [`FETCHPLAYS_ERROR: ${err instanceof Error ? err.message : String(err)}`];
+    }
+    out.push({
+      id: e.id,
+      match: `${homeTeam} ${home}-${away} ${awayTeam}`,
+      storedLastScore,            // null = cron ainda não rastreou (não rodou / acabou de começar)
+      currentScore: `${home}-${away}`,
+      totalPlays,                 // 0 = sem lance-a-lance; -1 = erro
+      goalPlays,                  // 0 com totalPlays>0 = filtro de gol não casa
+      playTypes,                  // tipos REAIS de lance que a ESPN retorna
+    });
+  }
+  return json({ liveCount: live.length, live: out });
+}
+
 // ── Entry point ────────────────────────────────────────────────────────────────
 
 export default {
@@ -232,6 +269,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    if (url.pathname === '/api/debug')    return handleDebug(env);
     if (url.pathname === '/api/register') return handleRegister(request, env);
     if (url.pathname === '/api/scorers')  return handleScorers(env);
     if (url.pathname === '/api/health')   return handleHealth(env);
