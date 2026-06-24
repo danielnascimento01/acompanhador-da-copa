@@ -14,6 +14,7 @@ import { fetchScoreboard, extractScore, fetchPlays } from './espn';
 import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
 import { wantsGoal, type SubscriberPrefs } from './filter';
+import { buildGoalNotification } from './notify';
 
 export interface Env {
   KV: KVNamespace;
@@ -61,8 +62,12 @@ async function saveSubscribers(env: Env, subs: Subscribers): Promise<void> {
 async function runCron(env: Env): Promise<void> {
   const events = await fetchScoreboard();
 
-  // Agrega artilheiros (roda sempre, independente de haver jogo ao vivo)
-  await aggregateScorers(env.KV);
+  // Agrega artilheiros — isolado: se falhar, NÃO pode bloquear o push de gol.
+  try {
+    await aggregateScorers(env.KV);
+  } catch (err) {
+    console.error('runCron: aggregateScorers falhou:', err);
+  }
 
   const liveEvents = events.filter((e) => e.status.type.state === 'in');
   if (liveEvents.length === 0) return;
@@ -73,72 +78,74 @@ async function runCron(env: Env): Promise<void> {
   let subsDirty = false; // só persiste o `subs` se removermos algum token inválido
 
   for (const event of liveEvents) {
-    const { home, away, homeTeam, awayTeam } = extractScore(event);
-    const currentScoreStr = `${home}-${away}`;
-
-    const storedScoreStr = await env.KV.get(K.lastScore(event.id));
-
-    // Primeiro poll desse jogo — apenas guarda o placar, não notifica
-    if (storedScoreStr === null) {
-      await env.KV.put(K.lastScore(event.id), currentScoreStr, {
-        expirationTtl: 48 * 60 * 60,
-      });
-      continue;
-    }
-
-    if (storedScoreStr === currentScoreStr) continue; // Nenhuma mudança
-
-    // Placar mudou — pode ter 1+ gols (se cron perdeu um ciclo)
-    const [prevHome, prevAway] = storedScoreStr.split('-').map(Number);
-    const newHomeGoals = home - prevHome;
-    const newAwayGoals = away - prevAway;
-    const totalNewGoals = newHomeGoals + newAwayGoals;
-
-    // Atualiza KV antes de enviar push (evita loop se push falhar)
-    await env.KV.put(K.lastScore(event.id), currentScoreStr, {
-      expirationTtl: 48 * 60 * 60,
-    });
-
-    if (totalNewGoals <= 0) continue; // Gol anulado ou erro de dados — ignora
-
-    // Destinatários deste jogo: só quem segue uma das seleções em campo
-    // (ou o jogo específico), conforme a preferência de cada aparelho.
-    const recipients = Object.keys(subs).filter((t) => wantsGoal(subs[t], homeTeam, awayTeam));
-    if (recipients.length === 0) continue;
-
-    // Tenta identificar o(s) artilheiro(s) pelos lances — MAS o push sai mesmo se
-    // não achar (robustez: o GOL já está CONFIRMADO pela mudança de placar). Antes,
-    // se fetchPlays não retornasse o lance, o loop ficava vazio e NENHUM push saía.
-    let scorerLine = '';
+    // Um jogo com erro (ESPN instável, parsing) NÃO pode abortar os demais.
     try {
-      const plays = await fetchPlays(event.id);
-      const goals = plays.filter(
-        (p) => (p.type?.text ?? '').toLowerCase().includes('goal'),
-      );
-      const names = goals
-        .slice(-totalNewGoals)
-        .map((p) => p.athletesInvolved?.[0]?.displayName)
-        .filter((n): n is string => !!n);
-      if (names.length > 0) scorerLine = names.join(', ');
-    } catch {
-      // Sem lance-a-lance — segue com push genérico.
-    }
+      const { home, away, homeTeam, awayTeam } = extractScore(event);
+      const currentScoreStr = `${home}-${away}`;
 
-    const title = `⚽ GOL! ${homeTeam} ${home}–${away} ${awayTeam}`;
-    const body = scorerLine || `Saiu gol em ${homeTeam} x ${awayTeam}!`;
+      const storedScoreStr = await env.KV.get(K.lastScore(event.id));
 
-    const { invalidTokens } = await sendPush(
-      recipients,
-      { title, body, data: { matchId: event.id } },
-      env.EXPO_ACCESS_TOKEN,
-    );
-
-    // Remove tokens inválidos (dispositivos que desinstalaram o app).
-    for (const t of invalidTokens) {
-      if (subs[t]) {
-        delete subs[t];
-        subsDirty = true;
+      // Primeiro poll desse jogo — apenas guarda o placar, não notifica.
+      if (storedScoreStr === null) {
+        await env.KV.put(K.lastScore(event.id), currentScoreStr, { expirationTtl: 48 * 60 * 60 });
+        continue;
       }
+
+      if (storedScoreStr === currentScoreStr) continue; // nenhuma mudança
+
+      // Placar mudou — pode ter 1+ gols (se o cron perdeu um ciclo).
+      const [prevHome, prevAway] = storedScoreStr.split('-').map(Number);
+      const newHomeGoals = home - prevHome;
+      const newAwayGoals = away - prevAway;
+      const totalNewGoals = newHomeGoals + newAwayGoals;
+
+      // Atualiza o KV ANTES de enviar (evita reenvio/loop se o push falhar).
+      await env.KV.put(K.lastScore(event.id), currentScoreStr, { expirationTtl: 48 * 60 * 60 });
+
+      if (totalNewGoals <= 0) continue; // gol anulado (VAR) / correção de placar — ignora
+
+      // Destinatários: só quem segue uma das seleções em campo (ou o jogo).
+      const recipients = Object.keys(subs).filter((t) => wantsGoal(subs[t], homeTeam, awayTeam));
+      if (recipients.length === 0) continue;
+
+      // Artilheiro só quando há EXATAMENTE 1 gol novo E a ESPN deu o lance (o
+      // texto é singular). Sem lance → push sem autor (placar é o que importa).
+      let scorer: string | null = null;
+      if (totalNewGoals === 1) {
+        try {
+          const plays = await fetchPlays(event.id);
+          const goals = plays.filter((p) => (p.type?.text ?? '').toLowerCase().includes('goal'));
+          scorer = goals[goals.length - 1]?.athletesInvolved?.[0]?.displayName ?? null;
+        } catch {
+          // sem lance-a-lance — segue sem autor
+        }
+      }
+
+      const { title, body } = buildGoalNotification({
+        homeTeam,
+        awayTeam,
+        home,
+        away,
+        newHome: newHomeGoals,
+        newAway: newAwayGoals,
+        scorer,
+      });
+
+      const { invalidTokens } = await sendPush(
+        recipients,
+        { title, body, data: { matchId: event.id } },
+        env.EXPO_ACCESS_TOKEN,
+      );
+
+      // Remove tokens inválidos (dispositivos que desinstalaram o app).
+      for (const t of invalidTokens) {
+        if (subs[t]) {
+          delete subs[t];
+          subsDirty = true;
+        }
+      }
+    } catch (err) {
+      console.error(`runCron: erro no evento ${event.id}:`, err);
     }
   }
 
