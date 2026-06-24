@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 
 import { filterByTeams, isFinished, kickoff, Match } from '../data/fixtures';
 import { teamName, teamFlag } from '../data/teams';
-import { Settings, SERVER_URL } from './storage';
+import { Settings } from './storage';
 import { formatTime, localDayKey } from './format';
 
 // iOS limita o número de notificações locais pendentes a 64. Deixamos folga.
@@ -232,70 +232,4 @@ export async function sendTestNotification() {
       channelId: ANDROID_CHANNEL,
     },
   });
-}
-
-/**
- * DIAGNÓSTICO (temporário): tenta obter o token de push remoto e devolve o
- * resultado em texto — token OK ou a mensagem de erro exata. Usado para
- * descobrir por que o registro de push falha (getExpoPushTokenAsync engole o
- * erro no fluxo normal). Remover depois de diagnosticar.
- */
-export async function getPushDiagnostic(): Promise<string> {
-  if (!Device.isDevice) return 'Não é um aparelho físico (simulador).';
-  const { status } = await Notifications.getPermissionsAsync();
-  if (status !== 'granted') return `Permissão não concedida (status: ${status}).`;
-  const projectId =
-    Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  if (!projectId) return 'projectId ausente no app.json.';
-
-  let token: string;
-  try {
-    const t = await Notifications.getExpoPushTokenAsync({ projectId });
-    token = t.data;
-  } catch (e) {
-    return `ERRO ao obter token de push:\n${e instanceof Error ? e.message : String(e)}`;
-  }
-
-  const lines: string[] = ['TOKEN OK ✅'];
-
-  // 1. Registro no servidor (mesmo caminho corrigido).
-  try {
-    const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 10_000);
-    const res = await fetch(`${SERVER_URL}/api/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, mode: 'all', teams: [], matches: [] }),
-      signal: ctrl.signal,
-    });
-    lines.push(`Registro: HTTP ${res.status} ${await res.text()}`);
-  } catch (e) {
-    lines.push(`Registro FALHOU: ${e instanceof Error ? e.message : String(e)}`);
-  }
-
-  // 2. ENTREGA: manda um push de teste para o próprio aparelho via Expo (usa o
-  //    token EXATO). Se a Expo responder "ok", uma notificação deve chegar.
-  try {
-    const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 10_000);
-    const res = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        to: token,
-        title: '⚽ Teste de entrega',
-        body: 'Se chegou, o push remoto está 100%! 🇧🇷',
-        sound: 'default',
-        priority: 'high',
-      }),
-      signal: ctrl.signal,
-    });
-    const j = (await res.json()) as { data?: { status?: string; message?: string } };
-    const st = j?.data?.status ?? '?';
-    lines.push(`Entrega Expo: ${st}${j?.data?.message ? ` — ${j.data.message}` : ''}`);
-  } catch (e) {
-    lines.push(`Entrega FALHOU: ${e instanceof Error ? e.message : String(e)}`);
-  }
-
-  return lines.join('\n');
 }
