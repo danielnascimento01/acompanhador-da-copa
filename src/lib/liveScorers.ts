@@ -16,6 +16,20 @@ export type LiveScorer = {
   updatedAt: string;
 };
 
+/**
+ * Sinal de abort com timeout via AbortController + setTimeout.
+ *
+ * ⚠️ NÃO usar `AbortSignal.timeout()` aqui: o Hermes do RN 0.81 não implementa
+ * esse método estático — ele lança "AbortSignal.timeout is not a function" ANTES
+ * do fetch sair, o try/catch engole, e a requisição nunca acontece (foi o bug que
+ * deixava o registro de push silenciosamente sem efeito → servidor com 0 tokens).
+ */
+function timeoutSignal(ms: number): AbortSignal {
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), ms);
+  return ctrl.signal;
+}
+
 /** Resolve a bandeira do time usando o nome ESPN (melhor esforço). */
 function resolveFlag(espnTeamName: string): string {
   const team = TEAMS.find((t) => teamMatches(espnTeamName, t.id));
@@ -40,7 +54,7 @@ export async function fetchLiveScorers(): Promise<LiveScorer[]> {
 
   try {
     const res = await fetch(`${SERVER_URL}/api/scorers`, {
-      signal: AbortSignal.timeout(5000),
+      signal: timeoutSignal(5000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -92,7 +106,7 @@ export async function registerPushToken(token: string, prefs?: PushPrefs): Promi
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prefs ? { token, ...prefs } : { token }),
-      signal: AbortSignal.timeout(10_000),
+      signal: timeoutSignal(10_000),
     });
   } catch {
     // Falha silenciosa — tentará de novo na próxima abertura do app

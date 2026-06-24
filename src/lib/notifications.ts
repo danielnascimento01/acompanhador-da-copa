@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 
 import { filterByTeams, isFinished, kickoff, Match } from '../data/fixtures';
 import { teamName, teamFlag } from '../data/teams';
-import { Settings } from './storage';
+import { Settings, SERVER_URL } from './storage';
 import { formatTime, localDayKey } from './format';
 
 // iOS limita o número de notificações locais pendentes a 64. Deixamos folga.
@@ -247,11 +247,28 @@ export async function getPushDiagnostic(): Promise<string> {
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (!projectId) return 'projectId ausente no app.json.';
+
+  let token: string;
   try {
     const t = await Notifications.getExpoPushTokenAsync({ projectId });
-    return `TOKEN OK:\n${t.data}`;
+    token = t.data;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return `ERRO ao obter token de push:\n${msg}`;
+    return `ERRO ao obter token de push:\n${e instanceof Error ? e.message : String(e)}`;
+  }
+
+  // Testa o registro no servidor PONTA A PONTA (mesmo caminho corrigido).
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 10_000);
+    const res = await fetch(`${SERVER_URL}/api/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, mode: 'all', teams: [], matches: [] }),
+      signal: ctrl.signal,
+    });
+    const text = await res.text();
+    return `TOKEN OK ✅\nRegistro no servidor: HTTP ${res.status}\n${text}`;
+  } catch (e) {
+    return `TOKEN OK, mas FALHOU ao registrar:\n${e instanceof Error ? e.message : String(e)}`;
   }
 }
