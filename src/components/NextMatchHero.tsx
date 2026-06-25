@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Flag } from './Flag';
 import { Match, kickoff, isLive } from '../data/fixtures';
-import { teamFlag, teamName } from '../data/teams';
+import { teamName } from '../data/teams';
 import { fetchTimeline, type LiveTimeline, type TimelineEvent } from '../lib/liveEvents';
 import { formatTime, relativeDayLabel } from '../lib/format';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
@@ -125,9 +126,7 @@ export function NextMatchHero({ match, onPress }: { match: Match; onPress?: () =
 
       <View style={styles.matchRow}>
         <View style={styles.teamBlock}>
-          <View style={styles.flagWrap}>
-            <Text style={styles.flagBig}>{teamFlag(match.home)}</Text>
-          </View>
+          <Flag teamId={match.home} size={72} radius={20} />
           <Text style={styles.teamName} numberOfLines={1}>
             {teamName(match.home)}
           </Text>
@@ -144,9 +143,7 @@ export function NextMatchHero({ match, onPress }: { match: Match; onPress?: () =
         </View>
 
         <View style={styles.teamBlock}>
-          <View style={styles.flagWrap}>
-            <Text style={styles.flagBig}>{teamFlag(match.away)}</Text>
-          </View>
+          <Flag teamId={match.away} size={72} radius={20} />
           <Text style={styles.teamName} numberOfLines={1}>
             {teamName(match.away)}
           </Text>
@@ -161,7 +158,7 @@ export function NextMatchHero({ match, onPress }: { match: Match; onPress?: () =
                 {eventIcon(e)} {e.minute} {e.player}
                 {eventSuffix(e)}
               </Text>
-              <Text style={styles.eventFlag}>{teamFlag(e.side === 'home' ? match.home : match.away)}</Text>
+              <Flag teamId={e.side === 'home' ? match.home : match.away} size={18} radius={5} />
             </View>
           ))}
         </View>
