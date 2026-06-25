@@ -24,10 +24,12 @@ export type StageKey = 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final';
 export type BracketMatch = { id: string; stage: StageKey; idx: number; utc: string; a: Slot; b: Slot };
 
 export const STAGE_META: { key: StageKey; name: string; abbrev: string }[] = [
-  { key: 'r32', name: '32 avos de final', abbrev: '32-avos' },
+  // Round of 32 (32 seleções, 16 jogos) = "16-avos de final" em PT-BR — NÃO "32-avos"
+  // (que seria fase de 64 times, inexistente em 2026). A key 'r32' é só id interno.
+  { key: 'r32', name: '16-avos de final', abbrev: '16-avos' },
   { key: 'r16', name: 'Oitavas de final', abbrev: 'Oitavas' },
   { key: 'qf', name: 'Quartas de final', abbrev: 'Quartas' },
-  { key: 'sf', name: 'Semifinais', abbrev: 'Semi' },
+  { key: 'sf', name: 'Semifinais', abbrev: 'Semis' },
   { key: 'third', name: 'Disputa de 3º lugar', abbrev: '3º lugar' },
   { key: 'final', name: 'Final', abbrev: 'Final' },
 ];

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "267444295976",
+    "project_id": "acompanhador-da-copa-2026",
+    "storage_bucket": "acompanhador-da-copa-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267444295976:android:9f068d741307cb42d3181d",
+        "android_client_info": {
+          "package_name": "com.danielnascimento.copa2026"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgsgl0K3MSPhZhSx4bS1hMqyspxfoPLSI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

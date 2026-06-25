@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Flag } from '../components/Flag';
 import { teamName } from '../data/teams';
-import { BRACKET, STAGE_META, Slot, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
+import { BRACKET, STAGE_META, Slot, StageKey, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
 import { bestThirds, ThirdRow } from '../data/bestThirds';
 import { formatDayShort, formatTime } from '../lib/format';
 import { useStore } from '../lib/store';
@@ -14,6 +14,9 @@ function whenLabel(utc: string): string {
   return `${formatDayShort(d)} · ${formatTime(d)}`;
 }
 import { colors, fonts, radius, spacing } from '../lib/theme';
+
+/** Abas de rodada no topo. A disputa de 3º lugar entra junto da aba "Final". */
+const STAGE_TABS = STAGE_META.filter((s) => s.key !== 'third');
 
 /**
  * "Caminho até a final" — chave OFICIAL do mata-mata (jogos 73–104). Mostra qual
@@ -35,6 +38,16 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
     return n;
   }, [positions]);
 
+  // Aba de rodada ativa — o mata-mata vira navegável por fase (toque no botão).
+  const [activeStage, setActiveStage] = useState<StageKey>('r32');
+  const contentRef = useRef<ScrollView>(null);
+  const selectStage = (key: StageKey) => {
+    setActiveStage(key);
+    contentRef.current?.scrollTo({ y: 0, animated: false }); // volta ao topo da fase
+  };
+  // Fases exibidas: a "Final" mostra também a disputa de 3º lugar.
+  const stagesToShow: StageKey[] = activeStage === 'final' ? ['final', 'third'] : [activeStage];
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -48,7 +61,35 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
           <Text style={styles.title}>Caminho até a final</Text>
           <Text style={styles.sub}>Quem pega quem, do mata-mata à final</Text>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
+          {/* Abas de rodada — toque para ir direto à fase */}
+          <View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.tabsRow}
+              contentContainerStyle={styles.tabsContent}
+            >
+              {STAGE_TABS.map((t) => {
+                const active = activeStage === t.key;
+                return (
+                  <Pressable
+                    key={t.key}
+                    onPress={() => selectStage(t.key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={t.name}
+                    style={[styles.tab, active && styles.tabActive]}
+                  >
+                    <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>
+                      {t.abbrev}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <ScrollView ref={contentRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
             <View style={styles.banner}>
               <Text style={styles.bannerText}>
                 {resolved === 0
@@ -57,26 +98,30 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
               </Text>
             </View>
 
-            <BestThirdsBlock result={thirds} selected={selected} />
+            {/* Os melhores terceiros só fazem sentido na 1ª fase do mata-mata. */}
+            {activeStage === 'r32' && <BestThirdsBlock result={thirds} selected={selected} />}
 
-            {STAGE_META.map((stage) => (
-              <View key={stage.key} style={styles.stageBlock}>
-                <Text style={styles.stageName}>{stage.name}</Text>
-                {BRACKET.filter((m) => m.stage === stage.key).map((m) => (
-                  <View key={m.id} style={[styles.match, stage.key === 'final' && styles.matchFinal]}>
-                    <View style={styles.matchHead}>
-                      <Text style={styles.matchN}>
-                        {stage.key === 'third' || stage.key === 'final' ? stage.name : `Jogo ${m.idx}`}
-                      </Text>
-                      <Text style={styles.matchDate}>{whenLabel(m.utc)}</Text>
+            {stagesToShow.map((stageKey) => {
+              const stage = STAGE_META.find((s) => s.key === stageKey)!;
+              return (
+                <View key={stage.key} style={styles.stageBlock}>
+                  <Text style={styles.stageName}>{stage.name}</Text>
+                  {BRACKET.filter((m) => m.stage === stage.key).map((m) => (
+                    <View key={m.id} style={[styles.match, stage.key === 'final' && styles.matchFinal]}>
+                      <View style={styles.matchHead}>
+                        <Text style={styles.matchN}>
+                          {stage.key === 'third' || stage.key === 'final' ? stage.name : `Jogo ${m.idx}`}
+                        </Text>
+                        <Text style={styles.matchDate}>{whenLabel(m.utc)}</Text>
+                      </View>
+                      <SlotView slot={m.a} positions={positions} selected={selected} />
+                      <Text style={styles.vs}>×</Text>
+                      <SlotView slot={m.b} positions={positions} selected={selected} />
                     </View>
-                    <SlotView slot={m.a} positions={positions} selected={selected} />
-                    <Text style={styles.vs}>×</Text>
-                    <SlotView slot={m.b} positions={positions} selected={selected} />
-                  </View>
-                ))}
-              </View>
-            ))}
+                  ))}
+                </View>
+              );
+            })}
 
             <Text style={styles.footer}>
               Estrutura oficial (jogos 73–104). Avançam os 2 primeiros de cada grupo + os 8 melhores
@@ -201,7 +246,20 @@ const styles = StyleSheet.create({
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
   closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
-  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
+  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(3) },
+  tabsRow: { flexGrow: 0, marginBottom: spacing(4) },
+  tabsContent: { gap: spacing(2), paddingRight: spacing(4) },
+  tab: {
+    paddingHorizontal: spacing(4),
+    paddingVertical: spacing(2),
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  tabText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  tabTextActive: { color: colors.ink },
   banner: {
     backgroundColor: 'rgba(21,194,214,0.10)',
     borderRadius: radius.md,
