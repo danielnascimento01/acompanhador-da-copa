@@ -10,6 +10,9 @@ export type PushMessage = {
   sound?: 'default' | null;
   badge?: number;
   priority?: 'default' | 'normal' | 'high';
+  /** Canal Android — DEVE bater com ANDROID_CHANNEL ('jogos') do cliente, senão
+   * o gol cai no canal Default e perde heads-up/som/vibração de alta prioridade. */
+  channelId?: string;
 };
 
 type ExpoPushTicket = {
@@ -46,6 +49,7 @@ export async function sendPush(
       to,
       sound: 'default',
       priority: 'high',
+      channelId: 'jogos', // este servidor só envia push de GOL → canal de alta prioridade
       ...message,
     }));
 
