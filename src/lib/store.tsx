@@ -49,6 +49,8 @@ type Store = {
   /** Segue/deixa de seguir um jogo específico para push de gol. */
   toggleFollowMatch: (matchId: string) => void;
   isFollowingMatch: (matchId: string) => boolean;
+  /** Registra/atualiza o token de push de gol AGORA (chamar após conceder permissão). */
+  registerForGoalPush: () => void;
   /** Popup de novidade deve aparecer? (uma vez, só p/ quem já usava o app). */
   announceVisible: boolean;
   dismissAnnounce: () => void;
@@ -174,6 +176,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await savePushToken(token);
     await registerPushToken(token, prefs);
   }
+
+  // Refs com o estado atual para o re-registro disparado por eventos (foreground).
+  const settingsRef = useRef(settings);
+  const selectedRef = useRef(selected);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  /** Registra o token+prefs com o estado ATUAL. Idempotente; no-op sem permissão. */
+  const registerForGoalPush = useCallback(() => {
+    registerExpoPushToken(buildPushPrefs(settingsRef.current, [...selectedRef.current]));
+  }, []);
+
+  // Re-registra ao voltar ao primeiro plano: cobre RETRY de POST que falhou,
+  // permissão concedida fora do app, e token rotacionado pela Expo. No-op se
+  // não houver permissão/token.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && loaded.current) registerForGoalPush();
+    });
+    return () => sub.remove();
+  }, [registerForGoalPush]);
 
   // Persiste seleção/preferências assim que mudam — pulando a primeira
   // execução pós-load (se a leitura falhou, regravar aqui apagaria o disco).
@@ -332,6 +355,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ...prev, followedMatches: [...set] };
         }),
       isFollowingMatch: (matchId) => settings.followedMatches.includes(matchId),
+      registerForGoalPush,
       announceVisible,
       dismissAnnounce,
       completeOnboarding: () => {
@@ -351,7 +375,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }),
       clearAllPredictions: () => mutatePredictions(() => ({})),
     }),
-    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh, grantSupporter, announceVisible, dismissAnnounce],
+    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh, grantSupporter, registerForGoalPush, announceVisible, dismissAnnounce],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

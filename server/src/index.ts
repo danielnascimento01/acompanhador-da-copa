@@ -10,11 +10,11 @@
  *    GET  /api/health    — healthcheck
  */
 
-import { fetchScoreboard, extractScore, fetchPlays } from './espn';
+import { fetchScoreboard, extractScore, yyyymmdd, type ESPNEvent } from './espn';
 import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
 import { wantsGoal, type SubscriberPrefs } from './filter';
-import { buildGoalNotification, pickScorer, pickScorerFromDetails } from './notify';
+import { buildGoalNotification, pickScorerFromDetails } from './notify';
 
 export interface Env {
   KV: KVNamespace;
@@ -60,7 +60,19 @@ async function saveSubscribers(env: Env, subs: Subscribers): Promise<void> {
 // ── Cron ───────────────────────────────────────────────────────────────────────
 
 async function runCron(env: Env): Promise<void> {
-  const events = await fetchScoreboard();
+  // Board do dia ET atual (SEM ?dates — a ESPN ancora por US-Eastern) UNIDO ao de
+  // ontem-UTC, para cobrir a virada de meia-noite ET↔UTC. Dedup por id. Esta é a
+  // correção do bug crítico que deixava o push cego entre ~00:00–04:00 UTC.
+  const byId = new Map<string, ESPNEvent>();
+  try {
+    const today = await fetchScoreboard();
+    const yest = await fetchScoreboard(yyyymmdd(new Date(Date.now() - 86_400_000)));
+    for (const e of [...today, ...yest]) byId.set(e.id, e);
+  } catch (err) {
+    console.error('runCron: fetchScoreboard falhou:', err);
+    return;
+  }
+  const events = [...byId.values()];
 
   // Agrega artilheiros — isolado: se falhar, NÃO pode bloquear o push de gol.
   try {
@@ -112,21 +124,12 @@ async function runCron(env: Env): Promise<void> {
       // texto é singular). Sem lance → push sem autor (placar é o que importa).
       let scorer: string | null = null;
       if (totalNewGoals === 1) {
-        // Fonte primária: details do scoreboard (já temos o evento) — é onde a
-        // ESPN traz o artilheiro na Copa. Pega o gol mais recente do time que marcou.
+        // Artilheiro vem dos details do scoreboard (já temos o evento) — é onde a
+        // ESPN traz o nome na Copa. Pega o gol mais recente do time que marcou.
         const comp = event.competitions[0];
         const scoringSide = newHomeGoals > 0 ? 'home' : 'away';
         const scoringTeamId = comp?.competitors.find((c) => c.homeAway === scoringSide)?.team.id;
         if (scoringTeamId) scorer = pickScorerFromDetails(comp?.details ?? [], scoringTeamId);
-
-        // Fallback: /summary plays (raro funcionar na Copa, mas não custa tentar).
-        if (!scorer) {
-          try {
-            scorer = pickScorer(await fetchPlays(event.id), home, away);
-          } catch {
-            // sem lance — push sem autor
-          }
-        }
       }
 
       const { title, body } = buildGoalNotification({

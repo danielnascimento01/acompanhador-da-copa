@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { FadeInUp } from '../components/Motion';
 import { requestPermission } from '../lib/notifications';
+import { useStore } from '../lib/store';
 import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
 
 const FEATURES = [
@@ -14,11 +15,13 @@ const FEATURES = [
 
 export function OnboardingScreen({ onStart }: { onStart: () => void }) {
   const [busy, setBusy] = useState(false);
+  const { registerForGoalPush } = useStore();
 
   const handleStart = async () => {
     setBusy(true);
     try {
-      await requestPermission();
+      const ok = await requestPermission();
+      if (ok) registerForGoalPush(); // registra o push de gol já na concessão
     } catch {
       // Sem permissão agora — pode ativar depois em Avisos.
     } finally {

@@ -3,7 +3,7 @@
 const SCOREBOARD = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
 const SUMMARY    = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary';
 
-function yyyymmdd(d: Date): string {
+export function yyyymmdd(d: Date): string {
   return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
@@ -53,11 +53,17 @@ export type ESPNPlay = {
   awayScore?: number;
 };
 
-/** Busca eventos da ESPN para uma data (YYYYMMDD) ou hoje se omitida. */
+/**
+ * Busca eventos da ESPN. SEM `date`, NÃO envia ?dates — a ESPN ancora cada jogo
+ * pela data US-Eastern do apito, então pedir o dia UTC (new Date em UTC) fazia o
+ * cron PERDER os jogos ao vivo entre ~00:00–04:00 UTC (noite no Brasil) e abortar
+ * sem push. Sem ?dates a ESPN devolve o "dia" ET correto, já com os jogos ao vivo.
+ * Passe `date` (YYYYMMDD) só quando precisar de um dia específico (ex.: artilheiros).
+ */
 export async function fetchScoreboard(date?: string): Promise<ESPNEvent[]> {
-  const d = date ?? yyyymmdd(new Date());
+  const qs = date ? `?dates=${date}&limit=50` : `?limit=50`;
   try {
-    const res = await fetch(`${SCOREBOARD}?dates=${d}&limit=50`, {
+    const res = await fetch(`${SCOREBOARD}${qs}`, {
       headers: { 'User-Agent': 'Copa2026App/1.0', 'Cache-Control': 'no-cache' },
     });
     if (!res.ok) return [];

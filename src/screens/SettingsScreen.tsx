@@ -27,7 +27,7 @@ const GOAL_PUSH_OPTIONS: { key: 'mine' | 'all' | 'off'; label: string }[] = [
 ];
 
 export function SettingsScreen() {
-  const { settings, updateSettings, selected, matches } = useStore();
+  const { settings, updateSettings, selected, matches, registerForGoalPush } = useStore();
   const [granted, setGranted] = useState<boolean | null>(null);
   const [scheduled, setScheduled] = useState<number>(0);
   const [iconOpen, setIconOpen] = useState(false);
@@ -52,6 +52,7 @@ export function SettingsScreen() {
     const ok = await requestPermission();
     setGranted(ok);
     if (ok) {
+      registerForGoalPush(); // registra o push de gol JÁ (não só no próximo boot)
       await rescheduleAll(matches, [...selected], settings);
       await refresh();
     }

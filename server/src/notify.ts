@@ -9,43 +9,30 @@
  * 2 gols de lados diferentes no mesmo ciclo → título neutro "⚽ Gol!".
  */
 import { teamInfo } from './teams';
-import type { ESPNPlay, ESPNDetail } from './espn';
+import type { ESPNDetail } from './espn';
 
 /**
- * Artilheiro a partir dos `details` do SCOREBOARD (fonte que de fato traz o
- * nome na Copa). Pega o gol MAIS RECENTE do TIME que marcou (por clock), e
- * só conta gol normal do próprio time — exclui gol contra (o autor é do outro
- * time; nesse caso retorna null e o push sai sem nome, honesto). null se nada
- * casar: melhor sem nome do que o nome errado.
+ * Artilheiro a partir dos `details` do SCOREBOARD (fonte que de fato traz o nome
+ * na Copa). Considera TODOS os gols do time que marcou (normais E gols contra —
+ * o gol contra também é creditado a esse time, com team.id do beneficiado) e pega
+ * o MAIS RECENTE por clock. Se o mais recente for GOL CONTRA, retorna null → push
+ * sem nome (o autor é do adversário; nomear seria ERRADO). null se nada casar.
+ *
+ * Por que incluir o gol contra no ranqueamento: se filtrássemos ownGoal e o gol
+ * que ACABOU de sair foi contra, pegaríamos um gol normal ANTIGO do time e
+ * mostraríamos o autor errado (bug F4 da auditoria).
  */
 export function pickScorerFromDetails(details: ESPNDetail[], scoringTeamId: string): string | null {
   const goals = details
     .filter(
       (d) =>
         (d.scoringPlay === true || (d.type?.text ?? '').toLowerCase().includes('goal')) &&
-        !d.ownGoal &&
         d.team?.id === scoringTeamId,
     )
     .sort((a, b) => (b.clock?.value ?? 0) - (a.clock?.value ?? 0));
-  return goals[0]?.athletesInvolved?.[0]?.displayName ?? null;
-}
-
-/**
- * Artilheiro do gol que produziu o placar ATUAL — casamento EXATO por placar.
- * Retorna o nome só se existir um lance de gol cujo placar resultante é
- * exatamente o atual (ou seja, FOI esse gol). Senão null → push SEM nome.
- *
- * Por quê tão rígido: melhor nenhum nome do que o ERRADO. Pegar "o último gol"
- * podia atribuir o jogador de outro gol/time (foi o risco que o Daniel apontou).
- */
-export function pickScorer(plays: ESPNPlay[], home: number, away: number): string | null {
-  const goal = plays.find(
-    (p) =>
-      (p.type?.text ?? '').toLowerCase().includes('goal') &&
-      p.homeScore === home &&
-      p.awayScore === away,
-  );
-  return goal?.athletesInvolved?.[0]?.displayName ?? null;
+  const latest = goals[0];
+  if (!latest || latest.ownGoal) return null; // gol contra (ou nada) → sem nome
+  return latest.athletesInvolved?.[0]?.displayName ?? null;
 }
 
 export type GoalNotifyInput = {

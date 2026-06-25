@@ -3,8 +3,8 @@
  * PROVA: título nomeia quem marcou com o artigo certo (do/da/de/dos), corpo com
  * placar PT, autor só quando há, aliases ESPN, e degradação elegante.
  */
-import { buildGoalNotification, pickScorer, pickScorerFromDetails } from './notify';
-import type { ESPNPlay, ESPNDetail } from './espn';
+import { buildGoalNotification, pickScorerFromDetails } from './notify';
+import type { ESPNDetail } from './espn';
 
 let pass = 0;
 let fail = 0;
@@ -90,39 +90,28 @@ eq('Bosnia-Herzegovina → da Bósnia', art('Bosnia-Herzegovina', ''), '⚽ Gol 
   eq('desconhecido → corpo cru', n.body, 'Atlantis 1 x 0 Brasil');
 }
 
-// ── pickScorer: SEMPRE o autor do gol certo, ou NENHUM (nunca o errado) ───────
-const play = (text: string, h: number, a: number, name?: string): ESPNPlay =>
-  ({ type: { text }, homeScore: h, awayScore: a, ...(name ? { athletesInvolved: [{ displayName: name }] } : {}) }) as ESPNPlay;
-
-// Cenário: Brasil 2 x 1. Vários gols no array. O gol ATUAL (2-1) é do mandante.
-const plays: ESPNPlay[] = [
-  play('Goal', 1, 0, 'Vinícius Júnior'), // 1-0
-  play('Goal', 1, 1, 'McTominay'),       // 1-1 (Escócia)
-  play('Yellow Card', 1, 1),
-  play('Goal', 2, 1, 'Rodrygo'),         // 2-1 (placar atual)
-];
-eqScorer('pega o autor do placar EXATO (2-1) = Rodrygo', pickScorer(plays, 2, 1), 'Rodrygo');
-eqScorer('placar 1-1 → McTominay (não o último do array)', pickScorer(plays, 1, 1), 'McTominay');
-eqScorer('placar sem lance correspondente (3-1) → null', pickScorer(plays, 3, 1), null);
-eqScorer('array vazio (ESPN sem lance) → null', pickScorer([], 1, 0), null);
-eqScorer('gol sem atleta → null (nunca nome errado)', pickScorer([play('Goal', 1, 0)], 1, 0), null);
-
 // ── pickScorerFromDetails: artilheiro dos details do scoreboard (fonte real) ──
 const det = (text: string, teamId: string, clock: number, name: string, opts: Partial<ESPNDetail> = {}): ESPNDetail =>
   ({ type: { text }, scoringPlay: true, team: { id: teamId }, clock: { value: clock }, athletesInvolved: [{ displayName: name }], ...opts }) as ESPNDetail;
 
-// Brasil (id 205) marcou 3 vezes; Escócia (580) fez um gol contra. Estrutura real ESPN.
-const detalhes: ESPNDetail[] = [
-  det('Goal', '205', 1500, 'Vinícius Júnior'),       // 25'
+// Brasil (id 205) marcou 3 gols normais; o mais recente é Matheus Cunha (60').
+const normais: ESPNDetail[] = [
+  det('Goal', '205', 1500, 'Vinícius Júnior'),        // 25'
   { type: { text: 'Yellow Card' }, team: { id: '580' } } as ESPNDetail,
-  det('Goal', '205', 2400, 'Rodrygo'),               // 40'
+  det('Goal', '205', 2400, 'Rodrygo'),                // 40'
   det('Goal - Volley', '205', 3595, 'Matheus Cunha'), // 60' (mais recente)
-  det('Goal', '205', 5000, 'McTominay', { ownGoal: true }), // gol contra (excluir)
 ];
-eqScorer('artilheiro = gol mais recente do Brasil (Matheus Cunha)', pickScorerFromDetails(detalhes, '205'), 'Matheus Cunha');
-eqScorer('gol contra é excluído', pickScorerFromDetails(detalhes, '580'), null);
-eqScorer('time sem gol → null', pickScorerFromDetails(detalhes, '999'), null);
+eqScorer('gol normal mais recente do time = Matheus Cunha', pickScorerFromDetails(normais, '205'), 'Matheus Cunha');
+eqScorer('time sem gol → null', pickScorerFromDetails(normais, '999'), null);
 eqScorer('details vazio → null', pickScorerFromDetails([], '205'), null);
+
+// F4: o gol MAIS RECENTE do Brasil é GOL CONTRA (clock 5000, autor adversário).
+// Mesmo havendo um gol normal antes, NÃO pode nomear o autor antigo → null.
+const comGolContra: ESPNDetail[] = [
+  det('Goal', '205', 3595, 'Matheus Cunha'),                 // gol normal antigo
+  det('Own Goal', '205', 5000, 'McTominay', { ownGoal: true }), // gol contra (beneficia 205) — mais recente
+];
+eqScorer('F4: último é gol contra → null (não pega o normal antigo)', pickScorerFromDetails(comGolContra, '205'), null);
 
 function eqScorer(label: string, got: string | null, want: string | null) {
   if (got === want) { pass++; console.log(`✅ ${label}`); }
