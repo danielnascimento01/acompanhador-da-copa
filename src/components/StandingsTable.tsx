@@ -1,9 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Flag } from './Flag';
 import { Standing } from '../data/standings';
-import { teamFlag, teamName } from '../data/teams';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { teamName } from '../data/teams';
+import { colors, fonts, spacing, state } from '../lib/theme';
 
 type Props = {
   standings: Standing[];
@@ -18,13 +19,6 @@ const NUM_COLS: { key: keyof Standing; label: string }[] = [
   { key: 'gd', label: 'SG' },
   { key: 'points', label: 'P' },
 ];
-
-/** Cor da posição: 1º-2º classificam direto, 3º disputa as melhores vagas. */
-function rankColor(index: number): string {
-  if (index < 2) return colors.accent;
-  if (index === 2) return colors.amber;
-  return colors.textFaint;
-}
 
 export function StandingsTable({ standings, selected }: Props) {
   return (
@@ -41,12 +35,21 @@ export function StandingsTable({ standings, selected }: Props) {
 
       {standings.map((s, i) => {
         const mine = selected?.has(s.teamId);
+        // Badge: 1º-2º classificam (verde), 3º disputa (âmbar), 4º neutro.
+        const top2 = i < 2;
+        const third = i === 2;
+        const badgeBg = top2 ? colors.accent : third ? colors.amber : colors.surface2;
+        const badgeFg = top2 || third ? colors.ink : colors.textDim;
         return (
-          <View key={s.teamId} style={[styles.row, i < standings.length - 1 && styles.rowBorder]}>
-            <View style={[styles.posWrap, { backgroundColor: rankColor(i) }]}>
-              <Text style={styles.pos}>{i + 1}</Text>
+          <View
+            key={s.teamId}
+            style={[styles.row, mine && styles.rowMine, i < standings.length - 1 && styles.rowBorder]}
+          >
+            <View style={[styles.posWrap, { backgroundColor: badgeBg }]}>
+              <Text style={[styles.pos, { color: badgeFg }]}>{i + 1}</Text>
             </View>
-            <Text style={styles.flag}>{teamFlag(s.teamId)}</Text>
+            <Flag teamId={s.teamId} size={24} radius={7} />
+            {mine && <Text style={styles.star}>★</Text>}
             <Text style={[styles.team, mine && styles.teamMine]} numberOfLines={1}>
               {teamName(s.teamId)}
             </Text>
@@ -73,16 +76,17 @@ const NUM_W = 24;
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingBottom: spacing(2), gap: 2 },
-  posHead: { width: 22, color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10, textAlign: 'center' },
+  posHead: { width: 24, color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10, textAlign: 'center' },
   teamHead: { flex: 1, color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10, marginLeft: spacing(2) },
   numHead: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing(2), gap: 2 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  posWrap: { width: 20, height: 20, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  pos: { color: colors.ink, fontFamily: fonts.extrabold, fontSize: 11, fontVariant: ['tabular-nums'] },
-  flag: { fontSize: 18, marginLeft: 2 },
-  team: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 13, marginLeft: spacing(2) },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing(2.5), gap: 2, borderRadius: 8, paddingHorizontal: 4, marginHorizontal: -4 },
+  rowMine: { backgroundColor: state.favoriteBg },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border, borderRadius: 0, marginHorizontal: 0, paddingHorizontal: 0 },
+  posWrap: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  pos: { fontFamily: fonts.extrabold, fontSize: 11, fontVariant: ['tabular-nums'] },
+  star: { color: colors.accent, fontSize: 11, marginLeft: spacing(2) },
+  team: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 14, marginLeft: spacing(2) },
   teamMine: { color: colors.accent, fontFamily: fonts.bold },
   num: { width: NUM_W, textAlign: 'center', color: colors.textDim, fontFamily: fonts.medium, fontSize: 12, fontVariant: ['tabular-nums'] },
-  points: { color: colors.text, fontFamily: fonts.extrabold },
+  points: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
 });
