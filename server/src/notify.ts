@@ -9,7 +9,26 @@
  * 2 gols de lados diferentes no mesmo ciclo → título neutro "⚽ Gol!".
  */
 import { teamInfo } from './teams';
-import type { ESPNPlay } from './espn';
+import type { ESPNPlay, ESPNDetail } from './espn';
+
+/**
+ * Artilheiro a partir dos `details` do SCOREBOARD (fonte que de fato traz o
+ * nome na Copa). Pega o gol MAIS RECENTE do TIME que marcou (por clock), e
+ * só conta gol normal do próprio time — exclui gol contra (o autor é do outro
+ * time; nesse caso retorna null e o push sai sem nome, honesto). null se nada
+ * casar: melhor sem nome do que o nome errado.
+ */
+export function pickScorerFromDetails(details: ESPNDetail[], scoringTeamId: string): string | null {
+  const goals = details
+    .filter(
+      (d) =>
+        (d.scoringPlay === true || (d.type?.text ?? '').toLowerCase().includes('goal')) &&
+        !d.ownGoal &&
+        d.team?.id === scoringTeamId,
+    )
+    .sort((a, b) => (b.clock?.value ?? 0) - (a.clock?.value ?? 0));
+  return goals[0]?.athletesInvolved?.[0]?.displayName ?? null;
+}
 
 /**
  * Artilheiro do gol que produziu o placar ATUAL — casamento EXATO por placar.

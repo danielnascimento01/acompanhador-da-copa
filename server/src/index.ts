@@ -14,7 +14,7 @@ import { fetchScoreboard, extractScore, fetchPlays } from './espn';
 import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
 import { wantsGoal, type SubscriberPrefs } from './filter';
-import { buildGoalNotification, pickScorer } from './notify';
+import { buildGoalNotification, pickScorer, pickScorerFromDetails } from './notify';
 
 export interface Env {
   KV: KVNamespace;
@@ -112,11 +112,20 @@ async function runCron(env: Env): Promise<void> {
       // texto é singular). Sem lance → push sem autor (placar é o que importa).
       let scorer: string | null = null;
       if (totalNewGoals === 1) {
-        try {
-          const plays = await fetchPlays(event.id);
-          scorer = pickScorer(plays, home, away); // só nomeia se o lance bate com o placar exato
-        } catch {
-          // sem lance-a-lance — segue sem autor
+        // Fonte primária: details do scoreboard (já temos o evento) — é onde a
+        // ESPN traz o artilheiro na Copa. Pega o gol mais recente do time que marcou.
+        const comp = event.competitions[0];
+        const scoringSide = newHomeGoals > 0 ? 'home' : 'away';
+        const scoringTeamId = comp?.competitors.find((c) => c.homeAway === scoringSide)?.team.id;
+        if (scoringTeamId) scorer = pickScorerFromDetails(comp?.details ?? [], scoringTeamId);
+
+        // Fallback: /summary plays (raro funcionar na Copa, mas não custa tentar).
+        if (!scorer) {
+          try {
+            scorer = pickScorer(await fetchPlays(event.id), home, away);
+          } catch {
+            // sem lance — push sem autor
+          }
         }
       }
 
@@ -229,42 +238,6 @@ async function handleHealth(env: Env): Promise<Response> {
   return json({ ok: true, tokens: tokens.length, byMode, hasScorers });
 }
 
-/**
- * DIAGNÓSTICO (temporário): mostra o que o worker enxerga AGORA — jogos ao vivo,
- * placar guardado no KV (revela se o cron já rodou e rastreou o jogo) e a
- * estrutura dos lances (revela se fetchPlays acha os gols). Remover depois.
- */
-async function handleDebug(env: Env): Promise<Response> {
-  const events = await fetchScoreboard();
-  const live = events.filter((e) => e.status.type.state === 'in');
-  const out: Array<Record<string, unknown>> = [];
-  for (const e of live) {
-    const { home, away, homeTeam, awayTeam } = extractScore(e);
-    const storedLastScore = await env.KV.get(K.lastScore(e.id));
-    let totalPlays = -1;
-    let goalPlays = -1;
-    let playTypes: string[] = [];
-    try {
-      const plays = await fetchPlays(e.id);
-      totalPlays = plays.length;
-      goalPlays = plays.filter((p) => (p.type?.text ?? '').toLowerCase().includes('goal')).length;
-      playTypes = Array.from(new Set(plays.map((p) => p.type?.text).filter((t): t is string => !!t))).slice(0, 25);
-    } catch (err) {
-      playTypes = [`FETCHPLAYS_ERROR: ${err instanceof Error ? err.message : String(err)}`];
-    }
-    out.push({
-      id: e.id,
-      match: `${homeTeam} ${home}-${away} ${awayTeam}`,
-      storedLastScore,            // null = cron ainda não rastreou (não rodou / acabou de começar)
-      currentScore: `${home}-${away}`,
-      totalPlays,                 // 0 = sem lance-a-lance; -1 = erro
-      goalPlays,                  // 0 com totalPlays>0 = filtro de gol não casa
-      playTypes,                  // tipos REAIS de lance que a ESPN retorna
-    });
-  }
-  return json({ liveCount: live.length, live: out });
-}
-
 // ── Entry point ────────────────────────────────────────────────────────────────
 
 export default {
@@ -275,7 +248,6 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === '/api/debug')    return handleDebug(env);
     if (url.pathname === '/api/register') return handleRegister(request, env);
     if (url.pathname === '/api/scorers')  return handleScorers(env);
     if (url.pathname === '/api/health')   return handleHealth(env);

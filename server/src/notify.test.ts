@@ -3,8 +3,8 @@
  * PROVA: título nomeia quem marcou com o artigo certo (do/da/de/dos), corpo com
  * placar PT, autor só quando há, aliases ESPN, e degradação elegante.
  */
-import { buildGoalNotification, pickScorer } from './notify';
-import type { ESPNPlay } from './espn';
+import { buildGoalNotification, pickScorer, pickScorerFromDetails } from './notify';
+import type { ESPNPlay, ESPNDetail } from './espn';
 
 let pass = 0;
 let fail = 0;
@@ -106,6 +106,23 @@ eqScorer('placar 1-1 → McTominay (não o último do array)', pickScorer(plays,
 eqScorer('placar sem lance correspondente (3-1) → null', pickScorer(plays, 3, 1), null);
 eqScorer('array vazio (ESPN sem lance) → null', pickScorer([], 1, 0), null);
 eqScorer('gol sem atleta → null (nunca nome errado)', pickScorer([play('Goal', 1, 0)], 1, 0), null);
+
+// ── pickScorerFromDetails: artilheiro dos details do scoreboard (fonte real) ──
+const det = (text: string, teamId: string, clock: number, name: string, opts: Partial<ESPNDetail> = {}): ESPNDetail =>
+  ({ type: { text }, scoringPlay: true, team: { id: teamId }, clock: { value: clock }, athletesInvolved: [{ displayName: name }], ...opts }) as ESPNDetail;
+
+// Brasil (id 205) marcou 3 vezes; Escócia (580) fez um gol contra. Estrutura real ESPN.
+const detalhes: ESPNDetail[] = [
+  det('Goal', '205', 1500, 'Vinícius Júnior'),       // 25'
+  { type: { text: 'Yellow Card' }, team: { id: '580' } } as ESPNDetail,
+  det('Goal', '205', 2400, 'Rodrygo'),               // 40'
+  det('Goal - Volley', '205', 3595, 'Matheus Cunha'), // 60' (mais recente)
+  det('Goal', '205', 5000, 'McTominay', { ownGoal: true }), // gol contra (excluir)
+];
+eqScorer('artilheiro = gol mais recente do Brasil (Matheus Cunha)', pickScorerFromDetails(detalhes, '205'), 'Matheus Cunha');
+eqScorer('gol contra é excluído', pickScorerFromDetails(detalhes, '580'), null);
+eqScorer('time sem gol → null', pickScorerFromDetails(detalhes, '999'), null);
+eqScorer('details vazio → null', pickScorerFromDetails([], '205'), null);
 
 function eqScorer(label: string, got: string | null, want: string | null) {
   if (got === want) { pass++; console.log(`✅ ${label}`); }

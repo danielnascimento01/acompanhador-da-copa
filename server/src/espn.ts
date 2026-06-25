@@ -13,6 +13,21 @@ export type ESPNCompetitor = {
   team: { id: string; displayName: string; abbreviation: string };
 };
 
+/**
+ * Lance do scoreboard (competitions[0].details[]) — É AQUI que a ESPN coloca o
+ * artilheiro (o /summary?event= costuma vir SEM play-by-play na Copa). Tem o
+ * tipo, o time, o atleta e a marcação de gol contra/pênalti.
+ */
+export type ESPNDetail = {
+  type?: { text?: string };
+  scoringPlay?: boolean;
+  ownGoal?: boolean;
+  penaltyKick?: boolean;
+  clock?: { value?: number; displayValue?: string };
+  team?: { id?: string };
+  athletesInvolved?: Array<{ displayName?: string; team?: { id?: string } }>;
+};
+
 export type ESPNEvent = {
   id: string;
   name: string;
@@ -23,6 +38,7 @@ export type ESPNEvent = {
   };
   competitions: Array<{
     competitors: ESPNCompetitor[];
+    details?: ESPNDetail[];
   }>;
 };
 
