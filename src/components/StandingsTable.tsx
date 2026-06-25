@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border, borderRadius: 0, marginHorizontal: 0, paddingHorizontal: 0 },
   posWrap: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: spacing(2) },
   pos: { fontFamily: fonts.extrabold, fontSize: 11, fontVariant: ['tabular-nums'] },
-  star: { color: colors.accent, fontSize: 11, marginLeft: spacing(2) },
+  star: { color: colors.amber, fontSize: 11, marginLeft: spacing(2) },
   team: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 14, marginLeft: spacing(2) },
   teamMine: { color: colors.accent, fontFamily: fonts.bold },
   num: { width: NUM_W, textAlign: 'center', color: colors.textDim, fontFamily: fonts.medium, fontSize: 12, fontVariant: ['tabular-nums'] },

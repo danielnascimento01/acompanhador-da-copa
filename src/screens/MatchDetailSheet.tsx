@@ -6,7 +6,7 @@ import { Flag } from '../components/Flag';
 import { StandingsTable } from '../components/StandingsTable';
 import { PredictionEditor } from '../components/PredictionEditor';
 import { Match, kickoff, isPredictable, matchDisplay } from '../data/fixtures';
-import { getTeam, teamFlag, teamName } from '../data/teams';
+import { getTeam, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { teamOutlook } from '../data/scenarios';
 import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
@@ -193,7 +193,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
         {sameGroup && standings.length > 0 && (
           <View style={styles.tableCard}>
             <Text style={styles.tableTitle}>Classificação · Grupo {sameGroup}</Text>
-            <StandingsTable standings={standings} selected={selected} />
+            <StandingsTable standings={standings} selected={selected} primaryTeam={settings.primaryTeam} />
           </View>
         )}
 
@@ -202,9 +202,10 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
             <Text style={styles.tableTitle}>📊 Cenário de classificação</Text>
             {outlooks.map(({ id, o }) => (
               <View key={id} style={styles.scenarioRow}>
-                <Text style={styles.scenarioTeam}>
-                  {teamFlag(id)} {teamName(id)}
-                </Text>
+                <View style={styles.scenarioHead}>
+                  <Flag teamId={id} size={20} radius={6} />
+                  <Text style={styles.scenarioTeam}>{teamName(id)}</Text>
+                </View>
                 <Text style={styles.scenarioText}>{o.phraseLong}</Text>
               </View>
             ))}
@@ -319,7 +320,8 @@ const styles = StyleSheet.create({
   },
   tableTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
   scenarioRow: { marginBottom: spacing(3) },
-  scenarioTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: 2 },
+  scenarioHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: 4 },
+  scenarioTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
   scenarioText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19 },
   scenarioNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: spacing(1) },
   lockedNote: {

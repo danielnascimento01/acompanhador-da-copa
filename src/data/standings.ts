@@ -19,11 +19,71 @@ function emptyStanding(teamId: string, group: string): Standing {
   return { teamId, group, played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0, gd: 0, points: 0 };
 }
 
-function compare(a: Standing, b: Standing): number {
+/** Critério objetivo do regulamento: pontos → saldo → gols pró. 0 = empatados. */
+function compareObjective(a: Standing, b: Standing): number {
   if (b.points !== a.points) return b.points - a.points;
   if (b.gd !== a.gd) return b.gd - a.gd;
   if (b.gf !== a.gf) return b.gf - a.gf;
-  return teamName(a.teamId).localeCompare(teamName(b.teamId));
+  return 0;
+}
+
+/** Chave dos critérios objetivos (para agrupar empatados). */
+function objKey(s: Standing): string {
+  return `${s.points}|${s.gd}|${s.gf}`;
+}
+
+/**
+ * Confronto direto (FIFA): mini-tabela contada SÓ com os jogos disputados ENTRE
+ * os times empatados. Mesmos critérios (pontos → saldo → gols pró) restritos a
+ * esses confrontos. É o desempate real antes de fair-play/sorteio.
+ */
+function headToHead(tied: Standing[], matches: Match[]): Map<string, Standing> {
+  const ids = new Set(tied.map((t) => t.teamId));
+  const mini = new Map<string, Standing>();
+  for (const t of tied) mini.set(t.teamId, emptyStanding(t.teamId, t.group));
+  for (const m of matches) {
+    if (m.homeScore == null || m.awayScore == null) continue;
+    if (!isFinished(m) && !isLive(m)) continue;
+    if (!ids.has(m.home) || !ids.has(m.away)) continue; // só jogos entre os empatados
+    const H = mini.get(m.home)!;
+    const A = mini.get(m.away)!;
+    const hs = m.homeScore;
+    const as = m.awayScore;
+    H.gf += hs; H.ga += as; H.gd = H.gf - H.ga;
+    A.gf += as; A.ga += hs; A.gd = A.gf - A.ga;
+    if (hs > as) H.points += 3;
+    else if (hs < as) A.points += 3;
+    else { H.points++; A.points++; }
+  }
+  return mini;
+}
+
+/**
+ * Ordena um grupo: critério objetivo e, dentro de cada bolha de empatados,
+ * aplica confronto direto; só então o nome (apenas para ordem de EXIBIÇÃO
+ * estável — não é critério oficial). Empate que persiste fica adjacente, mas a
+ * ordem entre eles não é uma afirmação de classificação (iria a fair-play/sorteio).
+ */
+function sortGroup(list: Standing[], matches: Match[]): Standing[] {
+  const sorted = [...list].sort(compareObjective);
+  const result: Standing[] = [];
+  let i = 0;
+  while (i < sorted.length) {
+    let j = i + 1;
+    while (j < sorted.length && objKey(sorted[j]) === objKey(sorted[i])) j++;
+    const bucket = sorted.slice(i, j);
+    if (bucket.length > 1) {
+      const mini = headToHead(bucket, matches);
+      bucket.sort((a, b) => {
+        const d = compareObjective(mini.get(a.teamId)!, mini.get(b.teamId)!);
+        if (d !== 0) return d;
+        return teamName(a.teamId).localeCompare(teamName(b.teamId));
+      });
+    }
+    result.push(...bucket);
+    i = j;
+  }
+  return result;
 }
 
 /**
@@ -73,7 +133,7 @@ export function computeStandings(matches: Match[]): Record<string, Standing[]> {
   const byGroup: Record<string, Standing[]> = {};
   for (const g of GROUPS) byGroup[g] = [];
   for (const s of table.values()) byGroup[s.group]?.push(s);
-  for (const g of GROUPS) byGroup[g].sort(compare);
+  for (const g of GROUPS) byGroup[g] = sortGroup(byGroup[g], matches);
   return byGroup;
 }
 

@@ -153,7 +153,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (pushPrefsTimer.current) clearTimeout(pushPrefsTimer.current);
     };
-  }, [settings.goalPush, settings.followedMatches, selected]);
+  }, [settings.goalPush, settings.followedMatches, settings.primaryTeam, selected]);
 
   // Monta as preferências de push de gol a partir das seleções + jogos seguidos.
   // Jogos seguidos viram PARES de times (o servidor casa por nome, evitando o
