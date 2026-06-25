@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Flag } from './Flag';
 import { Match, hasStarted, isLive } from '../data/fixtures';
-import { teamFlag, teamName } from '../data/teams';
+import { teamName } from '../data/teams';
 import { fetchMatchSummary, type MatchSummary, type TeamLineup, type TeamStat } from '../lib/liveEvents';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -47,9 +48,11 @@ export function MatchStats({ match }: { match: Match }) {
         <View style={styles.card}>
           <Text style={styles.title}>📊 Estatísticas</Text>
           <View style={styles.statHead}>
-            <Text style={styles.statHeadFlag}>{teamFlag(match.home)}</Text>
-            <Text style={styles.statHeadSpacer} />
-            <Text style={styles.statHeadFlag}>{teamFlag(match.away)}</Text>
+            <Flag teamId={match.home} size={26} radius={7} />
+            <Text style={styles.statHeadNames} numberOfLines={1}>
+              {teamName(match.home)} · {teamName(match.away)}
+            </Text>
+            <Flag teamId={match.away} size={26} radius={7} />
           </View>
           {data.stats.map((s) => (
             <StatRow key={s.key} stat={s} />
@@ -74,16 +77,21 @@ function StatRow({ stat }: { stat: TeamStat }) {
   const an = parseFloat(stat.away);
   const total = (Number.isFinite(hn) ? hn : 0) + (Number.isFinite(an) ? an : 0);
   const homePct = Number.isFinite(hn) && total > 0 ? (hn / total) * 100 : 50;
+  // "Lê quem domina": lado vencedor em cor cheia, perdedor esmaecido (.55).
+  const tie = hn === an;
+  const homeWins = hn > an;
   return (
     <View style={styles.statRow}>
       <View style={styles.statValues}>
-        <Text style={styles.statVal}>{stat.home}</Text>
+        <Text style={[styles.statVal, !tie && homeWins && styles.statValWin]}>{stat.home}</Text>
         <Text style={styles.statLabel}>{stat.label}</Text>
-        <Text style={styles.statVal}>{stat.away}</Text>
+        <Text style={[styles.statVal, styles.statValRight, !tie && !homeWins && styles.statValWinAway]}>
+          {stat.away}
+        </Text>
       </View>
       <View style={styles.bar}>
-        <View style={[styles.barHome, { width: `${homePct}%` }]} />
-        <View style={[styles.barAway, { width: `${100 - homePct}%` }]} />
+        <View style={[styles.barHome, { width: `${homePct}%`, opacity: tie || homeWins ? 1 : 0.55 }]} />
+        <View style={[styles.barAway, { width: `${100 - homePct}%`, opacity: tie || !homeWins ? 1 : 0.55 }]} />
       </View>
     </View>
   );
@@ -94,7 +102,7 @@ function LineupBlock({ teamId, lineup }: { teamId: string; lineup: TeamLineup })
   return (
     <View style={styles.lineup}>
       <View style={styles.lineupHead}>
-        <Text style={styles.lineupFlag}>{teamFlag(teamId)}</Text>
+        <Flag teamId={teamId} size={24} radius={7} />
         <Text style={styles.lineupTeam} numberOfLines={1}>
           {teamName(teamId)}
         </Text>
@@ -157,20 +165,21 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
   note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: spacing(2) },
 
-  statHead: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing(1) },
-  statHeadFlag: { fontSize: 18 },
-  statHeadSpacer: { flex: 1 },
+  statHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: spacing(3) },
+  statHeadNames: { flex: 1, textAlign: 'center', color: colors.textDim, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase' },
   statRow: { marginBottom: spacing(3) },
   statValues: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-  statVal: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, width: 52, fontVariant: ['tabular-nums'] },
+  statVal: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 14, width: 52, fontVariant: ['tabular-nums'] },
+  statValRight: { textAlign: 'right' },
+  statValWin: { color: colors.accent },
+  statValWinAway: { color: colors.teal },
   statLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 12.5, flex: 1, textAlign: 'center' },
-  bar: { flexDirection: 'row', height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: colors.surface2 },
-  barHome: { backgroundColor: colors.accent, height: 6 },
-  barAway: { backgroundColor: colors.teal, height: 6 },
+  bar: { flexDirection: 'row', height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: colors.surface2 },
+  barHome: { backgroundColor: colors.accent, height: 7 },
+  barAway: { backgroundColor: colors.teal, height: 7 },
 
   lineup: { marginBottom: spacing(3) },
   lineupHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: spacing(2) },
-  lineupFlag: { fontSize: 20 },
   lineupTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
   formation: {
     color: colors.accent,

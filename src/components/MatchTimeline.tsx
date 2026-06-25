@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { Flag } from './Flag';
 import { Match, hasStarted } from '../data/fixtures';
-import { teamFlag } from '../data/teams';
 import { fetchTimeline, type LiveTimeline, type TimelineEvent } from '../lib/liveEvents';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { colors, fonts, radius, spacing, state } from '../lib/theme';
 
 /**
  * "Lance a lance" do jogo — minuto ao vivo + gols (autor, minuto, (p) pênalti) e
@@ -82,20 +82,21 @@ export function MatchTimeline({ match }: { match: Match }) {
 }
 
 function EventRow({ match, event }: { match: Match; event: TimelineEvent }) {
-  const flag = teamFlag(event.side === 'home' ? match.home : match.away);
+  const teamId = event.side === 'home' ? match.home : match.away;
   const icon = iconFor(event);
+  const isGoal = event.type === 'goal' || event.type === 'own-goal';
   const suffix =
     event.type === 'own-goal' ? ' (contra)' : event.penalty ? ' (p)' : '';
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, isGoal && styles.rowGoal]}>
       <Text style={styles.icon}>{icon}</Text>
       <Text style={styles.minute}>{event.minute}</Text>
-      <Text style={styles.player} numberOfLines={1}>
+      <Text style={[styles.player, isGoal && styles.playerGoal]} numberOfLines={1}>
         {event.player}
         {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
       </Text>
-      <Text style={styles.flag}>{flag}</Text>
+      <Flag teamId={teamId} size={22} radius={6} />
     </View>
   );
 }
@@ -124,10 +125,11 @@ const styles = StyleSheet.create({
   liveText: { color: colors.live, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.4 },
   empty: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
 
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2) },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2.5), paddingHorizontal: spacing(2), marginHorizontal: -spacing(2), borderRadius: radius.sm },
+  rowGoal: { backgroundColor: state.favoriteBg },
   icon: { fontSize: 16, width: 22, textAlign: 'center' },
-  minute: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13, width: 44 },
+  minute: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13, width: 40, fontVariant: ['tabular-nums'] },
   player: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15, flex: 1 },
+  playerGoal: { fontFamily: fonts.bold },
   suffix: { color: colors.amber, fontFamily: fonts.bold, fontSize: 13 },
-  flag: { fontSize: 18 },
 });

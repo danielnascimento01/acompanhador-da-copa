@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Flag } from '../components/Flag';
 import { StandingsTable } from '../components/StandingsTable';
 import { PredictionEditor } from '../components/PredictionEditor';
 import { Match, kickoff, isPredictable, matchDisplay } from '../data/fixtures';
@@ -109,7 +110,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           </Text>
           <View style={styles.scoreRow}>
             <View style={styles.teamCol}>
-              <Text style={styles.flag}>{teamFlag(match.home)}</Text>
+              <Flag teamId={match.home} size={58} radius={17} />
               <Text style={styles.teamName} numberOfLines={2}>
                 {teamName(match.home)}
               </Text>
@@ -124,7 +125,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
               )}
             </View>
             <View style={styles.teamCol}>
-              <Text style={styles.flag}>{teamFlag(match.away)}</Text>
+              <Flag teamId={match.away} size={58} radius={17} />
               <Text style={styles.teamName} numberOfLines={2}>
                 {teamName(match.away)}
               </Text>
