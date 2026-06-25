@@ -93,8 +93,61 @@ const TEAMS: TeamInfo[] = [
   { id: 'Panama', name: 'Panamá', art: 'do' },
 ];
 
-/** Resolve o nome PT + artigo a partir do nome ESPN. null se desconhecido. */
-export function teamInfo(espnName: string): { name: string; art: string } | null {
+/** Emoji da bandeira por id (mesma fonte das bandeiras do app; Escócia/Inglaterra
+ * usam a bandeira de subdivisão). Usado no texto do push: "🇧🇷 Brasil 1 x 0 🏴 Escócia". */
+const FLAG_EMOJI: Record<string, string> = {
+  'Mexico': '🇲🇽',
+  'South Africa': '🇿🇦',
+  'South Korea': '🇰🇷',
+  'Czech Republic': '🇨🇿',
+  'Canada': '🇨🇦',
+  'Bosnia-Herzegovina': '🇧🇦',
+  'Qatar': '🇶🇦',
+  'Switzerland': '🇨🇭',
+  'Brazil': '🇧🇷',
+  'Morocco': '🇲🇦',
+  'Haiti': '🇭🇹',
+  'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'USA': '🇺🇸',
+  'Paraguay': '🇵🇾',
+  'Australia': '🇦🇺',
+  'Turkey': '🇹🇷',
+  'Germany': '🇩🇪',
+  'Curaçao': '🇨🇼',
+  'Ivory Coast': '🇨🇮',
+  'Ecuador': '🇪🇨',
+  'Netherlands': '🇳🇱',
+  'Japan': '🇯🇵',
+  'Sweden': '🇸🇪',
+  'Tunisia': '🇹🇳',
+  'Belgium': '🇧🇪',
+  'Egypt': '🇪🇬',
+  'Iran': '🇮🇷',
+  'New Zealand': '🇳🇿',
+  'Spain': '🇪🇸',
+  'Cape Verde': '🇨🇻',
+  'Saudi Arabia': '🇸🇦',
+  'Uruguay': '🇺🇾',
+  'France': '🇫🇷',
+  'Senegal': '🇸🇳',
+  'Iraq': '🇮🇶',
+  'Norway': '🇳🇴',
+  'Argentina': '🇦🇷',
+  'Algeria': '🇩🇿',
+  'Austria': '🇦🇹',
+  'Jordan': '🇯🇴',
+  'Portugal': '🇵🇹',
+  'DR Congo': '🇨🇩',
+  'Uzbekistan': '🇺🇿',
+  'Colombia': '🇨🇴',
+  'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'Croatia': '🇭🇷',
+  'Ghana': '🇬🇭',
+  'Panama': '🇵🇦',
+};
+
+/** Resolve o nome PT + artigo + emoji a partir do nome ESPN. null se desconhecido. */
+export function teamInfo(espnName: string): { name: string; art: string; emoji: string } | null {
   const t = TEAMS.find((x) => teamMatches(espnName, x.id));
-  return t ? { name: t.name, art: t.art } : null;
+  return t ? { name: t.name, art: t.art, emoji: FLAG_EMOJI[t.id] ?? '' } : null;
 }

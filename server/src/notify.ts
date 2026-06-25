@@ -56,12 +56,25 @@ export function buildFullTimeNotification(input: {
   home: number;
   away: number;
 }): { title: string; body: string } {
-  const homeName = teamInfo(input.homeTeam)?.name ?? input.homeTeam;
-  const awayName = teamInfo(input.awayTeam)?.name ?? input.awayTeam;
   return {
     title: '🏁 Fim de jogo',
-    body: `${homeName} ${input.home} x ${input.away} ${awayName}`,
+    body: scoreLine(input.homeTeam, input.awayTeam, input.home, input.away),
   };
+}
+
+/**
+ * Linha de placar com emoji de bandeira ao lado de cada país:
+ *   "🇧🇷 Brasil 1 x 0 🏴 Escócia"
+ * Time desconhecido (sem info) cai pro nome ESPN sem emoji.
+ */
+function scoreLine(homeTeam: string, awayTeam: string, home: number, away: number): string {
+  const h = teamInfo(homeTeam);
+  const a = teamInfo(awayTeam);
+  const hName = h?.name ?? homeTeam;
+  const aName = a?.name ?? awayTeam;
+  const hE = h?.emoji ? `${h.emoji} ` : '';
+  const aE = a?.emoji ? `${a.emoji} ` : '';
+  return `${hE}${hName} ${home} x ${away} ${aE}${aName}`;
 }
 
 export function buildGoalNotification(input: GoalNotifyInput): { title: string; body: string } {
@@ -69,8 +82,6 @@ export function buildGoalNotification(input: GoalNotifyInput): { title: string; 
 
   const homeInfo = teamInfo(homeTeam);
   const awayInfo = teamInfo(awayTeam);
-  const homeName = homeInfo?.name ?? homeTeam;
-  const awayName = awayInfo?.name ?? awayTeam;
 
   // Quem marcou? Só nomeia se foi um lado só E o time é conhecido.
   let title = '⚽ Gol!';
@@ -80,8 +91,8 @@ export function buildGoalNotification(input: GoalNotifyInput): { title: string; 
     title = `⚽ Gol ${awayInfo.art} ${awayInfo.name}`;
   }
 
-  const scoreLine = `${homeName} ${home} x ${away} ${awayName}`;
-  const body = scorer ? `${scorer} foi o autor do gol!\n${scoreLine}` : scoreLine;
+  const line = scoreLine(homeTeam, awayTeam, home, away);
+  const body = scorer ? `${scorer} foi o autor do gol!\n${line}` : line;
 
   return { title, body };
 }

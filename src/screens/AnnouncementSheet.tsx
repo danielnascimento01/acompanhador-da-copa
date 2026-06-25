@@ -29,18 +29,29 @@ export function AnnouncementSheet() {
             end={{ x: 1, y: 0 }}
             style={styles.badge}
           >
-            <Text style={styles.badgeText}>⚽ NOVIDADE</Text>
+            <Text style={styles.badgeText}>🔔 NOVIDADES</Text>
           </LinearGradient>
 
-          <Text style={styles.title}>Avisos de gol ao vivo</Text>
+          <Text style={styles.title}>Avisos de gol e fim de jogo</Text>
+
+          <View style={styles.featRow}>
+            <Text style={styles.featIcon}>⚽</Text>
+            <Text style={styles.featText}>
+              <Text style={styles.bold}>Gol ao vivo</Text> — te avisamos na hora que sai gol,{' '}
+              <Text style={styles.bold}>mesmo com o app fechado</Text>.
+            </Text>
+          </View>
+          <View style={styles.featRow}>
+            <Text style={styles.featIcon}>🏁</Text>
+            <Text style={styles.featText}>
+              <Text style={styles.bold}>Fim de jogo (novo!)</Text> — o placar final assim que o juiz apita.
+              Ex.: “🇧🇷 Brasil 1 x 0 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escócia”.
+            </Text>
+          </View>
 
           <Text style={styles.body}>
-            Agora o app te avisa na hora que sai gol — <Text style={styles.bold}>mesmo fechado!</Text>{' '}
-            Por padrão, você recebe os gols das suas seleções e da sua favorita.
-          </Text>
-          <Text style={styles.body}>
-            Dá para ajustar em <Text style={styles.bold}>Avisos</Text>, ou seguir um jogo específico
-            tocando no 🔔 dentro do jogo.
+            Escolha em <Text style={styles.bold}>Avisos</Text>: só as suas seleções ou todos os jogos —
+            você no controle. Dá para seguir um jogo específico tocando no 🔔 dentro do jogo.
           </Text>
 
           <View style={styles.feedbackBox}>
@@ -98,6 +109,9 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.3, marginBottom: spacing(3) },
   body: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginBottom: spacing(3) },
   bold: { color: colors.text, fontFamily: fonts.bold },
+  featRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing(3), marginBottom: spacing(3) },
+  featIcon: { fontSize: 22, lineHeight: 24 },
+  featText: { flex: 1, color: colors.textDim, fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21 },
   feedbackBox: {
     backgroundColor: 'rgba(20,224,138,0.08)',
     borderRadius: radius.md,

@@ -24,7 +24,7 @@ function eq(label: string, got: string, want: string) {
     homeTeam: 'Brazil', awayTeam: 'Scotland', home: 1, away: 0, newHome: 1, newAway: 0, scorer: 'Raphinha',
   });
   eq('Brasil título', n.title, '⚽ Gol do Brasil');
-  eq('Brasil corpo', n.body, 'Raphinha foi o autor do gol!\nBrasil 1 x 0 Escócia');
+  eq('Brasil corpo', n.body, 'Raphinha foi o autor do gol!\n🇧🇷 Brasil 1 x 0 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escócia');
 }
 
 // ── Gol do visitante, SEM artilheiro (ESPN sem lance) ────────────────────────
@@ -33,7 +33,7 @@ function eq(label: string, got: string, want: string) {
     homeTeam: 'Brazil', awayTeam: 'Scotland', home: 1, away: 1, newHome: 0, newAway: 1, scorer: null,
   });
   eq('Escócia título (visitante)', n.title, '⚽ Gol da Escócia');
-  eq('Escócia corpo sem autor', n.body, 'Brasil 1 x 1 Escócia');
+  eq('Escócia corpo sem autor', n.body, '🇧🇷 Brasil 1 x 1 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escócia');
 }
 
 // ── Conectores corretos (do/da/de/dos) ───────────────────────────────────────
@@ -61,7 +61,7 @@ eq('Bosnia-Herzegovina → da Bósnia', art('Bosnia-Herzegovina', ''), '⚽ Gol 
   const n = buildGoalNotification({
     homeTeam: 'Qatar', awayTeam: 'Bosnia-Herzegovina', home: 1, away: 3, newHome: 0, newAway: 1, scorer: 'Džeko',
   });
-  eq('placar PT dos dois', n.body, 'Džeko foi o autor do gol!\nCatar 1 x 3 Bósnia e Herzegovina');
+  eq('placar PT dos dois', n.body, 'Džeko foi o autor do gol!\n🇶🇦 Catar 1 x 3 🇧🇦 Bósnia e Herzegovina');
 }
 
 // ── Degradação: 2 gols de lados diferentes no mesmo ciclo → título neutro ─────
@@ -78,7 +78,7 @@ eq('Bosnia-Herzegovina → da Bósnia', art('Bosnia-Herzegovina', ''), '⚽ Gol 
     homeTeam: 'Brazil', awayTeam: 'Scotland', home: 2, away: 0, newHome: 2, newAway: 0, scorer: null,
   });
   eq('2 gols do mandante → Gol do Brasil', n.title, '⚽ Gol do Brasil');
-  eq('2 gols → corpo só placar', n.body, 'Brasil 2 x 0 Escócia');
+  eq('2 gols → corpo só placar', n.body, '🇧🇷 Brasil 2 x 0 🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escócia');
 }
 
 // ── Time desconhecido → título neutro + nome cru no corpo (nunca quebra) ──────
@@ -87,7 +87,7 @@ eq('Bosnia-Herzegovina → da Bósnia', art('Bosnia-Herzegovina', ''), '⚽ Gol 
     homeTeam: 'Atlantis', awayTeam: 'Brazil', home: 1, away: 0, newHome: 1, newAway: 0, scorer: null,
   });
   eq('desconhecido → neutro', n.title, '⚽ Gol!');
-  eq('desconhecido → corpo cru', n.body, 'Atlantis 1 x 0 Brasil');
+  eq('desconhecido → corpo cru', n.body, 'Atlantis 1 x 0 🇧🇷 Brasil');
 }
 
 // ── pickScorerFromDetails: artilheiro dos details do scoreboard (fonte real) ──

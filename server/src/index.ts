@@ -58,6 +58,61 @@ async function saveSubscribers(env: Env, subs: Subscribers): Promise<void> {
   await env.KV.put(K.subs, JSON.stringify(subs), { expirationTtl: 365 * 24 * 60 * 60 });
 }
 
+/** Interface mínima de KV — permite injetar um fake no teste. */
+type KVLike = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
+};
+/** Função de envio injetável (no Worker é o sendPush; no teste é um spy). */
+type SendFn = (
+  tokens: string[],
+  msg: { title: string; body: string; data?: Record<string, unknown> },
+) => Promise<{ invalidTokens: string[] }>;
+
+/**
+ * FIM DE JOGO: dispara o aviso na transição ao-vivo→encerrado. Isolada e testável
+ * (KV e envio injetados — ver fulltime.test.ts). Garante:
+ *  - só avisa se o estado anterior era 'in' (jogo já encerrado na 1ª vez = sem aviso retroativo)
+ *  - grava 'post' uma vez → não reenvia no próximo ciclo
+ *  - filtra destinatários por wantsFullTime (modo próprio do fim de jogo)
+ * Retorna tokens inválidos (para remoção pelo chamador).
+ */
+export async function processFullTime(
+  finishedEvents: ESPNEvent[],
+  subs: Subscribers,
+  kv: KVLike,
+  send: SendFn,
+): Promise<{ sent: number; removedTokens: string[] }> {
+  const removedTokens: string[] = [];
+  let sent = 0;
+  for (const event of finishedEvents) {
+    try {
+      const stateKey = K.matchState(event.id);
+      const prevState = await kv.get(stateKey);
+
+      if (prevState === 'in') {
+        const { home, away, homeTeam, awayTeam } = extractScore(event);
+        const recipients = Object.keys(subs).filter((t) => wantsFullTime(subs[t], homeTeam, awayTeam));
+        if (recipients.length > 0) {
+          const { title, body } = buildFullTimeNotification({ homeTeam, awayTeam, home, away });
+          console.log('processFullTime: FIM DE JOGO', { event: event.id, score: `${home}-${away}`, recipients: recipients.length });
+          const { invalidTokens } = await send(recipients, { title, body, data: { matchId: event.id, kind: 'fulltime' } });
+          sent += recipients.length;
+          removedTokens.push(...invalidTokens);
+        }
+      }
+
+      // Grava 'post' uma vez — no próximo cron prevState será 'post' e não reenvia.
+      if (prevState !== 'post') {
+        await kv.put(stateKey, 'post', { expirationTtl: 7 * 24 * 60 * 60 });
+      }
+    } catch (err) {
+      console.error(`processFullTime: erro no fim de jogo ${event.id}:`, err);
+    }
+  }
+  return { sent, removedTokens };
+}
+
 // ── Cron ───────────────────────────────────────────────────────────────────────
 
 async function runCron(env: Env): Promise<void> {
@@ -87,8 +142,11 @@ async function runCron(env: Env): Promise<void> {
   if (liveEvents.length === 0 && finishedEvents.length === 0) return;
 
   // Carrega os assinantes (com preferências) uma vez para gols + fim de jogo.
+  // NÃO faz early-return se vazio: o rastreamento de estado do jogo ('in'/'post')
+  // precisa rodar SEMPRE, senão um assinante que chega tarde (no fim do jogo)
+  // perderia o aviso por nunca ter havido a transição 'in'→'post' gravada.
+  // Com 0 destinatários, os loops abaixo apenas registram estado e não enviam nada.
   const subs = await loadSubscribers(env);
-  if (Object.keys(subs).length === 0) return;
   let subsDirty = false; // só persiste o `subs` se removermos algum token inválido
 
   for (const event of liveEvents) {
@@ -174,44 +232,13 @@ async function runCron(env: Env): Promise<void> {
   }
 
   // ── FIM DE JOGO ────────────────────────────────────────────────────────────
-  // Avisa quando um jogo que vimos AO VIVO ('in') passa para 'post'. A transição
-  // é detectada pelo K.matchState: se o estado anterior NÃO era 'in' (ex.: jogo já
-  // estava encerrado na 1ª vez que o worker o viu), NÃO dispara aviso retroativo.
-  for (const event of finishedEvents) {
-    try {
-      const stateKey = K.matchState(event.id);
-      const prevState = await env.KV.get(stateKey);
-
-      if (prevState === 'in') {
-        const { home, away, homeTeam, awayTeam } = extractScore(event);
-        const recipients = Object.keys(subs).filter((t) => wantsFullTime(subs[t], homeTeam, awayTeam));
-        if (recipients.length > 0) {
-          const { title, body } = buildFullTimeNotification({ homeTeam, awayTeam, home, away });
-          console.log('runCron: FIM DE JOGO', {
-            event: event.id,
-            score: `${home}-${away}`,
-            recipients: recipients.length,
-          });
-          const { invalidTokens } = await sendPush(
-            recipients,
-            { title, body, data: { matchId: event.id, kind: 'fulltime' } },
-            env.EXPO_ACCESS_TOKEN,
-          );
-          for (const t of invalidTokens) {
-            if (subs[t]) {
-              delete subs[t];
-              subsDirty = true;
-            }
-          }
-        }
-      }
-
-      // Grava 'post' uma vez — no próximo cron prevState será 'post' e não reenvia.
-      if (prevState !== 'post') {
-        await env.KV.put(stateKey, 'post', { expirationTtl: 7 * 24 * 60 * 60 });
-      }
-    } catch (err) {
-      console.error(`runCron: erro no fim de jogo ${event.id}:`, err);
+  const ft = await processFullTime(finishedEvents, subs, env.KV, (tokens, msg) =>
+    sendPush(tokens, msg, env.EXPO_ACCESS_TOKEN),
+  );
+  for (const t of ft.removedTokens) {
+    if (subs[t]) {
+      delete subs[t];
+      subsDirty = true;
     }
   }
 

@@ -14,7 +14,7 @@ const KEY_ANNOUNCE    = 'copa2026:lastAnnounce';
  * Id do aviso (popup de novidade) ATUAL. Para lançar um novo aviso no futuro,
  * basta mudar este id — o popup volta a aparecer uma vez para todos.
  */
-export const CURRENT_ANNOUNCE_ID = 'goal-push-v1';
+export const CURRENT_ANNOUNCE_ID = 'notif-fulltime-v2';
 
 /**
  * URL do Cloudflare Worker que gerencia push de gol e artilheiros ao vivo.
