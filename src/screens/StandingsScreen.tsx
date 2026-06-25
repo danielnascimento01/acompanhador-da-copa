@@ -163,7 +163,7 @@ export function StandingsScreen() {
               <Text style={styles.groupLabel}>Grupo {g}</Text>
               {mode === 'predicted' && <Text style={styles.predictedFlag}>simulado</Text>}
             </View>
-            <StandingsTable standings={byGroup[g]} selected={selected} />
+            <StandingsTable standings={byGroup[g]} selected={selected} primaryTeam={settings.primaryTeam} />
 
             {mode === 'predicted' && predictableByGroup[g].length > 0 && (
               <View style={styles.quickPredict}>

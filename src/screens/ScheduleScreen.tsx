@@ -225,6 +225,7 @@ export function ScheduleScreen() {
           <MatchCard
             match={item}
             selected={selected}
+            primaryTeam={settings.primaryTeam}
             prediction={predictions[item.id]}
             onPress={() => setDetail(item)}
           />
@@ -240,6 +241,7 @@ export function ScheduleScreen() {
         visible={dayOpen}
         matches={matches}
         selected={selected}
+        primaryTeam={settings.primaryTeam}
         onClose={() => setDayOpen(false)}
         onSelectMatch={(m) => {
           setDayOpen(false);

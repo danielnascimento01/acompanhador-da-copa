@@ -10,14 +10,16 @@ import { colors, fonts, radius, spacing, state } from '../lib/theme';
 
 type Props = {
   match: Match;
-  /** Ids das seleções marcadas, para destacar quem você acompanha. */
+  /** Ids das seleções marcadas, para destacar quem você acompanha (nome verde). */
   selected: Set<string>;
+  /** Seleção FAVORITA (principal): só ela leva a ⭐. Acompanhadas ficam só verdes. */
+  primaryTeam?: string | null;
   /** Palpite do usuário para este jogo (exibido se não houver placar real). */
   prediction?: Prediction;
   onPress?: () => void;
 };
 
-export const MatchCard = React.memo(function MatchCard({ match, selected, prediction, onPress }: Props) {
+export const MatchCard = React.memo(function MatchCard({ match, selected, primaryTeam, prediction, onPress }: Props) {
   const ko = kickoff(match);
   // Estado de exibição confirmado (nunca pelo relógio): live só sob isLive,
   // placar só sob (ao vivo|encerrado)&&placar — senão neutro. Mata o "Em andamento"
@@ -27,6 +29,8 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, predic
   const lateNight = d.state === 'upcoming' && isLateNight(ko);
   const homeFav = selected.has(match.home);
   const awayFav = selected.has(match.away);
+  const homePrimary = !!primaryTeam && match.home === primaryTeam;
+  const awayPrimary = !!primaryTeam && match.away === primaryTeam;
 
   return (
     <Pressable
@@ -41,7 +45,7 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, predic
         <Text style={[styles.team, homeFav && styles.teamFav]} numberOfLines={1}>
           {teamName(match.home)}
         </Text>
-        {homeFav && <Text style={styles.star}>★</Text>}
+        {homePrimary && <Text style={styles.star}>★</Text>}
       </View>
 
       {/* Centro: placar/hora + estado */}
@@ -76,7 +80,7 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, predic
 
       {/* Visitante */}
       <View style={[styles.side, styles.sideRight]}>
-        {awayFav && <Text style={styles.star}>★</Text>}
+        {awayPrimary && <Text style={styles.star}>★</Text>}
         <Text style={[styles.team, styles.teamRight, awayFav && styles.teamFav]} numberOfLines={1}>
           {teamName(match.away)}
         </Text>

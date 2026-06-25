@@ -11,6 +11,7 @@ type Props = {
   visible: boolean;
   matches: Match[];
   selected: Set<string>;
+  primaryTeam?: string | null;
   onClose: () => void;
   onSelectMatch: (m: Match) => void;
 };
@@ -20,7 +21,7 @@ type Props = {
  * vivo no topo. Replica o split da TV nos dias de maior uso. Usa os jogos que o
  * store já tem (sem fetch novo) e o mesmo MatchCard das outras telas.
  */
-export function DayMatchesSheet({ visible, matches, selected, onClose, onSelectMatch }: Props) {
+export function DayMatchesSheet({ visible, matches, selected, primaryTeam, onClose, onSelectMatch }: Props) {
   const today = useMemo(() => {
     const key = localDayKey(new Date());
     return matches
@@ -50,7 +51,7 @@ export function DayMatchesSheet({ visible, matches, selected, onClose, onSelectM
               <Text style={styles.empty}>Nenhum jogo programado para hoje. Volte amanhã! ⚽</Text>
             ) : (
               today.map((m) => (
-                <MatchCard key={m.id} match={m} selected={selected} onPress={() => onSelectMatch(m)} />
+                <MatchCard key={m.id} match={m} selected={selected} primaryTeam={primaryTeam} onPress={() => onSelectMatch(m)} />
               ))
             )}
           </ScrollView>

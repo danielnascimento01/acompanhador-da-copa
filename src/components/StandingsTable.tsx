@@ -9,6 +9,9 @@ import { colors, fonts, spacing, state } from '../lib/theme';
 type Props = {
   standings: Standing[];
   selected?: Set<string>;
+  /** Seleção FAVORITA (principal). Só ela leva a ⭐ — as demais selecionadas
+   * apenas ficam destacadas (verde), pois são "acompanhar", não "favorito". */
+  primaryTeam?: string | null;
 };
 
 const NUM_COLS: { key: keyof Standing; label: string }[] = [
@@ -20,7 +23,7 @@ const NUM_COLS: { key: keyof Standing; label: string }[] = [
   { key: 'points', label: 'P' },
 ];
 
-export function StandingsTable({ standings, selected }: Props) {
+export function StandingsTable({ standings, selected, primaryTeam }: Props) {
   return (
     <View>
       <View style={styles.headerRow}>
@@ -35,6 +38,7 @@ export function StandingsTable({ standings, selected }: Props) {
 
       {standings.map((s, i) => {
         const mine = selected?.has(s.teamId);
+        const isPrimary = !!primaryTeam && s.teamId === primaryTeam;
         // Badge: 1º-2º classificam (verde), 3º disputa (âmbar), 4º neutro.
         const top2 = i < 2;
         const third = i === 2;
@@ -49,7 +53,7 @@ export function StandingsTable({ standings, selected }: Props) {
               <Text style={[styles.pos, { color: badgeFg }]}>{i + 1}</Text>
             </View>
             <Flag teamId={s.teamId} size={24} radius={7} />
-            {mine && <Text style={styles.star}>★</Text>}
+            {isPrimary && <Text style={styles.star}>★</Text>}
             <Text style={[styles.team, mine && styles.teamMine]} numberOfLines={1}>
               {teamName(s.teamId)}
             </Text>
