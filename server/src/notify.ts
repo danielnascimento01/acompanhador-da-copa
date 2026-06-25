@@ -9,6 +9,25 @@
  * 2 gols de lados diferentes no mesmo ciclo → título neutro "⚽ Gol!".
  */
 import { teamInfo } from './teams';
+import type { ESPNPlay } from './espn';
+
+/**
+ * Artilheiro do gol que produziu o placar ATUAL — casamento EXATO por placar.
+ * Retorna o nome só se existir um lance de gol cujo placar resultante é
+ * exatamente o atual (ou seja, FOI esse gol). Senão null → push SEM nome.
+ *
+ * Por quê tão rígido: melhor nenhum nome do que o ERRADO. Pegar "o último gol"
+ * podia atribuir o jogador de outro gol/time (foi o risco que o Daniel apontou).
+ */
+export function pickScorer(plays: ESPNPlay[], home: number, away: number): string | null {
+  const goal = plays.find(
+    (p) =>
+      (p.type?.text ?? '').toLowerCase().includes('goal') &&
+      p.homeScore === home &&
+      p.awayScore === away,
+  );
+  return goal?.athletesInvolved?.[0]?.displayName ?? null;
+}
 
 export type GoalNotifyInput = {
   homeTeam: string; // nome ESPN

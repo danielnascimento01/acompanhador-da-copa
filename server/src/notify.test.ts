@@ -3,7 +3,8 @@
  * PROVA: título nomeia quem marcou com o artigo certo (do/da/de/dos), corpo com
  * placar PT, autor só quando há, aliases ESPN, e degradação elegante.
  */
-import { buildGoalNotification } from './notify';
+import { buildGoalNotification, pickScorer } from './notify';
+import type { ESPNPlay } from './espn';
 
 let pass = 0;
 let fail = 0;
@@ -87,6 +88,28 @@ eq('Bosnia-Herzegovina → da Bósnia', art('Bosnia-Herzegovina', ''), '⚽ Gol 
   });
   eq('desconhecido → neutro', n.title, '⚽ Gol!');
   eq('desconhecido → corpo cru', n.body, 'Atlantis 1 x 0 Brasil');
+}
+
+// ── pickScorer: SEMPRE o autor do gol certo, ou NENHUM (nunca o errado) ───────
+const play = (text: string, h: number, a: number, name?: string): ESPNPlay =>
+  ({ type: { text }, homeScore: h, awayScore: a, ...(name ? { athletesInvolved: [{ displayName: name }] } : {}) }) as ESPNPlay;
+
+// Cenário: Brasil 2 x 1. Vários gols no array. O gol ATUAL (2-1) é do mandante.
+const plays: ESPNPlay[] = [
+  play('Goal', 1, 0, 'Vinícius Júnior'), // 1-0
+  play('Goal', 1, 1, 'McTominay'),       // 1-1 (Escócia)
+  play('Yellow Card', 1, 1),
+  play('Goal', 2, 1, 'Rodrygo'),         // 2-1 (placar atual)
+];
+eqScorer('pega o autor do placar EXATO (2-1) = Rodrygo', pickScorer(plays, 2, 1), 'Rodrygo');
+eqScorer('placar 1-1 → McTominay (não o último do array)', pickScorer(plays, 1, 1), 'McTominay');
+eqScorer('placar sem lance correspondente (3-1) → null', pickScorer(plays, 3, 1), null);
+eqScorer('array vazio (ESPN sem lance) → null', pickScorer([], 1, 0), null);
+eqScorer('gol sem atleta → null (nunca nome errado)', pickScorer([play('Goal', 1, 0)], 1, 0), null);
+
+function eqScorer(label: string, got: string | null, want: string | null) {
+  if (got === want) { pass++; console.log(`✅ ${label}`); }
+  else { fail++; console.log(`❌ ${label}\n   esperado: ${JSON.stringify(want)}\n   veio: ${JSON.stringify(got)}`); }
 }
 
 console.log(`\n${pass} passaram, ${fail} falharam`);

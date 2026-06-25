@@ -14,7 +14,7 @@ import { fetchScoreboard, extractScore, fetchPlays } from './espn';
 import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
 import { wantsGoal, type SubscriberPrefs } from './filter';
-import { buildGoalNotification } from './notify';
+import { buildGoalNotification, pickScorer } from './notify';
 
 export interface Env {
   KV: KVNamespace;
@@ -114,8 +114,7 @@ async function runCron(env: Env): Promise<void> {
       if (totalNewGoals === 1) {
         try {
           const plays = await fetchPlays(event.id);
-          const goals = plays.filter((p) => (p.type?.text ?? '').toLowerCase().includes('goal'));
-          scorer = goals[goals.length - 1]?.athletesInvolved?.[0]?.displayName ?? null;
+          scorer = pickScorer(plays, home, away); // só nomeia se o lance bate com o placar exato
         } catch {
           // sem lance-a-lance — segue sem autor
         }
