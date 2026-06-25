@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing(2.5), gap: 2, borderRadius: 8, paddingHorizontal: 4, marginHorizontal: -4 },
   rowMine: { backgroundColor: state.favoriteBg },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border, borderRadius: 0, marginHorizontal: 0, paddingHorizontal: 0 },
-  posWrap: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  posWrap: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: spacing(2) },
   pos: { fontFamily: fonts.extrabold, fontSize: 11, fontVariant: ['tabular-nums'] },
   star: { color: colors.accent, fontSize: 11, marginLeft: spacing(2) },
   team: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 14, marginLeft: spacing(2) },
