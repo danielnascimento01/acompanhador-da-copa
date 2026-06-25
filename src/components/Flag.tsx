@@ -16,7 +16,7 @@ export function Flag({ teamId, size = 40, radius }: { teamId: string; size?: num
   return (
     <View style={[styles.wrap, { width: size, height: size, borderRadius: r }]}>
       {img ? (
-        <Image source={img} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={img} style={{ width: size, height: size }} resizeMode="cover" />
       ) : (
         <Text style={{ fontSize: Math.round(size * 0.66) }} allowFontScaling={false}>
           {teamFlag(teamId)}
