@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Flag } from '../components/Flag';
 import { SCORERS_UPDATED } from '../data/scorers';
 import { fetchLiveScorers, type LiveScorer } from '../lib/liveScorers';
 import { colors, fonts, radius, spacing } from '../lib/theme';
@@ -58,7 +59,11 @@ export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: 
               {ranked.map((s) => (
                 <View key={`${s.player}-${s.rank}`} style={[styles.row, s.rank === 1 && styles.rowLeader]}>
                   <Text style={[styles.rank, s.rank === 1 && styles.rankLeader]}>{s.rank}</Text>
-                  <Text style={styles.flag}>{s.flag}</Text>
+                  {s.teamId ? (
+                    <Flag teamId={s.teamId} size={34} radius={10} />
+                  ) : (
+                    <Text style={styles.flag}>{s.flag}</Text>
+                  )}
                   <View style={styles.flex1}>
                     <Text style={styles.player}>{s.player}</Text>
                     <Text style={styles.team}>{s.teamName}</Text>

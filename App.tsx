@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 import { SairaCondensed_800ExtraBold } from '@expo-google-fonts/saira-condensed';
 import {
   SairaSemiCondensed_400Regular,
@@ -26,12 +27,13 @@ import { AnnouncementSheet } from './src/screens/AnnouncementSheet';
 import { colors, fonts, gradients, spacing } from './src/lib/theme';
 
 type TabKey = 'schedule' | 'standings' | 'teams' | 'settings';
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'schedule', label: 'Jogos', icon: '⚽' },
-  { key: 'standings', label: 'Grupos', icon: '📊' },
-  { key: 'teams', label: 'Seleções', icon: '🌎' },
-  { key: 'settings', label: 'Avisos', icon: '🔔' },
+const TABS: { key: TabKey; label: string; icon: IconName }[] = [
+  { key: 'schedule', label: 'Jogos', icon: 'football-outline' },
+  { key: 'standings', label: 'Grupos', icon: 'stats-chart-outline' },
+  { key: 'teams', label: 'Seleções', icon: 'globe-outline' },
+  { key: 'settings', label: 'Avisos', icon: 'notifications-outline' },
 ];
 
 function Shell() {
@@ -92,7 +94,12 @@ function Shell() {
                   style={styles.tabIndicator}
                 />
               )}
-              <Text style={[styles.tabIcon, !active && styles.tabInactive]}>{t.icon}</Text>
+              <Ionicons
+                name={t.icon}
+                size={23}
+                color={active ? colors.accent : colors.textDim}
+                style={!active && styles.tabInactive}
+              />
               <Text style={[styles.tabLabel, active ? styles.tabLabelActive : styles.tabInactive]}>
                 {t.label}
               </Text>
@@ -108,13 +115,16 @@ function Shell() {
 
 export default function App() {
   const [supportOpen, setSupportOpen] = useState(false);
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     SairaCondensed_800ExtraBold,
     SairaSemiCondensed_400Regular,
     SairaSemiCondensed_500Medium,
     SairaSemiCondensed_600SemiBold,
     SairaSemiCondensed_700Bold,
     SairaSemiCondensed_800ExtraBold,
+    // Fonte dos ícones de linha — carregada no boot para nunca renderizar vazio
+    // (importante porque pode chegar via OTA num binário que ainda não a tinha).
+    ...Ionicons.font,
   });
 
   useEffect(() => {
@@ -122,7 +132,9 @@ export default function App() {
     ensureAndroidChannel();
   }, []);
 
-  if (!fontsLoaded) {
+  // Não trava o app se a fonte falhar (ex.: ícone não baixou via OTA): segue
+  // sem ela (ícones podem ficar vazios, mas o app abre — labels continuam).
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={styles.bootRoot}>
         <Text style={styles.bootLogo}>⚽</Text>

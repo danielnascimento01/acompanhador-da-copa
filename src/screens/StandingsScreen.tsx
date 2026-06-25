@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { StandingsTable } from '../components/StandingsTable';
 import { QuickPredictRow } from '../components/QuickPredictRow';
@@ -79,19 +80,19 @@ export function StandingsScreen() {
       {/* Mais da Copa: Artilheiros + História + Sedes */}
       <View style={styles.moreRow}>
         <Pressable style={styles.moreBtn} onPress={() => setScorersOpen(true)} accessibilityRole="button" accessibilityLabel="Ver artilheiros">
-          <Text style={styles.moreEmoji}>⚽</Text>
+          <Ionicons name="football-outline" size={22} color={colors.text} />
           <Text style={styles.moreText}>Artilheiros</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setHistoryOpen(true)} accessibilityRole="button" accessibilityLabel="Ver história da Copa">
-          <Text style={styles.moreEmoji}>📖</Text>
+          <Ionicons name="book-outline" size={22} color={colors.text} />
           <Text style={styles.moreText}>História</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setVenuesOpen(true)} accessibilityRole="button" accessibilityLabel="Ver sedes e estádios">
-          <Text style={styles.moreEmoji}>🏟️</Text>
+          <Ionicons name="location-outline" size={22} color={colors.text} />
           <Text style={styles.moreText}>Sedes</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setBracketOpen(true)} accessibilityRole="button" accessibilityLabel="Ver o mata-mata, caminho até a final">
-          <Text style={styles.moreEmoji}>🔀</Text>
+          <Ionicons name="git-network-outline" size={22} color={colors.text} />
           <Text style={styles.moreText}>Mata-mata</Text>
         </Pressable>
       </View>

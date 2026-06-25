@@ -12,6 +12,8 @@ export type LiveScorer = {
   player: string;
   teamName: string;
   flag: string;
+  /** id interno da seleção (p/ bandeira real via <Flag>). undefined se não casar. */
+  teamId?: string;
   goals: number;
   updatedAt: string;
 };
@@ -30,10 +32,10 @@ function timeoutSignal(ms: number): AbortSignal {
   return ctrl.signal;
 }
 
-/** Resolve a bandeira do time usando o nome ESPN (melhor esforço). */
-function resolveFlag(espnTeamName: string): string {
+/** Resolve a bandeira (emoji) + id interno do time pelo nome ESPN (melhor esforço). */
+function resolveTeam(espnTeamName: string): { flag: string; teamId?: string } {
   const team = TEAMS.find((t) => teamMatches(espnTeamName, t.id));
-  return team?.flag ?? '🏳️';
+  return { flag: team?.flag ?? '🏳️', teamId: team?.id };
 }
 
 type ServerResponse = {
@@ -63,10 +65,10 @@ export async function fetchLiveScorers(): Promise<LiveScorer[]> {
       throw new Error('empty');
     }
 
-    // Resolve flag no cliente (servidor retorna teamName da ESPN)
+    // Resolve flag + teamId no cliente (servidor retorna teamName da ESPN)
     const data = json.scorers.map((s) => ({
       ...s,
-      flag: resolveFlag(s.teamName),
+      ...resolveTeam(s.teamName),
     }));
     cache = { data, fetchedAt: now };
     return data;
@@ -81,6 +83,7 @@ function staticScorers(): LiveScorer[] {
     player: s.player,
     teamName: s.teamName,
     flag: s.flag,
+    teamId: s.teamId,
     goals: s.goals,
     updatedAt: '',
   }));
