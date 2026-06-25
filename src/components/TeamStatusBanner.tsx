@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Flag } from './Flag';
 import { Match } from '../data/fixtures';
-import { teamFlag, teamName } from '../data/teams';
+import { teamName } from '../data/teams';
 import { teamOutlook, TeamOutlook } from '../data/scenarios';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { colors, fonts, radius, spacing, state } from '../lib/theme';
 
 /** Cor pela situação (verde=classificado, vermelho=eliminado, âmbar=em disputa/3º). */
 function statusColor(o: TeamOutlook): string {
@@ -64,19 +65,20 @@ export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }
               disabled={!onPressTeam}
               style={({ pressed }) => [
                 styles.chip,
-                { borderColor: color },
                 isPrimary && styles.chipPrimary,
                 pressed && styles.pressed,
               ]}
               accessibilityRole={onPressTeam ? 'button' : 'text'}
               accessibilityLabel={`${isPrimary ? 'Sua seleção principal, ' : ''}${teamName(id)}: ${o.phraseShort}`}
             >
-              <Text style={styles.flag}>{teamFlag(id)}</Text>
-              <View>
-                <Text style={styles.team} numberOfLines={1}>
-                  {isPrimary ? '⭐ ' : ''}
-                  {teamName(id)}
-                </Text>
+              <Flag teamId={id} size={32} />
+              <View style={styles.info}>
+                <View style={styles.nameRow}>
+                  <Text style={[styles.team, isPrimary && styles.teamPrimary]} numberOfLines={1}>
+                    {teamName(id)}
+                  </Text>
+                  {isPrimary && <Text style={styles.star}>★</Text>}
+                </View>
                 <Text style={[styles.status, { color }]} numberOfLines={1}>
                   {shortLabel(o)}
                 </Text>
@@ -92,27 +94,31 @@ export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing(4) },
   title: {
-    color: colors.textFaint,
+    color: colors.accent,
     fontFamily: fonts.extrabold,
     fontSize: 12,
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: spacing(2),
+    marginBottom: spacing(2.5),
   },
-  row: { gap: spacing(2), paddingRight: spacing(2) },
+  row: { gap: spacing(2.5), paddingRight: spacing(2) },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing(2),
+    gap: spacing(2.5),
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderRadius: radius.md,
-    paddingVertical: spacing(2),
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingVertical: spacing(2.5),
     paddingHorizontal: spacing(3),
   },
-  chipPrimary: { backgroundColor: colors.surface2, borderWidth: 1.5 },
+  chipPrimary: { backgroundColor: state.favoriteBg, borderColor: state.favoriteBorder },
   pressed: { opacity: 0.6 },
-  flag: { fontSize: 22 },
-  team: { color: colors.text, fontFamily: fonts.bold, fontSize: 13 },
-  status: { fontFamily: fonts.semibold, fontSize: 11.5, marginTop: 1 },
+  info: { gap: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(1) },
+  team: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
+  teamPrimary: { color: colors.accent },
+  star: { color: colors.amber, fontSize: 11 },
+  status: { fontFamily: fonts.semibold, fontSize: 11.5 },
 });

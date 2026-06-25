@@ -97,6 +97,12 @@ export function NextMatchHero({ match, onPress }: { match: Match; onPress?: () =
       style={[styles.card, elevation(2)]}
     >
       <View style={styles.glow} pointerEvents="none" />
+      {/* Scrim de transmissão: escurece o rodapé pra dar materialidade de TV. */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.30)']}
+        style={styles.scrim}
+        pointerEvents="none"
+      />
 
       <View style={styles.topRow}>
         <Text style={styles.label}>{live ? 'ACONTECENDO AGORA' : ended ? 'ENCERRADO' : 'PRÓXIMO JOGO'}</Text>
@@ -196,6 +202,7 @@ const styles = StyleSheet.create({
     borderRadius: 90,
     backgroundColor: 'rgba(255,255,255,0.10)',
   },
+  scrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 160 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { color: 'rgba(255,255,255,0.92)', fontFamily: fonts.display, fontSize: 13, letterSpacing: 1 },
   when: { color: 'rgba(255,255,255,0.85)', fontFamily: fonts.semibold, fontSize: 13 },
@@ -204,20 +211,21 @@ const styles = StyleSheet.create({
   matchRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing(5) },
   teamBlock: { flex: 1, alignItems: 'center', gap: spacing(2) },
   flagWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255,255,255,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  flagBig: { fontSize: 40 },
+  flagBig: { fontSize: 44 },
   teamName: { color: '#fff', fontFamily: fonts.bold, fontSize: 15, textAlign: 'center' },
   middle: { paddingHorizontal: spacing(2), minWidth: 60, alignItems: 'center' },
   vs: { color: 'rgba(255,255,255,0.65)', fontFamily: fonts.display, fontSize: 22 },
-  score: { color: '#fff', fontFamily: fonts.display, fontSize: 40, fontVariant: ['tabular-nums'] },
+  score: { color: '#fff', fontFamily: fonts.display, fontSize: 48, fontVariant: ['tabular-nums'] },
   events: {
     marginTop: spacing(4),
     paddingTop: spacing(3),
