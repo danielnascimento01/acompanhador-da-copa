@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { teamFlag, teamName } from '../data/teams';
+import { Flag } from '../components/Flag';
+import { teamName } from '../data/teams';
 import { BRACKET, STAGE_META, Slot, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
 import { bestThirds, ThirdRow } from '../data/bestThirds';
 import { formatDayShort, formatTime } from '../lib/format';
@@ -132,7 +133,7 @@ function ThirdRowView({ row, selected }: { row: ThirdRow; selected: Set<string> 
       </View>
       {row.played > 0 ? (
         <>
-          <Text style={styles.thirdFlag}>{teamFlag(row.teamId)}</Text>
+          <Flag teamId={row.teamId} size={24} radius={7} />
           <Text style={[styles.thirdName, fav && styles.thirdNameFav]} numberOfLines={1}>
             {teamName(row.teamId)}
             {!row.locked ? <Text style={styles.thirdProv}>  · parcial</Text> : null}
@@ -167,7 +168,7 @@ function SlotView({
     const fav = selected.has(teamId);
     return (
       <View style={[styles.slot, styles.slotResolved, fav && styles.slotFav]}>
-        <Text style={styles.slotFlag}>{teamFlag(teamId)}</Text>
+        <Flag teamId={teamId} size={22} radius={6} />
         <Text style={[styles.slotTeam, fav && styles.slotTeamFav]} numberOfLines={1}>
           {teamName(teamId)}
         </Text>
