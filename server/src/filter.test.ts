@@ -3,7 +3,7 @@
  * Cobre os casos críticos: modos, casamento por seleção, jogos seguidos e
  * aliases ESPN↔id (United States→usa, Korea Republic→southkorea, etc.).
  */
-import { wantsGoal, type SubscriberPrefs } from './filter';
+import { wantsGoal, wantsFullTime, type SubscriberPrefs } from './filter';
 
 let pass = 0;
 let fail = 0;
@@ -42,6 +42,15 @@ check('Czechia (ESPN) casa com Czech Republic', wantsGoal(mine(['Czech Republic'
 check('sigo o jogo France x Spain (ordem direta)', wantsGoal(mine([], [['France', 'Spain']]), 'France', 'Spain'), true);
 check('sigo o jogo France x Spain (ordem invertida)', wantsGoal(mine([], [['France', 'Spain']]), 'Spain', 'France'), true);
 check('jogo seguido não vaza p/ outro jogo do mesmo time', wantsGoal(mine([], [['France', 'Spain']]), 'France', 'Germany'), false);
+
+// ── FIM DE JOGO (wantsFullTime) ─────────────────────────────────────────────
+// Independente do push de gol: usa o próprio modo `fullTime` (default 'off').
+check('fullTime ausente → não avisa fim de jogo (opt-in)', wantsFullTime({ mode: 'all', teams: [], matches: [] }, 'Brazil', 'Croatia'), false);
+check("fullTime 'off' explícito → não", wantsFullTime({ mode: 'all', teams: [], matches: [], fullTime: 'off' }, 'Brazil', 'Croatia'), false);
+check("fullTime 'all' → qualquer fim de jogo", wantsFullTime({ mode: 'off', teams: [], matches: [], fullTime: 'all' }, 'France', 'Spain'), true);
+check("fullTime 'mine' casa com a seleção seguida", wantsFullTime({ mode: 'off', teams: ['Brazil'], matches: [], fullTime: 'mine' }, 'Croatia', 'Brazil'), true);
+check("fullTime 'mine' sem a seleção → não", wantsFullTime({ mode: 'all', teams: ['Brazil'], matches: [], fullTime: 'mine' }, 'France', 'Spain'), false);
+check('fullTime independe do modo de gol (gol off, fim de jogo all)', wantsFullTime({ mode: 'off', teams: [], matches: [], fullTime: 'all' }, 'Brazil', 'Croatia'), true);
 
 console.log(`\n${pass} passaram, ${fail} falharam`);
 if (fail > 0) throw new Error(`${fail} teste(s) de filtragem falharam`);

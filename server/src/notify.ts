@@ -45,6 +45,25 @@ export type GoalNotifyInput = {
   scorer?: string | null; // artilheiro, se a ESPN forneceu
 };
 
+/**
+ * Texto do aviso de FIM DE JOGO. Simples e direto:
+ *   título:  🏁 Fim de jogo
+ *   corpo:   Brasil 1 x 0 Escócia
+ */
+export function buildFullTimeNotification(input: {
+  homeTeam: string;
+  awayTeam: string;
+  home: number;
+  away: number;
+}): { title: string; body: string } {
+  const homeName = teamInfo(input.homeTeam)?.name ?? input.homeTeam;
+  const awayName = teamInfo(input.awayTeam)?.name ?? input.awayTeam;
+  return {
+    title: '🏁 Fim de jogo',
+    body: `${homeName} ${input.home} x ${input.away} ${awayName}`,
+  };
+}
+
 export function buildGoalNotification(input: GoalNotifyInput): { title: string; body: string } {
   const { homeTeam, awayTeam, home, away, newHome, newAway, scorer } = input;
 

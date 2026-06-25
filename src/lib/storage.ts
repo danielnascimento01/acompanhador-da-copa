@@ -71,6 +71,9 @@ export type Settings = {
   /** Push de GOL (remoto, app fechado): 'all' = todos os jogos · 'mine' = só as
    *  minhas seleções + jogos seguidos · 'off' = nenhum. Independe dos avisos locais. */
   goalPush: 'all' | 'mine' | 'off';
+  /** Push de FIM DE JOGO (remoto): 'all' = todos · 'mine' = minhas seleções +
+   *  jogos seguidos · 'off' = nenhum. Independe do push de gol. Default 'off'. */
+  fullTimePush: 'all' | 'mine' | 'off';
   /** Jogos específicos seguidos para push de gol (ids de Match), além das seleções. */
   followedMatches: string[];
 };
@@ -84,6 +87,7 @@ export const DEFAULT_SETTINGS: Settings = {
   primaryTeam: null,
   supporter: false,
   goalPush: 'mine',
+  fullTimePush: 'off',
   followedMatches: [],
 };
 

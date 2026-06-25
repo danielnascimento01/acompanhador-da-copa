@@ -96,6 +96,8 @@ export type PushPrefs = {
   teams: string[];
   /** jogos específicos seguidos, como pares de ids de time [home, away]. */
   matches: [string, string][];
+  /** modo do aviso de FIM DE JOGO (independe do push de gol). */
+  fullTime: 'all' | 'mine' | 'off';
 };
 
 /**

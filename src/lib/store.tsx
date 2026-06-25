@@ -153,7 +153,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (pushPrefsTimer.current) clearTimeout(pushPrefsTimer.current);
     };
-  }, [settings.goalPush, settings.followedMatches, settings.primaryTeam, selected]);
+  }, [settings.goalPush, settings.fullTimePush, settings.followedMatches, settings.primaryTeam, selected]);
 
   // Monta as preferências de push de gol a partir das seleções + jogos seguidos.
   // Jogos seguidos viram PARES de times (o servidor casa por nome, evitando o
@@ -167,7 +167,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .map((id) => ALL_MATCHES.find((m) => m.id === id))
       .filter((m): m is Match => !!m)
       .map((m): [string, string] => [m.home, m.away]);
-    return { mode: s.goalPush, teams, matches };
+    return { mode: s.goalPush, teams, matches, fullTime: s.fullTimePush };
   }
 
   async function registerExpoPushToken(prefs: PushPrefs) {

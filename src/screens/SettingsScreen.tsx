@@ -190,6 +190,36 @@ export function SettingsScreen() {
         )}
       </View>
 
+      {/* Push de FIM DE JOGO (remoto, via servidor — independe do push de gol) */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🏁 Fim de jogo</Text>
+        <Text style={styles.cardText}>
+          Avisa o placar final assim que o jogo acaba — ex.: “Brasil 1 x 0 Escócia” — mesmo com o app fechado.
+        </Text>
+        <View style={styles.chipsRow}>
+          {GOAL_PUSH_OPTIONS.map((opt) => {
+            const active = settings.fullTimePush === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => updateSettings({ fullTimePush: opt.key })}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Aviso de fim de jogo: ${opt.label}`}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {settings.fullTimePush === 'mine' && selected.size === 0 && !settings.primaryTeam && (
+          <Text style={styles.goalHint}>
+            Marque seleções na aba Seleções para receber o fim dos jogos delas — ou escolha “Todos os jogos”.
+          </Text>
+        )}
+      </View>
+
       <Text style={styles.note}>
         Os avisos de jogo são agendados no seu aparelho e funcionam sem internet. O push de gol vem do
         nosso servidor — precisa de internet no momento do gol.

@@ -13,8 +13,8 @@
 import { fetchScoreboard, extractScore, yyyymmdd, type ESPNEvent } from './espn';
 import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
-import { wantsGoal, type SubscriberPrefs } from './filter';
-import { buildGoalNotification, pickScorerFromDetails } from './notify';
+import { wantsGoal, wantsFullTime, type SubscriberPrefs } from './filter';
+import { buildGoalNotification, buildFullTimeNotification, pickScorerFromDetails } from './notify';
 
 export interface Env {
   KV: KVNamespace;
@@ -28,11 +28,12 @@ const K = {
   subs: 'subs',       // Record<token, SubscriberPrefs>
   scorers: 'scorers',
   lastScore: (matchId: string) => `lastScore:${matchId}`,
+  matchState: (matchId: string) => `state:${matchId}`, // último estado visto: 'in' | 'post'
 };
 
 type Subscribers = Record<string, SubscriberPrefs>;
 
-const DEFAULT_PREFS: SubscriberPrefs = { mode: 'all', teams: [], matches: [] };
+const DEFAULT_PREFS: SubscriberPrefs = { mode: 'all', teams: [], matches: [], fullTime: 'off' };
 
 /**
  * Carrega os assinantes. Migra os tokens legados (string[] do `K.tokens`,
@@ -82,9 +83,10 @@ async function runCron(env: Env): Promise<void> {
   }
 
   const liveEvents = events.filter((e) => e.status.type.state === 'in');
-  if (liveEvents.length === 0) return;
+  const finishedEvents = events.filter((e) => e.status.type.state === 'post');
+  if (liveEvents.length === 0 && finishedEvents.length === 0) return;
 
-  // Carrega os assinantes (com preferências) uma vez para todos os gols.
+  // Carrega os assinantes (com preferências) uma vez para gols + fim de jogo.
   const subs = await loadSubscribers(env);
   if (Object.keys(subs).length === 0) return;
   let subsDirty = false; // só persiste o `subs` se removermos algum token inválido
@@ -94,6 +96,9 @@ async function runCron(env: Env): Promise<void> {
     try {
       const { home, away, homeTeam, awayTeam } = extractScore(event);
       const currentScoreStr = `${home}-${away}`;
+
+      // Marca que vimos este jogo AO VIVO — base p/ detectar o fim de jogo depois.
+      await env.KV.put(K.matchState(event.id), 'in', { expirationTtl: 7 * 24 * 60 * 60 });
 
       const storedScoreStr = await env.KV.get(K.lastScore(event.id));
 
@@ -168,6 +173,48 @@ async function runCron(env: Env): Promise<void> {
     }
   }
 
+  // ── FIM DE JOGO ────────────────────────────────────────────────────────────
+  // Avisa quando um jogo que vimos AO VIVO ('in') passa para 'post'. A transição
+  // é detectada pelo K.matchState: se o estado anterior NÃO era 'in' (ex.: jogo já
+  // estava encerrado na 1ª vez que o worker o viu), NÃO dispara aviso retroativo.
+  for (const event of finishedEvents) {
+    try {
+      const stateKey = K.matchState(event.id);
+      const prevState = await env.KV.get(stateKey);
+
+      if (prevState === 'in') {
+        const { home, away, homeTeam, awayTeam } = extractScore(event);
+        const recipients = Object.keys(subs).filter((t) => wantsFullTime(subs[t], homeTeam, awayTeam));
+        if (recipients.length > 0) {
+          const { title, body } = buildFullTimeNotification({ homeTeam, awayTeam, home, away });
+          console.log('runCron: FIM DE JOGO', {
+            event: event.id,
+            score: `${home}-${away}`,
+            recipients: recipients.length,
+          });
+          const { invalidTokens } = await sendPush(
+            recipients,
+            { title, body, data: { matchId: event.id, kind: 'fulltime' } },
+            env.EXPO_ACCESS_TOKEN,
+          );
+          for (const t of invalidTokens) {
+            if (subs[t]) {
+              delete subs[t];
+              subsDirty = true;
+            }
+          }
+        }
+      }
+
+      // Grava 'post' uma vez — no próximo cron prevState será 'post' e não reenvia.
+      if (prevState !== 'post') {
+        await env.KV.put(stateKey, 'post', { expirationTtl: 7 * 24 * 60 * 60 });
+      }
+    } catch (err) {
+      console.error(`runCron: erro no fim de jogo ${event.id}:`, err);
+    }
+  }
+
   if (subsDirty) await saveSubscribers(env, subs);
 }
 
@@ -186,6 +233,11 @@ function json(data: unknown, status = 200): Response {
 /** Sanitiza o modo recebido; default 'all' (compatível com app antigo). */
 function parseMode(m: unknown): SubscriberPrefs['mode'] {
   return m === 'mine' || m === 'off' || m === 'all' ? m : 'all';
+}
+
+/** Modo do FIM DE JOGO; default 'off' (feature opt-in, novo). */
+function parseFullTime(m: unknown): NonNullable<SubscriberPrefs['fullTime']> {
+  return m === 'mine' || m === 'all' || m === 'off' ? m : 'off';
 }
 
 /** Sanitiza uma lista de ids de time (strings curtas, sem lixo). */
@@ -210,7 +262,7 @@ function parseMatches(v: unknown): [string, string][] {
 async function handleRegister(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  let body: { token?: string; mode?: unknown; teams?: unknown; matches?: unknown };
+  let body: { token?: string; mode?: unknown; teams?: unknown; matches?: unknown; fullTime?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -227,7 +279,12 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
   const prefs: SubscriberPrefs =
     body.mode === undefined && body.teams === undefined && body.matches === undefined
       ? subs[token] ?? { ...DEFAULT_PREFS }
-      : { mode: parseMode(body.mode), teams: parseTeams(body.teams), matches: parseMatches(body.matches) };
+      : {
+          mode: parseMode(body.mode),
+          teams: parseTeams(body.teams),
+          matches: parseMatches(body.matches),
+          fullTime: parseFullTime(body.fullTime),
+        };
 
   subs[token] = prefs;
   await saveSubscribers(env, subs);
