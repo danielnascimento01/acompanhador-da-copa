@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
+import { Flag } from '../components/Flag';
 import { GROUPS, TEAMS, Team } from '../data/teams';
 import { useStore } from '../lib/store';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { colors, fonts, radius, spacing, state } from '../lib/theme';
 
 export function TeamsScreen() {
   const { selected, toggleTeam, settings, updateSettings } = useStore();
@@ -93,12 +94,10 @@ function TeamRow({
       accessibilityState={{ checked: active }}
       accessibilityLabel={team.name}
       hitSlop={6}
-      style={({ pressed }) => [styles.row, active && styles.rowActive, primary && styles.rowPrimary, pressed && styles.rowPressed]}
+      style={({ pressed }) => [styles.row, primary && styles.rowPrimary, pressed && styles.rowPressed]}
     >
-      <View style={[styles.flagWrap, active && styles.flagWrapActive]}>
-        <Text style={styles.flag}>{team.flag}</Text>
-      </View>
-      <Text style={[styles.name, active && styles.nameActive]} numberOfLines={1}>
+      <Flag teamId={team.id} size={40} radius={20} />
+      <Text style={[styles.name, primary && styles.namePrimary]} numberOfLines={1}>
         {team.name}
       </Text>
       <Pressable
@@ -108,7 +107,7 @@ function TeamRow({
         accessibilityLabel={primary ? `Remover ${team.name} como seleção principal` : `Definir ${team.name} como seleção principal`}
         style={({ pressed }) => [styles.star, pressed && styles.rowPressed]}
       >
-        <Text style={[styles.starText, primary && styles.starActive]}>{primary ? '⭐' : '☆'}</Text>
+        <Text style={[styles.starText, primary && styles.starActive]}>{primary ? '★' : '☆'}</Text>
       </Pressable>
       <View style={[styles.check, active && styles.checkActive]}>
         {active && <Text style={styles.checkMark}>✓</Text>}
@@ -140,35 +139,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing(2),
-    paddingHorizontal: spacing(2),
-    marginBottom: spacing(2),
+    paddingVertical: spacing(2.5),
+    paddingHorizontal: spacing(3),
+    marginBottom: spacing(2.5),
     gap: spacing(3),
-    minHeight: 60,
+    minHeight: 62,
   },
-  rowActive: { borderColor: colors.accent, backgroundColor: colors.surface2 },
-  rowPrimary: { borderColor: colors.amber },
+  rowPrimary: { borderColor: state.favoriteBorder, backgroundColor: state.favoriteBg },
   rowPressed: { opacity: 0.6 },
   star: { paddingHorizontal: spacing(1), alignItems: 'center', justifyContent: 'center' },
   starText: { fontSize: 20, color: colors.textFaint },
   starActive: { color: colors.amber },
-  flagWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flagWrapActive: { borderColor: colors.accentDeep },
-  flag: { fontSize: 26 },
   name: { color: colors.text, fontFamily: fonts.semibold, fontSize: 16, flex: 1 },
-  nameActive: { color: colors.accent, fontFamily: fonts.bold },
+  namePrimary: { color: colors.accent, fontFamily: fonts.bold },
   check: {
     width: 28,
     height: 28,
