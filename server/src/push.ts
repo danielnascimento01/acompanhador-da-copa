@@ -55,17 +55,34 @@ export async function sendPush(
         headers,
         body: JSON.stringify(messages),
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        // Expo recusou o chunk (429 rate-limit, 400 payload, 5xx). Loga p/ wrangler tail.
+        let detail = '';
+        try { detail = (await res.text()).slice(0, 500); } catch { /* corpo ilegível */ }
+        console.error('sendPush: Expo respondeu não-2xx', { status: res.status, chunk: chunk.length, detail });
+        continue;
+      }
 
       const json = await res.json() as { data?: ExpoPushTicket[] };
       const tickets = json.data ?? [];
+      let okCount = 0;
+      let errCount = 0;
       tickets.forEach((ticket, idx) => {
-        if (ticket.status === 'error' && ticket.details?.error === 'DeviceNotRegistered') {
-          invalidTokens.push(chunk[idx]);
+        if (ticket.status === 'error') {
+          errCount++;
+          if (ticket.details?.error === 'DeviceNotRegistered') {
+            invalidTokens.push(chunk[idx]);
+          } else {
+            console.error('sendPush: ticket de erro', { error: ticket.details?.error, message: ticket.message });
+          }
+        } else {
+          okCount++;
         }
       });
-    } catch {
-      // Falha de rede — tenta o próximo chunk
+      console.log('sendPush: chunk enviado', { status: res.status, chunk: chunk.length, ok: okCount, err: errCount });
+    } catch (err) {
+      // Falha de rede no edge — loga e tenta o próximo chunk.
+      console.error('sendPush: fetch falhou', { chunk: chunk.length, err: String(err) });
     }
   }
 

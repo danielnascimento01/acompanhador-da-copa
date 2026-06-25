@@ -139,6 +139,14 @@ async function runCron(env: Env): Promise<void> {
         scorer,
       });
 
+      console.log('runCron: GOL detectado', {
+        event: event.id,
+        score: `${storedScoreStr} -> ${currentScoreStr}`,
+        newGoals: totalNewGoals,
+        recipients: recipients.length,
+        title,
+      });
+
       const { invalidTokens } = await sendPush(
         recipients,
         { title, body, data: { matchId: event.id } },

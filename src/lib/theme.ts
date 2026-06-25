@@ -26,7 +26,20 @@ export const gradients = {
   accent: ['#14E08A', '#15C2D6'] as const,
   dark: ['#0E131A', '#080B10'] as const,
   amber: ['#FFD15C', '#FF8A3D'] as const,
-  live: ['#FF4D5E', '#FF7A3D'] as const,
+  live: ['#FF4D5E', '#FF6A52', '#FF7A3D'] as const, // "acontecendo agora" (3 stops)
+};
+
+/**
+ * Tokens de ESTADO do redesign "Elevação 2026" (ver docs/design-system-2026.md).
+ * Materialidade: realce sutil da favorita e brilho do card ao vivo.
+ */
+export const state = {
+  favoriteBg: 'rgba(20,224,138,0.07)',
+  favoriteBorder: 'rgba(20,224,138,0.55)',
+  liveBorder: 'rgba(255,77,94,0.55)',
+  liveTint: 'rgba(255,77,94,0.16)',
+  amberTint: 'rgba(255,194,51,0.14)',
+  amberBorder: 'rgba(255,194,51,0.35)',
 };
 
 /**
