@@ -156,32 +156,37 @@ function Root() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    // O gradiente (Backdrop) fica FULL-BLEED na raiz; o SafeAreaView vai DENTRO e
+    // transparente, só recuando o conteúdo do notch/indicador. Assim a cor do app
+    // chega às bordas (sem as "bandas" chapadas de c.bg no topo e na base).
+    <View style={styles.root}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Backdrop>
-        <View style={styles.brandBar}>
-          <Text style={styles.brandMark}>⚽</Text>
-          <Text style={styles.brand}>ACOMPANHADOR DA COPA</Text>
-          <View style={styles.brandYearWrap}>
-            <Text style={styles.brandYear}>26</Text>
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.brandBar}>
+            <Text style={styles.brandMark}>⚽</Text>
+            <Text style={styles.brand}>ACOMPANHADOR DA COPA</Text>
+            <View style={styles.brandYearWrap}>
+              <Text style={styles.brandYear}>26</Text>
+            </View>
+            <View style={styles.brandSpacer} />
+            <Pressable
+              style={styles.supportBtn}
+              onPress={() => setSupportOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Ajuda e sugestões"
+              hitSlop={8}
+            >
+              <Text style={styles.supportBtnText}>💬</Text>
+            </Pressable>
           </View>
-          <View style={styles.brandSpacer} />
-          <Pressable
-            style={styles.supportBtn}
-            onPress={() => setSupportOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Ajuda e sugestões"
-            hitSlop={8}
-          >
-            <Text style={styles.supportBtnText}>💬</Text>
-          </Pressable>
-        </View>
-        <StoreProvider>
-          <Shell />
-        </StoreProvider>
+          <StoreProvider>
+            <Shell />
+          </StoreProvider>
+        </SafeAreaView>
         <SupportSheet visible={supportOpen} onClose={() => setSupportOpen(false)} />
       </Backdrop>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -194,7 +199,8 @@ export default function App() {
 }
 
 const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
-  safe: { flex: 1, backgroundColor: c.bg },
+  root: { flex: 1, backgroundColor: c.bg },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   bootRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg, gap: spacing(4) },
   bootLogo: { fontSize: 60 },
   brandBar: {
