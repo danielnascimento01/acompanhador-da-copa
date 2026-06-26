@@ -90,6 +90,9 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const touchesRef = useRef(0);
   const raf = useRef<number | null>(null);
   const last = useRef(0);
+  // "Quero começar" pendente até a área de jogo ser medida (onLayout). Evita o
+  // bug de iniciar com tamanho 0 (a bola "cairia" na hora → fim instantâneo).
+  const wantStart = useRef(false);
 
   // Posições animadas (atualizadas imperativamente, sem re-render do React).
   const ballTX = useRef(new Animated.Value(0)).current;
@@ -104,6 +107,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
       loadGameScores().then(setScores);
     } else {
       stop();
+      wantStart.current = false;
       setPhase('menu');
     }
     return stop;
@@ -134,19 +138,33 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
   const onLayout = (e: LayoutChangeEvent) => {
     dims.current = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height };
+    // Se o jogador pediu pra começar antes de termos o tamanho, começa agora.
+    if (wantStart.current) beginPlay();
   };
 
+  // Pedido de jogar: marca a intenção e entra na fase de jogo. A física só
+  // arranca quando a área estiver medida (aqui, se já tiver; senão, no onLayout).
   const startGame = () => {
-    const { w } = dims.current;
     saveNick(nick);
     touchesRef.current = 0;
     setTouches(0);
     setNewRecord(false);
     setFlash(null);
+    wantStart.current = true;
+    setPhase('playing');
+    if (dims.current.w > 0 && dims.current.h > 0) beginPlay();
+  };
+
+  // Arranca de fato a partida (tamanho já conhecido): centraliza boneco e bola.
+  const beginPlay = () => {
+    const { w, h } = dims.current;
+    if (!w || !h) return; // ainda não medido — onLayout chama de novo
+    wantStart.current = false;
     charX.current = w / 2;
     charTX.setValue(w / 2 - CW / 2);
     ball.current = { x: w / 2, y: R + 8, vx: (Math.random() - 0.5) * 80, vy: 0 };
-    setPhase('playing');
+    ballTX.setValue(w / 2 - R);
+    ballTY.setValue(8);
     last.current = 0;
     stop();
     raf.current = requestAnimationFrame(loop);
@@ -154,6 +172,12 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
   const loop = (t: number) => {
     const { w, h } = dims.current;
+    // Defesa: sem tamanho válido, não processa física (evita "queda" falsa).
+    if (!w || !h) {
+      last.current = 0;
+      raf.current = requestAnimationFrame(loop);
+      return;
+    }
     if (!last.current) last.current = t;
     const dt = Math.min(0.032, (t - last.current) / 1000);
     last.current = t;
