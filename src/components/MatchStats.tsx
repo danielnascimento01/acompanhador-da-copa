@@ -5,7 +5,8 @@ import { Flag } from './Flag';
 import { Match, hasStarted, isLive } from '../data/fixtures';
 import { teamName } from '../data/teams';
 import { fetchMatchSummary, type MatchSummary, type TeamLineup, type TeamStat } from '../lib/liveEvents';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 /**
  * Escalações + estatísticas do jogo (via endpoint summary da ESPN). Só aparece em
@@ -13,6 +14,7 @@ import { colors, fonts, radius, spacing } from '../lib/theme';
  * antigos/sem cobertura). Atualiza enquanto ao vivo. Tudo orientado ao nosso mando.
  */
 export function MatchStats({ match }: { match: Match }) {
+  const styles = useThemedStyles(makeStyles);
   const [data, setData] = useState<MatchSummary | null>(null);
 
   useEffect(() => {
@@ -73,6 +75,7 @@ export function MatchStats({ match }: { match: Match }) {
 }
 
 function StatRow({ stat }: { stat: TeamStat }) {
+  const styles = useThemedStyles(makeStyles);
   const hn = parseFloat(stat.home);
   const an = parseFloat(stat.away);
   const total = (Number.isFinite(hn) ? hn : 0) + (Number.isFinite(an) ? an : 0);
@@ -98,6 +101,7 @@ function StatRow({ stat }: { stat: TeamStat }) {
 }
 
 function LineupBlock({ teamId, lineup }: { teamId: string; lineup: TeamLineup }) {
+  const styles = useThemedStyles(makeStyles);
   const [showSubs, setShowSubs] = useState(false);
   return (
     <View style={styles.lineup}>
@@ -142,6 +146,7 @@ function PlayerRow({
   pos: string | null;
   dim?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.playerRow}>
       <Text style={styles.playerNum}>{number ?? '–'}</Text>
@@ -153,36 +158,36 @@ function PlayerRow({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
     marginBottom: spacing(4),
   },
-  title: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
-  note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: spacing(2) },
+  title: { color: c.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
+  note: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: spacing(2) },
 
   statHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: spacing(3) },
-  statHeadNames: { flex: 1, textAlign: 'center', color: colors.textDim, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase' },
+  statHeadNames: { flex: 1, textAlign: 'center', color: c.textDim, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase' },
   statRow: { marginBottom: spacing(3) },
   statValues: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-  statVal: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 14, width: 52, fontVariant: ['tabular-nums'] },
+  statVal: { color: c.textDim, fontFamily: fonts.bold, fontSize: 14, width: 52, fontVariant: ['tabular-nums'] },
   statValRight: { textAlign: 'right' },
-  statValWin: { color: colors.accent },
-  statValWinAway: { color: colors.teal },
-  statLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 12.5, flex: 1, textAlign: 'center' },
-  bar: { flexDirection: 'row', height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: colors.surface2 },
-  barHome: { backgroundColor: colors.accent, height: 7 },
-  barAway: { backgroundColor: colors.teal, height: 7 },
+  statValWin: { color: c.accent },
+  statValWinAway: { color: c.teal },
+  statLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 12.5, flex: 1, textAlign: 'center' },
+  bar: { flexDirection: 'row', height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: c.surface2 },
+  barHome: { backgroundColor: c.accent, height: 7 },
+  barAway: { backgroundColor: c.teal, height: 7 },
 
   lineup: { marginBottom: spacing(3) },
   lineupHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: spacing(2) },
-  lineupTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
+  lineupTeam: { color: c.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
   formation: {
-    color: colors.accent,
+    color: c.accent,
     fontFamily: fonts.extrabold,
     fontSize: 12,
     letterSpacing: 0.5,
@@ -190,17 +195,17 @@ const styles = StyleSheet.create({
   },
   playerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: 3 },
   playerNum: {
-    color: colors.textFaint,
+    color: c.textFaint,
     fontFamily: fonts.bold,
     fontSize: 13,
     width: 22,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
-  playerName: { color: colors.text, fontFamily: fonts.semibold, fontSize: 14, flex: 1 },
-  playerNameDim: { color: colors.textDim, fontFamily: fonts.regular },
-  playerPos: { color: colors.textFaint, fontFamily: fonts.medium, fontSize: 11 },
+  playerName: { color: c.text, fontFamily: fonts.semibold, fontSize: 14, flex: 1 },
+  playerNameDim: { color: c.textDim, fontFamily: fonts.regular },
+  playerPos: { color: c.textFaint, fontFamily: fonts.medium, fontSize: 11 },
   subsToggle: { paddingVertical: spacing(2) },
-  subsToggleText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
+  subsToggleText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
   pressed: { opacity: 0.6 },
 });

@@ -27,7 +27,8 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SupportSheet } from './src/screens/SupportScreen';
 import { AnnouncementSheet } from './src/screens/AnnouncementSheet';
 import { RatePrompt } from './src/screens/RatePrompt';
-import { colors, fonts, gradients, spacing } from './src/lib/theme';
+import { fonts, spacing } from './src/lib/theme';
+import { ThemeProvider, useTheme, useThemedStyles, type ThemeTokens } from './src/lib/theme-context';
 
 type TabKey = 'schedule' | 'standings' | 'teams' | 'fun' | 'settings';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -43,6 +44,8 @@ const TABS: { key: TabKey; label: string; icon: IconName }[] = [
 function Shell() {
   const { ready, onboarded, completeOnboarding } = useStore();
   const [tab, setTab] = useState<TabKey>('schedule');
+  const styles = useThemedStyles(makeStyles);
+  const { c, g } = useTheme();
 
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(() => setTab('schedule'));
@@ -53,7 +56,7 @@ function Shell() {
     return (
       <View style={styles.loading}>
         <Text style={styles.loadingLogo}>⚽</Text>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={c.accent} />
       </View>
     );
   }
@@ -93,7 +96,7 @@ function Shell() {
             >
               {active && (
                 <LinearGradient
-                  colors={gradients.accent}
+                  colors={g.accent}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.tabIndicator}
@@ -102,7 +105,7 @@ function Shell() {
               <Ionicons
                 name={t.icon}
                 size={23}
-                color={active ? colors.accent : colors.textDim}
+                color={active ? c.accent : c.textDim}
                 style={!active && styles.tabInactive}
               />
               <Text style={[styles.tabLabel, active ? styles.tabLabelActive : styles.tabInactive]}>
@@ -119,8 +122,10 @@ function Shell() {
   );
 }
 
-export default function App() {
+function Root() {
   const [supportOpen, setSupportOpen] = useState(false);
+  const styles = useThemedStyles(makeStyles);
+  const { c, scheme } = useTheme();
   const [fontsLoaded, fontError] = useFonts({
     SairaCondensed_800ExtraBold,
     SairaSemiCondensed_400Regular,
@@ -145,14 +150,14 @@ export default function App() {
     return (
       <View style={styles.bootRoot}>
         <Text style={styles.bootLogo}>⚽</Text>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={c.accent} />
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar style="light" />
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Backdrop>
         <View style={styles.brandBar}>
           <Text style={styles.brandMark}>⚽</Text>
@@ -180,9 +185,17 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  bootRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, gap: spacing(4) },
+export default function App() {
+  return (
+    <ThemeProvider>
+      <Root />
+    </ThemeProvider>
+  );
+}
+
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.bg },
+  bootRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg, gap: spacing(4) },
   bootLogo: { fontSize: 60 },
   brandBar: {
     flexDirection: 'row',
@@ -193,17 +206,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing(3),
   },
   brandMark: { fontSize: 18 },
-  brand: { color: colors.text, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
-  brandYearWrap: { backgroundColor: colors.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
-  brandYear: { color: colors.ink, fontFamily: fonts.display, fontSize: 13 },
+  brand: { color: c.text, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
+  brandYearWrap: { backgroundColor: c.accent, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
+  brandYear: { color: c.ink, fontFamily: fonts.display, fontSize: 13 },
   brandSpacer: { flex: 1 },
   supportBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -214,16 +227,15 @@ const styles = StyleSheet.create({
   loadingLogo: { fontSize: 56 },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: c.border,
     paddingBottom: spacing(2),
     paddingTop: spacing(1),
   },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 56, gap: 3, paddingTop: spacing(2) },
   tabIndicator: { position: 'absolute', top: 0, width: 36, height: 3, borderRadius: 2 },
-  tabIcon: { fontSize: 22 },
   tabLabel: { fontFamily: fonts.bold, fontSize: 11 },
-  tabLabelActive: { color: colors.accent },
-  tabInactive: { opacity: 0.45, color: colors.textDim },
+  tabLabelActive: { color: c.accent },
+  tabInactive: { opacity: 0.45, color: c.textDim },
 });

@@ -5,7 +5,8 @@ import { MatchCard } from '../components/MatchCard';
 import { Match, isLive, kickoff } from '../data/fixtures';
 import { localDayKey } from '../lib/format';
 import { shareMatches } from '../lib/share';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 type Props = {
   visible: boolean;
@@ -22,6 +23,7 @@ type Props = {
  * store já tem (sem fetch novo) e o mesmo MatchCard das outras telas.
  */
 export function DayMatchesSheet({ visible, matches, selected, primaryTeam, onClose, onSelectMatch }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const today = useMemo(() => {
     const key = localDayKey(new Date());
     return matches
@@ -72,34 +74,34 @@ export function DayMatchesSheet({ visible, matches, selected, primaryTeam, onClo
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
     maxHeight: '88%',
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
-  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
-  empty: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 15, textAlign: 'center', paddingVertical: spacing(8), lineHeight: 22 },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28 },
+  sub: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
+  empty: { color: c.textDim, fontFamily: fonts.regular, fontSize: 15, textAlign: 'center', paddingVertical: spacing(8), lineHeight: 22 },
   shareBtn: {
     marginVertical: spacing(3),
     paddingVertical: spacing(3),
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(20,224,138,0.08)',
+    borderColor: c.accent,
+    backgroundColor: st.favoriteBg,
     alignItems: 'center',
   },
   pressed: { opacity: 0.6 },
-  shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 14 },
+  shareText: { color: c.accent, fontFamily: fonts.bold, fontSize: 14 },
 });

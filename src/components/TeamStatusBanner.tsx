@@ -5,13 +5,14 @@ import { Flag } from './Flag';
 import { Match } from '../data/fixtures';
 import { teamName } from '../data/teams';
 import { teamOutlook, TeamOutlook } from '../data/scenarios';
-import { colors, fonts, radius, spacing, state } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useTheme, useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 /** Cor pela situação (verde=classificado, vermelho=eliminado, âmbar=em disputa/3º). */
-function statusColor(o: TeamOutlook): string {
-  if (o.guaranteedTop2) return colors.accent;
-  if (o.eliminatedFromTop2 && !o.canFinishThird) return colors.live;
-  return colors.amber;
+function statusColor(o: TeamOutlook, c: ThemeTokens['c']): string {
+  if (o.guaranteedTop2) return c.accent;
+  if (o.eliminatedFromTop2 && !o.canFinishThird) return c.live;
+  return c.amber;
 }
 
 /** Rótulo curto pro chip. */
@@ -35,6 +36,8 @@ type Props = {
  * A seleção PRINCIPAL (modo "minha seleção") vem primeiro, com ⭐ e destaque.
  */
 export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { c } = useTheme();
   const rows = useMemo(
     () =>
       [...selected]
@@ -56,7 +59,7 @@ export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }
         contentContainerStyle={styles.row}
       >
         {rows.map(({ id, o }) => {
-          const color = statusColor(o);
+          const color = statusColor(o, c);
           const isPrimary = id === primaryTeam;
           return (
             <Pressable
@@ -91,10 +94,10 @@ export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   wrap: { marginBottom: spacing(4) },
   title: {
-    color: colors.accent,
+    color: c.accent,
     fontFamily: fonts.extrabold,
     fontSize: 12,
     letterSpacing: 1.2,
@@ -106,19 +109,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(2.5),
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     borderRadius: radius.lg,
     paddingVertical: spacing(2.5),
     paddingHorizontal: spacing(3),
   },
-  chipPrimary: { backgroundColor: state.favoriteBg, borderColor: state.favoriteBorder },
+  chipPrimary: { backgroundColor: st.favoriteBg, borderColor: st.favoriteBorder },
   pressed: { opacity: 0.6 },
   info: { gap: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(1) },
-  team: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
-  teamPrimary: { color: colors.accent },
-  star: { color: colors.amber, fontSize: 11 },
+  team: { color: c.text, fontFamily: fonts.bold, fontSize: 14 },
+  teamPrimary: { color: c.accent },
+  star: { color: c.amber, fontSize: 11 },
   status: { fontFamily: fonts.semibold, fontSize: 11.5 },
 });

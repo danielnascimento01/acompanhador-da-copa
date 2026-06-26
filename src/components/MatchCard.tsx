@@ -6,7 +6,8 @@ import { Match, kickoff, matchDisplay } from '../data/fixtures';
 import { teamName } from '../data/teams';
 import { formatTime, isLateNight } from '../lib/format';
 import { Prediction } from '../lib/storage';
-import { colors, fonts, radius, spacing, state } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 type Props = {
   match: Match;
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export const MatchCard = React.memo(function MatchCard({ match, selected, primaryTeam, prediction, onPress }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const ko = kickoff(match);
   // Estado de exibição confirmado (nunca pelo relógio): live só sob isLive,
   // placar só sob (ao vivo|encerrado)&&placar — senão neutro. Mata o "Em andamento"
@@ -90,46 +92,46 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, primar
   );
 });
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingVertical: spacing(3),
     paddingHorizontal: spacing(3),
     marginBottom: spacing(2.5),
     overflow: 'hidden',
   },
-  cardLive: { borderColor: state.liveBorder, backgroundColor: '#13171E' },
+  cardLive: { borderColor: st.liveBorder, backgroundColor: c.surface2 },
   cardPressed: { opacity: 0.6 },
   side: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
   sideRight: { justifyContent: 'flex-end' },
-  team: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15, flexShrink: 1 },
+  team: { color: c.text, fontFamily: fonts.semibold, fontSize: 15, flexShrink: 1 },
   teamRight: { textAlign: 'right' },
-  teamFav: { color: colors.accent, fontFamily: fonts.bold },
-  star: { color: colors.amber, fontSize: 11 },
+  teamFav: { color: c.accent, fontFamily: fonts.bold },
+  star: { color: c.amber, fontSize: 11 },
   center: { alignItems: 'center', minWidth: 78, paddingHorizontal: spacing(2) },
-  time: { color: colors.text, fontFamily: fonts.display, fontSize: 22, fontVariant: ['tabular-nums'] },
-  score: { color: colors.text, fontFamily: fonts.display, fontSize: 26, fontVariant: ['tabular-nums'] },
-  statusDim: { color: colors.textFaint, fontFamily: fonts.medium, fontSize: 11, marginTop: 3 },
+  time: { color: c.text, fontFamily: fonts.display, fontSize: 22, fontVariant: ['tabular-nums'] },
+  score: { color: c.text, fontFamily: fonts.display, fontSize: 26, fontVariant: ['tabular-nums'] },
+  statusDim: { color: c.textFaint, fontFamily: fonts.medium, fontSize: 11, marginTop: 3 },
   predChip: {
     marginTop: 4,
-    backgroundColor: state.amberTint,
+    backgroundColor: st.amberTint,
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  predText: { color: colors.amber, fontFamily: fonts.bold, fontSize: 11 },
-  lateNight: { color: colors.amber, fontFamily: fonts.bold, fontSize: 10.5, marginTop: 3, letterSpacing: 0.3 },
+  predText: { color: c.amber, fontFamily: fonts.bold, fontSize: 11 },
+  lateNight: { color: c.amber, fontFamily: fonts.bold, fontSize: 10.5, marginTop: 3, letterSpacing: 0.3 },
   liveBadge: {
     marginTop: 4,
-    backgroundColor: state.liveTint,
+    backgroundColor: st.liveTint,
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  liveText: { color: colors.live, fontFamily: fonts.extrabold, fontSize: 10, letterSpacing: 0.4 },
+  liveText: { color: c.live, fontFamily: fonts.extrabold, fontSize: 10, letterSpacing: 0.4 },
 });

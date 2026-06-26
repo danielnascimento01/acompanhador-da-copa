@@ -3,7 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { useStore } from '../lib/store';
 import { isBillingAvailable, fetchApoioProduct, purchaseApoio, restoreApoio } from '../lib/billing';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 /**
  * Card "Apoie o projeto" — tip jar opcional. É APOIO, não paywall: nada do app
@@ -11,6 +12,8 @@ import { colors, fonts, radius, spacing } from '../lib/theme';
  * de agradecimento depois que o usuário apoia.
  */
 export function ApoioCard() {
+  const styles = useThemedStyles(makeStyles);
+  const { c } = useTheme();
   const { settings, grantSupporter } = useStore();
   const [price, setPrice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -73,7 +76,7 @@ export function ApoioCard() {
         accessibilityLabel="Apoiar o projeto"
       >
         {busy ? (
-          <ActivityIndicator color={colors.ink} />
+          <ActivityIndicator color={c.ink} />
         ) : (
           <Text style={styles.ctaText}>{price ? `APOIAR · ${price}` : 'APOIAR O PROJETO'}</Text>
         )}
@@ -91,23 +94,23 @@ export function ApoioCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
     marginTop: spacing(4),
     marginBottom: spacing(3),
   },
-  apoioCard: { borderColor: colors.accentDeep },
-  thanksCard: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.08)' },
-  cardTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 17 },
-  thanksTitle: { color: colors.accent, fontFamily: fonts.bold, fontSize: 17 },
-  cardText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 4, lineHeight: 20 },
+  apoioCard: { borderColor: c.accentDeep },
+  thanksCard: { borderColor: c.accent, backgroundColor: st.favoriteBg },
+  cardTitle: { color: c.text, fontFamily: fonts.bold, fontSize: 17 },
+  thanksTitle: { color: c.accent, fontFamily: fonts.bold, fontSize: 17 },
+  cardText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 4, lineHeight: 20 },
   cta: {
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     borderRadius: radius.md,
     paddingVertical: spacing(4),
     alignItems: 'center',
@@ -116,9 +119,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaBusy: { opacity: 0.7 },
-  ctaText: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
+  ctaText: { color: c.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
   restoreLink: {
-    color: colors.textDim,
+    color: c.textDim,
     fontFamily: fonts.semibold,
     fontSize: 13,
     textAlign: 'center',

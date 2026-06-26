@@ -4,7 +4,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { QuizGame } from './QuizGame';
 import { Embaixadinhas } from './Embaixadinhas';
 import { DadoDeCraque } from './DadoDeCraque';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 /**
  * Aba "Quiz e Jogos" — diversão entre as consultas: o Quiz da Copa (3 modos) e o
@@ -14,6 +15,7 @@ export function FunScreen() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [gameOpen, setGameOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <View style={styles.container}>
@@ -59,16 +61,16 @@ export function FunScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   container: { flex: 1 },
   flex1: { flex: 1 },
-  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
-  subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 14, marginTop: 2, marginBottom: spacing(4) },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing(4), marginBottom: spacing(3) },
+  kicker: { color: c.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
+  subtitle: { color: c.textDim, fontFamily: fonts.medium, fontSize: 14, marginTop: 2, marginBottom: spacing(4) },
+  card: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, padding: spacing(4), marginBottom: spacing(3) },
   cardEmoji: { fontSize: 36 },
-  cardTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 22 },
-  cardDesc: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, marginTop: 2 },
-  chevron: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 24 },
-  note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
+  cardTitle: { color: c.text, fontFamily: fonts.display, fontSize: 22 },
+  cardDesc: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, marginTop: 2 },
+  chevron: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 24 },
+  note: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
 });

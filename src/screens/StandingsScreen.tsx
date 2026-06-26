@@ -16,11 +16,14 @@ import { BracketSheet } from './BracketSheet';
 import { ChancesSheet } from './ChancesSheet';
 import { useStore } from '../lib/store';
 import { isStale } from '../lib/freshness';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 type Mode = 'official' | 'predicted';
 
 export function StandingsScreen() {
+  const styles = useThemedStyles(makeStyles);
+  const { c } = useTheme();
   const { matches, selected, predictions, setPrediction, clearAllPredictions, updatedAt, settings } = useStore();
   const dataStale = isStale(updatedAt, Date.now(), hasMatchInPlayWindow(matches), settings.dataSaver);
   const [mode, setMode] = useState<Mode>('official');
@@ -83,19 +86,19 @@ export function StandingsScreen() {
       {/* Mais da Copa: Artilheiros + História + Sedes */}
       <View style={styles.moreRow}>
         <Pressable style={styles.moreBtn} onPress={() => setScorersOpen(true)} accessibilityRole="button" accessibilityLabel="Ver artilheiros">
-          <Ionicons name="football-outline" size={22} color={colors.text} />
+          <Ionicons name="football-outline" size={22} color={c.text} />
           <Text style={styles.moreText}>Artilheiros</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setHistoryOpen(true)} accessibilityRole="button" accessibilityLabel="Ver história da Copa">
-          <Ionicons name="book-outline" size={22} color={colors.text} />
+          <Ionicons name="book-outline" size={22} color={c.text} />
           <Text style={styles.moreText}>História</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setVenuesOpen(true)} accessibilityRole="button" accessibilityLabel="Ver sedes e estádios">
-          <Ionicons name="location-outline" size={22} color={colors.text} />
+          <Ionicons name="location-outline" size={22} color={c.text} />
           <Text style={styles.moreText}>Sedes</Text>
         </Pressable>
         <Pressable style={styles.moreBtn} onPress={() => setBracketOpen(true)} accessibilityRole="button" accessibilityLabel="Ver o mata-mata, caminho até a final">
-          <Ionicons name="git-network-outline" size={22} color={colors.text} />
+          <Ionicons name="git-network-outline" size={22} color={c.text} />
           <Text style={styles.moreText}>Mata-mata</Text>
         </Pressable>
       </View>
@@ -107,7 +110,7 @@ export function StandingsScreen() {
         accessibilityRole="button"
         accessibilityLabel="Ver a chance de classificação de cada seleção"
       >
-        <Ionicons name="stats-chart" size={20} color={colors.accent} />
+        <Ionicons name="stats-chart" size={20} color={c.accent} />
         <Text style={styles.chancesText}>Chance de classificação</Text>
         <Text style={styles.chancesPct}>%</Text>
       </Pressable>
@@ -153,11 +156,11 @@ export function StandingsScreen() {
 
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: colors.accent }]} />
+          <View style={[styles.dot, { backgroundColor: c.accent }]} />
           <Text style={styles.legendText}>Classificam (1º e 2º)</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: colors.amber }]} />
+          <View style={[styles.dot, { backgroundColor: c.amber }]} />
           <Text style={styles.legendText}>3º disputa vaga</Text>
         </View>
       </View>
@@ -211,10 +214,10 @@ export function StandingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   container: { flex: 1 },
-  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3, marginBottom: spacing(3) },
+  kicker: { color: c.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3, marginBottom: spacing(3) },
   staleBadge: {
     backgroundColor: 'rgba(255,194,51,0.10)',
     borderRadius: radius.sm,
@@ -224,41 +227,41 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(2),
     marginBottom: spacing(3),
   },
-  staleBadgeText: { color: colors.amber, fontFamily: fonts.semibold, fontSize: 13 },
+  staleBadgeText: { color: c.amber, fontFamily: fonts.semibold, fontSize: 13 },
   moreRow: { flexDirection: 'row', gap: spacing(2), marginBottom: spacing(3) },
   moreBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing(1),
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingVertical: spacing(3),
   },
   moreEmoji: { fontSize: 20 },
-  moreText: { color: colors.text, fontFamily: fonts.bold, fontSize: 13 },
+  moreText: { color: c.text, fontFamily: fonts.bold, fontSize: 13 },
   chancesBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(2),
-    backgroundColor: 'rgba(20,224,138,0.07)',
+    backgroundColor: st.favoriteBg,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(20,224,138,0.30)',
+    borderColor: st.favoriteBorder,
     paddingVertical: spacing(3),
     paddingHorizontal: spacing(4),
     marginBottom: spacing(3),
   },
-  chancesText: { flex: 1, color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
-  chancesPct: { color: colors.accent, fontFamily: fonts.display, fontSize: 18 },
+  chancesText: { flex: 1, color: c.text, fontFamily: fonts.bold, fontSize: 14 },
+  chancesPct: { color: c.accent, fontFamily: fonts.display, fontSize: 18 },
   toggleRow: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: 4,
     marginBottom: spacing(3),
     gap: 4,
@@ -270,11 +273,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleActive: { backgroundColor: colors.accent },
-  toggleActivePredict: { backgroundColor: colors.amber },
-  toggleText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
-  toggleTextActive: { color: colors.ink },
-  toggleTextActivePredict: { color: colors.ink },
+  toggleActive: { backgroundColor: c.accent },
+  toggleActivePredict: { backgroundColor: c.amber },
+  toggleText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  toggleTextActive: { color: c.ink },
+  toggleTextActivePredict: { color: c.ink },
   predictBanner: {
     backgroundColor: 'rgba(255,194,51,0.10)',
     borderRadius: radius.md,
@@ -284,37 +287,37 @@ const styles = StyleSheet.create({
     marginBottom: spacing(3),
     gap: spacing(2),
   },
-  predictBannerText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
-  clearAll: { color: colors.amber, fontFamily: fonts.bold, fontSize: 13, textDecorationLine: 'underline' },
+  predictBannerText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
+  clearAll: { color: c.amber, fontFamily: fonts.bold, fontSize: 13, textDecorationLine: 'underline' },
   legend: { flexDirection: 'row', gap: spacing(4), marginBottom: spacing(3) },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 12 },
-  note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, marginBottom: spacing(3) },
+  legendText: { color: c.textDim, fontFamily: fonts.medium, fontSize: 12 },
+  note: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, marginBottom: spacing(3) },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
     marginBottom: spacing(3),
   },
   cardPredicted: { borderColor: 'rgba(255,194,51,0.45)' },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: spacing(3) },
-  groupTag: { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  groupTagPredicted: { backgroundColor: colors.amber },
-  groupTagText: { color: colors.ink, fontFamily: fonts.display, fontSize: 14 },
-  groupLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, letterSpacing: 0.5 },
-  predictedFlag: { color: colors.amber, fontFamily: fonts.semibold, fontSize: 11, marginLeft: 'auto', textTransform: 'uppercase', letterSpacing: 0.5 },
+  groupTag: { width: 26, height: 26, borderRadius: 8, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
+  groupTagPredicted: { backgroundColor: c.amber },
+  groupTagText: { color: c.ink, fontFamily: fonts.display, fontSize: 14 },
+  groupLabel: { color: c.text, fontFamily: fonts.bold, fontSize: 14, letterSpacing: 0.5 },
+  predictedFlag: { color: c.amber, fontFamily: fonts.semibold, fontSize: 11, marginLeft: 'auto', textTransform: 'uppercase', letterSpacing: 0.5 },
   quickPredict: {
     marginTop: spacing(3),
     paddingTop: spacing(3),
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: c.border,
     gap: spacing(1),
   },
   quickPredictTitle: {
-    color: colors.textFaint,
+    color: c.textFaint,
     fontFamily: fonts.bold,
     fontSize: 11,
     textTransform: 'uppercase',

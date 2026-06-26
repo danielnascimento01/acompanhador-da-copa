@@ -2,9 +2,11 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { HOSTS, TOTAL_VENUES } from '../data/venues';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 export function VenuesSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -49,35 +51,35 @@ export function VenuesSheet({ visible, onClose }: { visible: boolean; onClose: (
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismissArea: { flex: 1 },
   sheet: {
     maxHeight: '88%',
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
     paddingBottom: spacing(6),
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   closeBtn: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 1 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.5 },
-  subtitle: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 2, marginBottom: spacing(2) },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.5 },
+  subtitle: { color: c.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 2, marginBottom: spacing(2) },
 
   hostBlock: { marginTop: spacing(4) },
   hostHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: spacing(2) },
   hostFlag: { fontSize: 22 },
-  hostName: { color: colors.text, fontFamily: fonts.bold, fontSize: 16, flex: 1 },
+  hostName: { color: c.text, fontFamily: fonts.bold, fontSize: 16, flex: 1 },
   hostCount: {
-    color: colors.textDim,
+    color: c.textDim,
     fontFamily: fonts.bold,
     fontSize: 13,
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     paddingHorizontal: spacing(2),
     paddingVertical: 2,
     borderRadius: radius.pill,
@@ -88,19 +90,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(2),
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(3),
     marginBottom: spacing(2),
   },
   venuePin: { fontSize: 16, width: 24, textAlign: 'center' },
   flex1: { flex: 1 },
-  venueStadium: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  venueCity: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, marginTop: 1 },
+  venueStadium: { color: c.text, fontFamily: fonts.bold, fontSize: 15 },
+  venueCity: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, marginTop: 1 },
   tag: { paddingHorizontal: spacing(2), paddingVertical: 4, borderRadius: radius.sm, borderWidth: 1 },
-  tagOpen: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.1)' },
-  tagFinal: { borderColor: colors.amber, backgroundColor: 'rgba(255,194,51,0.1)' },
-  tagText: { color: colors.text, fontFamily: fonts.bold, fontSize: 11 },
+  tagOpen: { borderColor: c.accent, backgroundColor: 'rgba(20,224,138,0.1)' },
+  tagFinal: { borderColor: c.amber, backgroundColor: 'rgba(255,194,51,0.1)' },
+  tagText: { color: c.text, fontFamily: fonts.bold, fontSize: 11 },
 });

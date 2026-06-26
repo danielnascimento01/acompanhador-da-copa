@@ -6,7 +6,8 @@ import {
 
 import { addGameScore, loadGameScores, loadNick, loadSkin, saveNick, saveSkin, type ScoreEntry } from '../lib/funStorage';
 import { fetchGlobalLeaderboard, getDeviceId, submitGlobalScore, type GlobalEntry } from '../lib/leaderboard';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 /** Vibração — carrega expo-haptics com proteção (no-op se o módulo não existir). */
 type FB = 'Light' | 'Medium' | 'Heavy';
@@ -21,17 +22,18 @@ const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascim
 const GAME = 'embaixadinhas';
 
 // Tamanhos (px) e física do mini-game.
-const CW = 80;   // largura do boneco (maior)
-const CH = 104;  // altura do boneco (maior)
-const R = 32;    // raio da bola (maior)
-const BOUNCE = 560;    // velocidade pra cima ao cabecear (FIXA — não subir junto da gravidade)
-// Rampa de dificuldade: a gravidade começa leve e SOBE a cada toque (o jogo aperta
-// sozinho, sem "ponto morto" eterno). BOUNCE fica fixo de propósito.
-const GRAVITY_BASE = 780;
-const GRAVITY_MAX = 1900;
-const GRAVITY_STEP = 16;
+const CW = 100;  // largura do boneco (bem maior — o dedo não cobre o jogador)
+const CH = 128;  // altura do boneco (bem maior)
+const R = 32;    // raio da bola
+// Gravidade CONSTANTE. A rampa de gravidade antiga deixava a bola "rente à cabeça"
+// e o jogo ia ficando MAIS FÁCIL com o tempo. Agora a dificuldade vem do IMPULSO da
+// cabeçada, que sobe a cada toque → a bola sobe e DESCE cada vez mais rápido.
+const GRAVITY = 1000;
+const BOUNCE_BASE = 600;   // impulso inicial (sobe alto e volta — boa sensação de início)
+const BOUNCE_MAX = 880;    // impulso máximo (descida rápida no fim → exige reflexo)
+const BOUNCE_STEP = 4.5;   // sobe a cada toque → a velocidade da bola aumenta aos poucos
 const SWEET = 12; // tolerância (px) do "no alvo" — cabeçada bem no centro
-const gravityAt = (touches: number) => Math.min(GRAVITY_MAX, GRAVITY_BASE + touches * GRAVITY_STEP);
+const bounceAt = (touches: number) => Math.min(BOUNCE_MAX, BOUNCE_BASE + touches * BOUNCE_STEP);
 
 type Phase = 'menu' | 'playing' | 'over';
 
@@ -39,10 +41,10 @@ type Phase = 'menu' | 'playing' | 'over';
 type Skin = { id: string; name: string; threshold: number; jersey: string; trim: string; shorts: string; num: string; numColor: string };
 const SKINS: Skin[] = [
   { id: 'brasil', name: 'Canarinho', threshold: 0, jersey: '#FFD200', trim: '#0A7B3E', shorts: '#1B3FAE', num: '10', numColor: '#0A7B3E' },
-  { id: 'celeste', name: 'Celeste', threshold: 25, jersey: '#6CACE4', trim: '#FFFFFF', shorts: '#0B1B33', num: '10', numColor: '#0B3A6B' },
-  { id: 'tricolor', name: 'Azulão', threshold: 50, jersey: '#1B3FAE', trim: '#FFFFFF', shorts: '#FFFFFF', num: '7', numColor: '#FFFFFF' },
-  { id: 'roxa', name: 'Fantasma', threshold: 75, jersey: '#7C3AED', trim: '#E9D5FF', shorts: '#2A1B5E', num: '9', numColor: '#FFFFFF' },
-  { id: 'lenda', name: 'Lenda', threshold: 100, jersey: '#FFD700', trim: '#111111', shorts: '#111111', num: '7', numColor: '#111111' },
+  { id: 'celeste', name: 'Celeste', threshold: 80, jersey: '#6CACE4', trim: '#FFFFFF', shorts: '#0B1B33', num: '10', numColor: '#0B3A6B' },
+  { id: 'tricolor', name: 'Azulão', threshold: 180, jersey: '#1B3FAE', trim: '#FFFFFF', shorts: '#FFFFFF', num: '7', numColor: '#FFFFFF' },
+  { id: 'roxa', name: 'Fantasma', threshold: 320, jersey: '#7C3AED', trim: '#E9D5FF', shorts: '#2A1B5E', num: '9', numColor: '#FFFFFF' },
+  { id: 'lenda', name: 'Lenda', threshold: 550, jersey: '#FFD700', trim: '#111111', shorts: '#111111', num: '7', numColor: '#111111' },
 ];
 const skinById = (id: string): Skin => SKINS.find((s) => s.id === id) ?? SKINS[0];
 
@@ -103,6 +105,8 @@ const FieldBg = React.memo(function FieldBg() {
 });
 
 export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  const { c } = useTheme();
   const [phase, setPhase] = useState<Phase>('menu');
   const [nick, setNick] = useState('');
   const [scores, setScores] = useState<ScoreEntry[]>([]);
@@ -125,8 +129,6 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const touchesRef = useRef(0);
   const raf = useRef<number | null>(null);
   const last = useRef(0);
-  // Gravidade atual da partida (sobe com os toques — rampa de dificuldade).
-  const gravityRef = useRef(GRAVITY_BASE);
   // "Quero começar" pendente até a área de jogo ser medida (onLayout). Evita o
   // bug de iniciar com tamanho 0 (a bola "cairia" na hora → fim instantâneo).
   const wantStart = useRef(false);
@@ -265,7 +267,6 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     wantStart.current = false;
     startedRef.current = false;
     playingRef.current = true;
-    gravityRef.current = GRAVITY_BASE; // reinicia a rampa de dificuldade
     setWaiting(true);
     charX.current = w / 2;
     charTX.setValue(w / 2 - CW / 2);
@@ -298,7 +299,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
     const b = ball.current;
     const prevY = b.y; // posição no início do frame (p/ colisão por cruzamento)
-    b.vy += gravityRef.current * dt; // gravidade da rampa (sobe com os toques)
+    b.vy += GRAVITY * dt; // gravidade constante
     b.y += b.vy * dt;
     b.x += b.vx * dt;
 
@@ -315,12 +316,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
       const off = b.x - cx;
       if (Math.abs(off) < CW / 2 + R * 0.6) {
         b.y = headY - R;
-        b.vy = -BOUNCE;
+        b.vy = -bounceAt(touchesRef.current); // impulso sobe a cada toque → mais rápido
         b.vx += off * 4.5; // desvia conforme onde bate → habilidade
-        b.vx = Math.max(-280, Math.min(280, b.vx));
+        b.vx = Math.max(-300, Math.min(300, b.vx));
         touchesRef.current += 1;
         setTouches(touchesRef.current);
-        gravityRef.current = gravityAt(touchesRef.current); // aperta a cada toque
         const perfect = Math.abs(off) < SWEET; // cabeçada bem no centro da testa
         const ms = milestoneFor(touchesRef.current);
         const isRecord = touchesRef.current === record + 1 && record > 0;
@@ -390,7 +390,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 value={nick}
                 onChangeText={setNick}
                 placeholder="Ex.: Craque10"
-                placeholderTextColor={colors.textFaint}
+                placeholderTextColor={c.textFaint}
                 maxLength={16}
                 returnKeyType="done"
               />
@@ -467,7 +467,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 <FieldBg />
                 {flash && <Text style={styles.flash}>{flash}</Text>}
                 <Animated.View style={[styles.ball, { transform: [{ translateX: ballTX }, { translateY: ballTY }] }]} pointerEvents="none">
-                  <Text style={styles.ballEmoji}>⚽</Text>
+                  <Text style={styles.ballEmoji} allowFontScaling={false}>⚽</Text>
                 </Animated.View>
                 <Animated.View style={[styles.char, { transform: [{ translateX: charTX }] }]} pointerEvents="none">
                   <Player skin={skin} />
@@ -507,68 +507,68 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
-  sheet: { backgroundColor: colors.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), height: '90%' },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  sheet: { backgroundColor: c.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: c.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), height: '90%' },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
-  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4), lineHeight: 19 },
-  fieldLabel: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12, marginBottom: spacing(1), textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, color: colors.text, fontFamily: fonts.semibold, fontSize: 16, paddingVertical: spacing(3), paddingHorizontal: spacing(4), marginBottom: spacing(4) },
-  primaryBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch' },
-  primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28 },
+  sub: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4), lineHeight: 19 },
+  fieldLabel: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12, marginBottom: spacing(1), textTransform: 'uppercase', letterSpacing: 0.5 },
+  input: { backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, color: c.text, fontFamily: fonts.semibold, fontSize: 16, paddingVertical: spacing(3), paddingHorizontal: spacing(4), marginBottom: spacing(4) },
+  primaryBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch' },
+  primaryText: { color: c.ink, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
   skinBlock: { marginTop: spacing(4) },
-  skinTitle: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5, marginBottom: spacing(2) },
+  skinTitle: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12.5, marginBottom: spacing(2) },
   skinRow: { gap: spacing(2), paddingRight: spacing(2) },
-  skinCard: { width: 72, alignItems: 'center', paddingVertical: spacing(2), borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  skinCardOn: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
+  skinCard: { width: 72, alignItems: 'center', paddingVertical: spacing(2), borderRadius: radius.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface },
+  skinCardOn: { borderColor: c.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
   skinCardLocked: { opacity: 0.5 },
   skinSwatch: { width: 34, height: 34, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: spacing(1) },
   skinSwatchNum: { fontFamily: fonts.extrabold, fontSize: 14 },
-  skinName: { color: colors.text, fontFamily: fonts.semibold, fontSize: 11.5 },
-  skinLock: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10, marginTop: 1 },
-  skinLockOn: { color: colors.accent },
+  skinName: { color: c.text, fontFamily: fonts.semibold, fontSize: 11.5 },
+  skinLock: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 10, marginTop: 1 },
+  skinLockOn: { color: c.accent },
   startOverlay: { position: 'absolute', top: '38%', left: 0, right: 0, alignItems: 'center', zIndex: 5, paddingHorizontal: spacing(4) },
   startBig: { color: '#fff', fontFamily: fonts.display, fontSize: 26, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 8, textAlign: 'center' },
   startSmall: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.semibold, fontSize: 13, marginTop: spacing(1), textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, textAlign: 'center' },
-  recordLine: { color: colors.amber, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(4) },
+  recordLine: { color: c.amber, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(4) },
   rankBlock: { marginTop: spacing(5) },
-  rankTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(2) },
-  rankNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', paddingVertical: spacing(5), lineHeight: 19 },
-  rankRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2), borderBottomWidth: 1, borderBottomColor: colors.border },
-  rankRowMine: { backgroundColor: 'rgba(20,224,138,0.08)', borderRadius: radius.sm },
-  rankPos: { color: colors.textFaint, fontFamily: fonts.extrabold, fontSize: 13, width: 28 },
-  rankNick: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 14 },
-  rankNickMine: { color: colors.accent, fontFamily: fonts.bold },
-  rankScore: { color: colors.accent, fontFamily: fonts.display, fontSize: 16 },
+  rankTitle: { color: c.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(2) },
+  rankNote: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', paddingVertical: spacing(5), lineHeight: 19 },
+  rankRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), paddingVertical: spacing(2), paddingHorizontal: spacing(3), borderBottomWidth: 1, borderBottomColor: c.border },
+  rankRowMine: { backgroundColor: st.favoriteBg, borderRadius: radius.sm, borderBottomColor: 'transparent' },
+  rankPos: { color: c.textFaint, fontFamily: fonts.extrabold, fontSize: 13, minWidth: 30 },
+  rankNick: { flex: 1, color: c.text, fontFamily: fonts.semibold, fontSize: 14 },
+  rankNickMine: { color: c.accent, fontFamily: fonts.bold },
+  rankScore: { color: c.accent, fontFamily: fonts.display, fontSize: 16, minWidth: 48, textAlign: 'right', fontVariant: ['tabular-nums'] },
   playWrap: { flex: 1 },
   hud: { alignItems: 'center', marginBottom: spacing(2) },
-  hudTouches: { color: colors.text, fontFamily: fonts.display, fontSize: 44, fontVariant: ['tabular-nums'] },
-  hudLabel: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 12, marginTop: -4 },
+  hudTouches: { color: c.text, fontFamily: fonts.display, fontSize: 44, fontVariant: ['tabular-nums'] },
+  hudLabel: { color: c.textDim, fontFamily: fonts.medium, fontSize: 12, marginTop: -4 },
   field: { flex: 1, backgroundColor: '#1b7038', borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(20,224,138,0.35)', overflow: 'hidden' },
-  flash: { position: 'absolute', alignSelf: 'center', top: '32%', color: colors.amber, fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6, zIndex: 4 },
+  flash: { position: 'absolute', alignSelf: 'center', top: '32%', color: c.amber, fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6, zIndex: 4 },
   ball: { position: 'absolute', left: 0, top: 0, width: R * 2, height: R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
-  ballEmoji: { fontSize: R * 2 - 6 },
+  ballEmoji: { fontSize: R * 2 - 12, lineHeight: R * 2, width: R * 2, textAlign: 'center', includeFontPadding: false },
   char: { position: 'absolute', left: 0, bottom: 0, width: CW, height: CH, alignItems: 'center', justifyContent: 'flex-end', zIndex: 2 },
-  hint: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
+  hint: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
   over: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: spacing(6) },
   overEmoji: { fontSize: 60 },
-  overScore: { color: colors.text, fontFamily: fonts.display, fontSize: 64, marginTop: spacing(2) },
-  overLabel: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 16, marginTop: -8 },
-  overRecord: { color: colors.amber, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(2), marginBottom: spacing(4) },
-  overMsg: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', marginTop: spacing(2), marginBottom: spacing(4), paddingHorizontal: spacing(4), lineHeight: 19 },
-  replayBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(2) },
-  replayText: { color: colors.ink, fontFamily: fonts.display, fontSize: 17, letterSpacing: 0.5 },
+  overScore: { color: c.text, fontFamily: fonts.display, fontSize: 64, marginTop: spacing(2) },
+  overLabel: { color: c.textDim, fontFamily: fonts.medium, fontSize: 16, marginTop: -8 },
+  overRecord: { color: c.amber, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(2), marginBottom: spacing(4) },
+  overMsg: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', marginTop: spacing(2), marginBottom: spacing(4), paddingHorizontal: spacing(4), lineHeight: 19 },
+  replayBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(2) },
+  replayText: { color: c.ink, fontFamily: fonts.display, fontSize: 17, letterSpacing: 0.5 },
   shareBtn: { paddingVertical: spacing(3), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(1) },
-  shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 15 },
-  voltarSep: { height: 1, alignSelf: 'stretch', backgroundColor: colors.border, marginTop: spacing(4), marginBottom: spacing(1) },
+  shareText: { color: c.accent, fontFamily: fonts.bold, fontSize: 15 },
+  voltarSep: { height: 1, alignSelf: 'stretch', backgroundColor: c.border, marginTop: spacing(4), marginBottom: spacing(1) },
   voltarBtn: { paddingVertical: spacing(2.5), alignItems: 'center', alignSelf: 'stretch' },
-  voltarText: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 14 },
+  voltarText: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 14 },
   ghostBtn: { paddingVertical: spacing(2), alignItems: 'center', alignSelf: 'stretch' },
-  ghostText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 14 },
+  ghostText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 14 },
 });
 
 // Boneco com a camisa do Brasil (amarelo/verde/azul) — montado com formas.

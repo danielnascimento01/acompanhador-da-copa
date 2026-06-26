@@ -7,7 +7,8 @@ import { Match, kickoff, isLive } from '../data/fixtures';
 import { teamName } from '../data/teams';
 import { fetchTimeline, type LiveTimeline, type TimelineEvent } from '../lib/liveEvents';
 import { formatTime, relativeDayLabel } from '../lib/format';
-import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
+import { fonts, radius, spacing, elevation } from '../lib/theme';
+import { useTheme } from '../lib/theme-context';
 
 /** Lances "de destaque" pro card resumo: gols, gols contra e vermelhos. */
 function isKeyEvent(e: TimelineEvent): boolean {
@@ -36,6 +37,7 @@ function countdown(target: Date, now: Date) {
 }
 
 export function NextMatchHero({ match, onPress }: { match: Match; onPress?: () => void }) {
+  const { g } = useTheme();
   const [now, setNow] = useState(() => new Date());
   const [timeline, setTimeline] = useState<LiveTimeline | null>(null);
   // Janela de tempo + status (trava status "preso"). Re-avalia a cada segundo (now).
@@ -92,7 +94,7 @@ export function NextMatchHero({ match, onPress }: { match: Match; onPress?: () =
       style={({ pressed }) => (pressed && onPress ? styles.pressed : undefined)}
     >
     <LinearGradient
-      colors={live ? gradients.live : gradients.hero}
+      colors={live ? g.live : g.hero}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.card, elevation(2)]}

@@ -4,7 +4,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Flag } from './Flag';
 import { Standing } from '../data/standings';
 import { teamName } from '../data/teams';
-import { colors, fonts, spacing, state } from '../lib/theme';
+import { fonts, spacing } from '../lib/theme';
+import { useTheme, useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 type Props = {
   standings: Standing[];
@@ -24,6 +25,8 @@ const NUM_COLS: { key: keyof Standing; label: string }[] = [
 ];
 
 export function StandingsTable({ standings, selected, primaryTeam }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { c: tc } = useTheme();
   return (
     <View>
       <View style={styles.headerRow}>
@@ -42,8 +45,8 @@ export function StandingsTable({ standings, selected, primaryTeam }: Props) {
         // Badge: 1º-2º classificam (verde), 3º disputa (âmbar), 4º neutro.
         const top2 = i < 2;
         const third = i === 2;
-        const badgeBg = top2 ? colors.accent : third ? colors.amber : colors.surface2;
-        const badgeFg = top2 || third ? colors.ink : colors.textDim;
+        const badgeBg = top2 ? tc.accent : third ? tc.amber : tc.surface2;
+        const badgeFg = top2 || third ? tc.ink : tc.textDim;
         return (
           <View
             key={s.teamId}
@@ -63,7 +66,7 @@ export function StandingsTable({ standings, selected, primaryTeam }: Props) {
                 style={[
                   styles.num,
                   c.key === 'points' && styles.points,
-                  c.key === 'gd' && { color: s.gd > 0 ? colors.accent : s.gd < 0 ? colors.live : colors.textDim },
+                  c.key === 'gd' && { color: s.gd > 0 ? tc.accent : s.gd < 0 ? tc.live : tc.textDim },
                 ]}
               >
                 {c.key === 'gd' && s.gd > 0 ? `+${s.gd}` : String(s[c.key])}
@@ -78,19 +81,19 @@ export function StandingsTable({ standings, selected, primaryTeam }: Props) {
 
 const NUM_W = 24;
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingBottom: spacing(2), gap: 2 },
-  posHead: { width: 24, color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10, textAlign: 'center' },
-  teamHead: { flex: 1, color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10, marginLeft: spacing(2) },
-  numHead: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10 },
+  posHead: { width: 24, color: c.textFaint, fontFamily: fonts.bold, fontSize: 10, textAlign: 'center' },
+  teamHead: { flex: 1, color: c.textFaint, fontFamily: fonts.bold, fontSize: 10, marginLeft: spacing(2) },
+  numHead: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 10 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing(2.5), gap: 2, borderRadius: 8, paddingHorizontal: 4, marginHorizontal: -4 },
-  rowMine: { backgroundColor: state.favoriteBg },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border, borderRadius: 0, marginHorizontal: 0, paddingHorizontal: 0 },
+  rowMine: { backgroundColor: st.favoriteBg },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: c.border, borderRadius: 0, marginHorizontal: 0, paddingHorizontal: 0 },
   posWrap: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: spacing(2) },
   pos: { fontFamily: fonts.extrabold, fontSize: 11, fontVariant: ['tabular-nums'] },
-  star: { color: colors.amber, fontSize: 11, marginLeft: spacing(2) },
-  team: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 14, marginLeft: spacing(2) },
-  teamMine: { color: colors.accent, fontFamily: fonts.bold },
-  num: { width: NUM_W, textAlign: 'center', color: colors.textDim, fontFamily: fonts.medium, fontSize: 12, fontVariant: ['tabular-nums'] },
-  points: { color: colors.text, fontFamily: fonts.display, fontSize: 15 },
+  star: { color: c.amber, fontSize: 11, marginLeft: spacing(2) },
+  team: { flex: 1, color: c.text, fontFamily: fonts.semibold, fontSize: 14, marginLeft: spacing(2) },
+  teamMine: { color: c.accent, fontFamily: fonts.bold },
+  num: { width: NUM_W, textAlign: 'center', color: c.textDim, fontFamily: fonts.medium, fontSize: 12, fontVariant: ['tabular-nums'] },
+  points: { color: c.text, fontFamily: fonts.display, fontSize: 15 },
 });

@@ -3,7 +3,8 @@ import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'rea
 
 import { QUESTIONS_PER_ROUND, QUIZ_MODES, drawQuestions, shuffle, type QuizMode, type Question } from '../data/quiz';
 import { loadQuizBest, saveQuizBest } from '../lib/funStorage';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
 
@@ -22,6 +23,7 @@ function prepare(qs: Question[]): Question[] {
 type Phase = 'menu' | 'playing' | 'result';
 
 export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   const [phase, setPhase] = useState<Phase>('menu');
   const [mode, setMode] = useState<QuizMode>('brasil');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -178,43 +180,43 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
-  sheet: { backgroundColor: colors.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), maxHeight: '90%', minHeight: '55%' },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  sheet: { backgroundColor: c.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: c.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), maxHeight: '90%', minHeight: '55%' },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
   flex1: { flex: 1 },
   playCol: { flex: 1 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
-  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
-  modeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing(4), marginBottom: spacing(3) },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28 },
+  sub: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
+  modeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, padding: spacing(4), marginBottom: spacing(3) },
   modeEmoji: { fontSize: 30 },
-  modeLabel: { color: colors.text, fontFamily: fonts.display, fontSize: 20 },
-  modeDesc: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12.5, marginTop: 1 },
-  modeBest: { color: colors.amber, fontFamily: fonts.bold, fontSize: 12 },
+  modeLabel: { color: c.text, fontFamily: fonts.display, fontSize: 20 },
+  modeDesc: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12.5, marginTop: 1 },
+  modeBest: { color: c.amber, fontFamily: fonts.bold, fontSize: 12 },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing(2) },
-  progressText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
-  bar: { height: 6, borderRadius: 3, backgroundColor: colors.surface2, overflow: 'hidden', marginBottom: spacing(4) },
-  barFill: { height: 6, borderRadius: 3, backgroundColor: colors.accent },
-  question: { color: colors.text, fontFamily: fonts.bold, fontSize: 19, lineHeight: 26, marginBottom: spacing(4) },
-  opt: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: spacing(3.5), paddingHorizontal: spacing(4), marginBottom: spacing(2.5) },
-  optRight: { backgroundColor: 'rgba(20,224,138,0.14)', borderColor: colors.accent },
-  optWrong: { backgroundColor: 'rgba(255,77,94,0.14)', borderColor: colors.live },
-  optText: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
-  optTextRight: { color: colors.accent, fontFamily: fonts.bold },
-  optTextWrong: { color: colors.live, fontFamily: fonts.bold },
-  nextBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', marginTop: spacing(2) },
-  nextText: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
+  progressText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  bar: { height: 6, borderRadius: 3, backgroundColor: c.surface2, overflow: 'hidden', marginBottom: spacing(4) },
+  barFill: { height: 6, borderRadius: 3, backgroundColor: c.accent },
+  question: { color: c.text, fontFamily: fonts.bold, fontSize: 19, lineHeight: 26, marginBottom: spacing(4) },
+  opt: { backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, paddingVertical: spacing(3.5), paddingHorizontal: spacing(4), marginBottom: spacing(2.5) },
+  optRight: { backgroundColor: 'rgba(20,224,138,0.14)', borderColor: c.accent },
+  optWrong: { backgroundColor: 'rgba(255,77,94,0.14)', borderColor: c.live },
+  optText: { color: c.text, fontFamily: fonts.semibold, fontSize: 15 },
+  optTextRight: { color: c.accent, fontFamily: fonts.bold },
+  optTextWrong: { color: c.live, fontFamily: fonts.bold },
+  nextBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', marginTop: spacing(2) },
+  nextText: { color: c.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
   result: { alignItems: 'center', paddingVertical: spacing(6) },
   resultEmoji: { fontSize: 56 },
-  resultScore: { color: colors.text, fontFamily: fonts.display, fontSize: 52, marginTop: spacing(2) },
-  resultMsg: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 15, textAlign: 'center', marginTop: spacing(2), marginBottom: spacing(2) },
-  resultRecord: { color: colors.accent, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(1) },
-  resultBest: { color: colors.amber, fontFamily: fonts.bold, fontSize: 13, marginTop: spacing(1), marginBottom: spacing(4) },
-  primaryBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), paddingHorizontal: spacing(8), alignItems: 'center', alignSelf: 'stretch' },
-  primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
+  resultScore: { color: c.text, fontFamily: fonts.display, fontSize: 52, marginTop: spacing(2) },
+  resultMsg: { color: c.textDim, fontFamily: fonts.medium, fontSize: 15, textAlign: 'center', marginTop: spacing(2), marginBottom: spacing(2) },
+  resultRecord: { color: c.accent, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(1) },
+  resultBest: { color: c.amber, fontFamily: fonts.bold, fontSize: 13, marginTop: spacing(1), marginBottom: spacing(4) },
+  primaryBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(4), paddingHorizontal: spacing(8), alignItems: 'center', alignSelf: 'stretch' },
+  primaryText: { color: c.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
   ghostBtn: { paddingVertical: spacing(3), alignItems: 'center', alignSelf: 'stretch' },
-  ghostText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 14 },
+  ghostText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 14 },
 });

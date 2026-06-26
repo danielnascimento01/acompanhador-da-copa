@@ -5,9 +5,11 @@ import { Flag } from '../components/Flag';
 import { AdBanner } from '../components/AdBanner';
 import { GROUPS, TEAMS, Team } from '../data/teams';
 import { useStore } from '../lib/store';
-import { colors, fonts, radius, spacing, state } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 export function TeamsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const { selected, toggleTeam, settings, updateSettings } = useStore();
   const primaryTeam = settings.primaryTeam;
 
@@ -91,6 +93,7 @@ function TeamRow({
   onPress: () => void;
   onStar: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
@@ -120,54 +123,54 @@ function TeamRow({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
-  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
-  subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 14, marginTop: 2 },
-  note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, marginTop: spacing(2) },
+  kicker: { color: c.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
+  subtitle: { color: c.textDim, fontFamily: fonts.medium, fontSize: 14, marginTop: 2 },
+  note: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, marginTop: spacing(2) },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginTop: spacing(5), marginBottom: spacing(2) },
   groupTag: {
     width: 26,
     height: 26,
     borderRadius: 8,
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  groupTagText: { color: colors.ink, fontFamily: fonts.display, fontSize: 14 },
-  groupLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.5 },
-  groupLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  groupTagText: { color: c.ink, fontFamily: fonts.display, fontSize: 14 },
+  groupLabel: { color: c.text, fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.5 },
+  groupLine: { flex: 1, height: 1, backgroundColor: c.border },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingVertical: spacing(2.5),
     paddingHorizontal: spacing(3),
     marginBottom: spacing(2.5),
     gap: spacing(3),
     minHeight: 62,
   },
-  rowPrimary: { borderColor: state.favoriteBorder, backgroundColor: state.favoriteBg },
+  rowPrimary: { borderColor: st.favoriteBorder, backgroundColor: st.favoriteBg },
   rowPressed: { opacity: 0.6 },
   star: { paddingHorizontal: spacing(1), alignItems: 'center', justifyContent: 'center' },
-  starText: { fontSize: 20, color: colors.textFaint },
-  starActive: { color: colors.amber },
-  name: { color: colors.text, fontFamily: fonts.semibold, fontSize: 16, flex: 1 },
-  namePrimary: { color: colors.accent, fontFamily: fonts.bold },
+  starText: { fontSize: 20, color: c.textFaint },
+  starActive: { color: c.amber },
+  name: { color: c.text, fontFamily: fonts.semibold, fontSize: 16, flex: 1 },
+  namePrimary: { color: c.accent, fontFamily: fonts.bold },
   check: {
     width: 28,
     height: 28,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: colors.borderBright,
+    borderColor: c.borderBright,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  checkMark: { color: colors.ink, fontFamily: fonts.extrabold, fontSize: 15 },
+  checkActive: { backgroundColor: c.accent, borderColor: c.accent },
+  checkMark: { color: c.ink, fontFamily: fonts.extrabold, fontSize: 15 },
 });

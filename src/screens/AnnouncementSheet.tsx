@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useStore } from '../lib/store';
 import { openSuggestion } from '../lib/links';
-import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 /**
  * Popup de novidade — aparece UMA vez para quem já usava o app, anunciando os
@@ -12,6 +13,8 @@ import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
  * (announceVisible / dismissAnnounce).
  */
 export function AnnouncementSheet() {
+  const styles = useThemedStyles(makeStyles);
+  const { g } = useTheme();
   const { announceVisible, dismissAnnounce } = useStore();
 
   const onSuggestion = () => {
@@ -24,7 +27,7 @@ export function AnnouncementSheet() {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <LinearGradient
-            colors={gradients.accent}
+            colors={g.accent}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.badge}
@@ -82,7 +85,7 @@ export function AnnouncementSheet() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -92,10 +95,10 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(6),
   },
   badge: {
@@ -105,29 +108,29 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(1),
     marginBottom: spacing(3),
   },
-  badgeText: { color: colors.ink, fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.5 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.3, marginBottom: spacing(3) },
-  body: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginBottom: spacing(3) },
-  bold: { color: colors.text, fontFamily: fonts.bold },
+  badgeText: { color: c.ink, fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.5 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.3, marginBottom: spacing(3) },
+  body: { color: c.textDim, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginBottom: spacing(3) },
+  bold: { color: c.text, fontFamily: fonts.bold },
   featRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing(3), marginBottom: spacing(3) },
   featIcon: { fontSize: 22, lineHeight: 24 },
-  featText: { flex: 1, color: colors.textDim, fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21 },
+  featText: { flex: 1, color: c.textDim, fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 21 },
   feedbackBox: {
-    backgroundColor: 'rgba(20,224,138,0.08)',
+    backgroundColor: st.favoriteBg,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(20,224,138,0.25)',
+    borderColor: st.favoriteBorder,
     padding: spacing(3),
     marginBottom: spacing(4),
   },
-  feedback: { color: colors.text, fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
+  feedback: { color: c.text, fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
   primaryBtn: {
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     borderRadius: radius.md,
     paddingVertical: spacing(4),
     alignItems: 'center',
   },
-  primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
+  primaryText: { color: c.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
   ghostBtn: { paddingVertical: spacing(4), alignItems: 'center', marginTop: spacing(1) },
-  ghostText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 15 },
+  ghostText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 15 },
 });

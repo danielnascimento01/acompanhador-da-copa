@@ -16,7 +16,8 @@ import { getCurrentIconKey } from '../lib/appIcon';
 import { APP_ICONS, DEFAULT_ICON_KEY } from '../data/appIcons';
 import { AppIconSheet } from './AppIconSheet';
 import { ApoioCard } from '../components/ApoioCard';
-import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useTheme, useThemedStyles, type ThemePref, type ThemeTokens } from '../lib/theme-context';
 
 const LEAD_OPTIONS = [5, 10, 15, 30, 60];
 
@@ -26,7 +27,15 @@ const GOAL_PUSH_OPTIONS: { key: 'mine' | 'all' | 'off'; label: string }[] = [
   { key: 'off', label: 'Desligado' },
 ];
 
+const THEME_OPTIONS: { key: ThemePref; label: string }[] = [
+  { key: 'system', label: 'Automático' },
+  { key: 'light', label: 'Claro' },
+  { key: 'dark', label: 'Escuro' },
+];
+
 export function SettingsScreen() {
+  const styles = useThemedStyles(makeStyles);
+  const { c, g, pref, setPref } = useTheme();
   const { settings, updateSettings, selected, matches, registerForGoalPush } = useStore();
   const [granted, setGranted] = useState<boolean | null>(null);
   const [scheduled, setScheduled] = useState<number>(0);
@@ -68,7 +77,7 @@ export function SettingsScreen() {
 
       {/* Permissão */}
       {granted ? (
-        <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.permCard}>
+        <LinearGradient colors={g.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.permCard}>
           <Text style={styles.permTitle}>✅ Notificações ativas</Text>
           <Text style={styles.permTextLight}>
             {scheduled} {scheduled === 1 ? 'aviso agendado' : 'avisos agendados'} para as suas seleções.
@@ -102,8 +111,8 @@ export function SettingsScreen() {
           <Switch
             value={settings.dailyDigest}
             onValueChange={(v) => updateSettings({ dailyDigest: v })}
-            trackColor={{ true: colors.accentDeep, false: colors.border }}
-            thumbColor={colors.white}
+            trackColor={{ true: c.accentDeep, false: c.border }}
+            thumbColor={c.white}
           />
         </View>
         {settings.dailyDigest && (
@@ -128,8 +137,8 @@ export function SettingsScreen() {
           <Switch
             value={settings.matchStart}
             onValueChange={(v) => updateSettings({ matchStart: v })}
-            trackColor={{ true: colors.accentDeep, false: colors.border }}
-            thumbColor={colors.white}
+            trackColor={{ true: c.accentDeep, false: c.border }}
+            thumbColor={c.white}
           />
         </View>
         {settings.matchStart && (
@@ -225,6 +234,30 @@ export function SettingsScreen() {
         nosso servidor — precisa de internet no momento do gol.
       </Text>
 
+      {/* Aparência — tema claro/escuro/automático */}
+      <Text style={styles.title}>Aparência</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🎨 Tema do app</Text>
+        <Text style={styles.cardText}>Claro, escuro ou automático (segue o tema do seu celular).</Text>
+        <View style={styles.chipsRow}>
+          {THEME_OPTIONS.map((opt) => {
+            const active = pref === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setPref(opt.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Tema: ${opt.label}`}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       <Text style={styles.title}>Dados</Text>
       <View style={styles.card}>
         <View style={styles.rowBetween}>
@@ -237,8 +270,8 @@ export function SettingsScreen() {
           <Switch
             value={settings.dataSaver}
             onValueChange={(v) => updateSettings({ dataSaver: v })}
-            trackColor={{ true: colors.accentDeep, false: colors.border }}
-            thumbColor={colors.white}
+            trackColor={{ true: c.accentDeep, false: c.border }}
+            thumbColor={c.white}
           />
         </View>
       </View>
@@ -294,6 +327,7 @@ export function SettingsScreen() {
 }
 
 function Stepper({ label, onMinus, onPlus }: { label: string; onMinus: () => void; onPlus: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.stepper}>
       <Pressable style={styles.stepBtn} onPress={onMinus} accessibilityRole="button" accessibilityLabel="Uma hora antes">
@@ -307,11 +341,11 @@ function Stepper({ label, onMinus, onPlus }: { label: string; onMinus: () => voi
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   container: { flex: 1 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 34, marginBottom: spacing(3) },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 34, marginBottom: spacing(3) },
   permCard: { borderRadius: radius.lg, padding: spacing(5), marginBottom: spacing(3) },
-  permTitle: { color: colors.white, fontFamily: fonts.bold, fontSize: 18 },
+  permTitle: { color: c.white, fontFamily: fonts.bold, fontSize: 18 },
   permTextLight: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.regular, fontSize: 14, marginTop: 4 },
   ghostBtn: {
     marginTop: spacing(4),
@@ -321,26 +355,26 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(3),
     alignItems: 'center',
   },
-  ghostBtnText: { color: colors.white, fontFamily: fonts.bold, fontSize: 15 },
+  ghostBtnText: { color: c.white, fontFamily: fonts.bold, fontSize: 15 },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
     marginBottom: spacing(3),
   },
-  cardWarn: { borderColor: colors.accent },
-  cardTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 17 },
-  cardText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 4, lineHeight: 20 },
+  cardWarn: { borderColor: c.accent },
+  cardTitle: { color: c.text, fontFamily: fonts.bold, fontSize: 17 },
+  cardText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 4, lineHeight: 20 },
   cta: {
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     borderRadius: radius.md,
     paddingVertical: spacing(4),
     alignItems: 'center',
     marginTop: spacing(4),
   },
-  ctaText: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
+  ctaText: { color: c.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
   flex1: { flex: 1 },
   stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing(4) },
@@ -349,52 +383,49 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: radius.md,
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepBtnText: { color: colors.text, fontFamily: fonts.bold, fontSize: 24 },
-  stepLabel: { color: colors.text, fontFamily: fonts.display, fontSize: 22, minWidth: 64, textAlign: 'center' },
+  stepBtnText: { color: c.text, fontFamily: fonts.bold, fontSize: 24 },
+  stepLabel: { color: c.text, fontFamily: fonts.display, fontSize: 22, minWidth: 64, textAlign: 'center' },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2), marginTop: spacing(4) },
   chip: {
     minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: spacing(4),
     borderRadius: radius.md,
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 14 },
-  chipTextActive: { color: colors.ink, fontFamily: fonts.bold },
-  note: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2) },
-  goalHint: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, marginTop: spacing(3) },
+  chipActive: { backgroundColor: c.accent, borderColor: c.accent },
+  chipText: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 14 },
+  chipTextActive: { color: c.ink, fontFamily: fonts.bold },
+  note: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2) },
+  goalHint: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, marginTop: spacing(3) },
   iconCard: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), marginTop: spacing(4) },
-  iconPreview: { width: 52, height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
-  iconChevron: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 28, marginTop: -4 },
-  adsDoneCard: { borderColor: colors.accentDeep },
-  restoreLink: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, textAlign: 'center', marginTop: spacing(3), textDecorationLine: 'underline' },
+  iconPreview: { width: 52, height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: c.border },
+  iconChevron: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 28, marginTop: -4 },
   supportCard: { marginTop: spacing(4) },
   supportRow: { flexDirection: 'row', gap: spacing(2), marginTop: spacing(4) },
   supportPrimary: {
     flex: 1,
-    backgroundColor: colors.amber,
+    backgroundColor: c.amber,
     borderRadius: radius.md,
     paddingVertical: spacing(3),
     alignItems: 'center',
   },
-  supportPrimaryText: { color: colors.ink, fontFamily: fonts.bold, fontSize: 15 },
+  supportPrimaryText: { color: c.ink, fontFamily: fonts.bold, fontSize: 15 },
   supportGhost: {
     paddingHorizontal: spacing(5),
     justifyContent: 'center',
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  supportGhostText: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
-  versionLine: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11, textAlign: 'center', marginTop: spacing(5) },
+  supportGhostText: { color: c.text, fontFamily: fonts.semibold, fontSize: 15 },
+  versionLine: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 11, textAlign: 'center', marginTop: spacing(5) },
 });
-

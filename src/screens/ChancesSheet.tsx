@@ -5,16 +5,17 @@ import { Flag } from '../components/Flag';
 import { teamName } from '../data/teams';
 import { simulateChances, type GroupChance } from '../data/chances';
 import { useStore } from '../lib/store';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 /** Rótulo + cor honestos a partir da chance (%). */
-function label(pct: number): { text: string; color: string } {
-  if (pct >= 100) return { text: 'Classificado', color: colors.accent };
-  if (pct <= 0) return { text: 'Eliminado', color: colors.textFaint };
-  if (pct >= 99.5) return { text: '>99%', color: colors.accent };
-  if (pct <= 0.5) return { text: '<1%', color: colors.live };
+function label(pct: number, c: ThemeTokens['c']): { text: string; color: string } {
+  if (pct >= 100) return { text: 'Classificado', color: c.accent };
+  if (pct <= 0) return { text: 'Eliminado', color: c.textFaint };
+  if (pct >= 99.5) return { text: '>99%', color: c.accent };
+  if (pct <= 0.5) return { text: '<1%', color: c.live };
   const v = Math.round(pct);
-  const color = v >= 60 ? colors.accent : v >= 30 ? colors.amber : colors.live;
+  const color = v >= 60 ? c.accent : v >= 30 ? c.amber : c.live;
   return { text: `${v}%`, color };
 }
 
@@ -24,6 +25,8 @@ function label(pct: number): { text: string; color: string } {
  * número não é palpite de força, e sim em quantos cenários possíveis o time passa.
  */
 export function ChancesSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  const { c } = useTheme();
   const { matches, selected } = useStore();
   const [groups, setGroups] = useState<GroupChance[] | null>(null);
 
@@ -53,7 +56,7 @@ export function ChancesSheet({ visible, onClose }: { visible: boolean; onClose: 
 
           {!groups ? (
             <View style={styles.loading}>
-              <ActivityIndicator color={colors.accent} />
+              <ActivityIndicator color={c.accent} />
               <Text style={styles.loadingText}>Simulando milhares de cenários…</Text>
             </View>
           ) : (
@@ -76,7 +79,7 @@ export function ChancesSheet({ visible, onClose }: { visible: boolean; onClose: 
                     <Text style={styles.groupLabel}>Grupo {g.group}</Text>
                   </View>
                   {g.teams.map((t) => {
-                    const lab = label(t.pct);
+                    const lab = label(t.pct, c);
                     const mine = selected.has(t.teamId);
                     return (
                       <View key={t.teamId} style={styles.row}>
@@ -107,26 +110,26 @@ export function ChancesSheet({ visible, onClose }: { visible: boolean; onClose: 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
     maxHeight: '90%',
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
-  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28 },
+  sub: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
   loading: { paddingVertical: spacing(10), alignItems: 'center', gap: spacing(3) },
-  loadingText: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13 },
+  loadingText: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13 },
   banner: {
     backgroundColor: 'rgba(21,194,214,0.10)',
     borderRadius: radius.md,
@@ -135,18 +138,18 @@ const styles = StyleSheet.create({
     padding: spacing(3),
     marginBottom: spacing(4),
   },
-  bannerText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18 },
-  bannerBold: { color: colors.text, fontFamily: fonts.bold },
+  bannerText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18 },
+  bannerBold: { color: c.text, fontFamily: fonts.bold },
   groupBlock: { marginBottom: spacing(4) },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: spacing(2) },
-  groupTag: { width: 24, height: 24, borderRadius: 7, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  groupTagText: { color: colors.ink, fontFamily: fonts.display, fontSize: 13 },
-  groupLabel: { color: colors.text, fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.5 },
+  groupTag: { width: 24, height: 24, borderRadius: 7, backgroundColor: c.accent, alignItems: 'center', justifyContent: 'center' },
+  groupTagText: { color: c.ink, fontFamily: fonts.display, fontSize: 13 },
+  groupLabel: { color: c.text, fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.5 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), paddingVertical: spacing(2) },
-  team: { color: colors.text, fontFamily: fonts.semibold, fontSize: 14, width: 120 },
-  teamMine: { color: colors.accent, fontFamily: fonts.bold },
-  barTrack: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.surface2, overflow: 'hidden' },
+  team: { color: c.text, fontFamily: fonts.semibold, fontSize: 14, width: 120 },
+  teamMine: { color: c.accent, fontFamily: fonts.bold },
+  barTrack: { flex: 1, height: 8, borderRadius: 4, backgroundColor: c.surface2, overflow: 'hidden' },
   barFill: { height: 8, borderRadius: 4 },
   pct: { fontFamily: fonts.display, fontSize: 14, width: 92, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
+  footer: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
 });

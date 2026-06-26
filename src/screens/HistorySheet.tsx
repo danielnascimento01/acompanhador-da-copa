@@ -2,9 +2,11 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EDITIONS, RECORDS, TITLES } from '../data/worldCupHistory';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 export function HistorySheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -68,28 +70,28 @@ export function HistorySheet({ visible, onClose }: { visible: boolean; onClose: 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismissArea: { flex: 1 },
   sheet: {
     maxHeight: '88%',
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
     paddingBottom: spacing(6),
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   closeBtn: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 1 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.5 },
-  subtitle: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 2, marginBottom: spacing(2) },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.5 },
+  subtitle: { color: c.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 2, marginBottom: spacing(2) },
 
   sectionLabel: {
-    color: colors.textFaint,
+    color: c.textFaint,
     fontFamily: fonts.bold,
     fontSize: 12,
     letterSpacing: 1,
@@ -103,28 +105,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(3),
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(3),
     marginBottom: spacing(2),
   },
   recordEmoji: { fontSize: 24, width: 30, textAlign: 'center' },
-  recordLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 12 },
-  recordValue: { color: colors.text, fontFamily: fonts.bold, fontSize: 15, marginTop: 1 },
+  recordLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 12 },
+  recordValue: { color: c.text, fontFamily: fonts.bold, fontSize: 15, marginTop: 1 },
 
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2), paddingHorizontal: spacing(2) },
   titleFlag: { fontSize: 26 },
-  titleTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  titleYears: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
+  titleTeam: { color: c.text, fontFamily: fonts.bold, fontSize: 15 },
+  titleYears: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
   starsBox: { alignItems: 'flex-end' },
-  stars: { color: colors.amber, fontSize: 13 },
-  titlesNum: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 11 },
+  stars: { color: c.amber, fontSize: 13 },
+  titlesNum: { color: c.textFaint, fontFamily: fonts.semibold, fontSize: 11 },
 
-  editionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2), paddingHorizontal: spacing(2), borderBottomWidth: 1, borderBottomColor: colors.border },
-  year: { color: colors.textDim, fontFamily: fonts.display, fontSize: 16, width: 44 },
+  editionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2), paddingHorizontal: spacing(2), borderBottomWidth: 1, borderBottomColor: c.border },
+  year: { color: c.textDim, fontFamily: fonts.display, fontSize: 16, width: 44 },
   editionFlag: { fontSize: 22 },
-  editionChampion: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  editionMeta: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
+  editionChampion: { color: c.text, fontFamily: fonts.bold, fontSize: 15 },
+  editionMeta: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
 });

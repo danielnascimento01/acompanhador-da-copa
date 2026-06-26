@@ -16,7 +16,8 @@ import { formatDayLong, formatTime } from '../lib/format';
 import { openUrl } from '../lib/links';
 import { shareMatch } from '../lib/share';
 import { useStore } from '../lib/store';
-import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 type Props = {
   match: Match | null;
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function MatchDetailSheet({ match, matches, selected, onClose }: Props) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Modal visible={!!match} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -37,6 +39,8 @@ export function MatchDetailSheet({ match, matches, selected, onClose }: Props) {
 }
 
 function Content({ match, matches, selected, onClose }: { match: Match } & Omit<Props, 'match'>) {
+  const styles = useThemedStyles(makeStyles);
+  const { g } = useTheme();
   const { predictions, setPrediction, clearPrediction, settings, updateSettings, toggleFollowMatch, isFollowingMatch } = useStore();
   const ko = kickoff(match);
   const following = isFollowingMatch(match.id);
@@ -101,7 +105,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
         <LinearGradient
-          colors={live ? gradients.live : gradients.hero}
+          colors={live ? g.live : g.hero}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.scoreCard}
@@ -225,6 +229,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
 }
 
 function InfoRow({ icon, label, value, hint }: { icon: string; label: string; value: string; hint?: string }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoIcon}>{icon}</Text>
@@ -239,20 +244,20 @@ function InfoRow({ icon, label, value, hint }: { icon: string; label: string; va
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismissArea: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
     maxHeight: '88%',
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,10 +265,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing(3),
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing(4) },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 13 },
-  followText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
-  followTextActive: { color: colors.amber },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  shareText: { color: c.accent, fontFamily: fonts.bold, fontSize: 13 },
+  followText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  followTextActive: { color: c.amber },
   scoreCard: { borderRadius: radius.xl, padding: spacing(5), marginBottom: spacing(4) },
   headLabel: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.display, fontSize: 13, letterSpacing: 1, textAlign: 'center' },
   scoreRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing(4) },
@@ -274,10 +279,10 @@ const styles = StyleSheet.create({
   score: { color: '#fff', fontFamily: fonts.display, fontSize: 44, fontVariant: ['tabular-nums'] },
   time: { color: '#fff', fontFamily: fonts.display, fontSize: 30, fontVariant: ['tabular-nums'] },
   infoCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
     marginBottom: spacing(4),
     gap: spacing(3),
@@ -285,18 +290,18 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3) },
   infoIcon: { fontSize: 20, width: 26, textAlign: 'center' },
   flex1: { flex: 1 },
-  infoLabel: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
-  infoValue: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15, marginTop: 1 },
-  infoHint: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12 },
+  infoLabel: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
+  infoValue: { color: c.text, fontFamily: fonts.semibold, fontSize: 15, marginTop: 1 },
+  infoHint: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12 },
   watchCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
     marginBottom: spacing(4),
   },
-  watchTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
+  watchTitle: { color: c.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
   watchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -304,39 +309,39 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(3),
     paddingHorizontal: spacing(3),
     borderRadius: radius.md,
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     marginBottom: spacing(2),
   },
-  watchRowFree: { borderColor: colors.accent },
+  watchRowFree: { borderColor: c.accent },
   watchEmoji: { fontSize: 22, width: 28, textAlign: 'center' },
-  watchName: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  watchKind: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
-  watchCta: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
-  watchCtaFree: { color: colors.accent },
-  watchNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, marginTop: spacing(1) },
+  watchName: { color: c.text, fontFamily: fonts.bold, fontSize: 15 },
+  watchKind: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
+  watchCta: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  watchCtaFree: { color: c.accent },
+  watchNote: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, marginTop: spacing(1) },
   tableCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
   },
-  tableTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
+  tableTitle: { color: c.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(3) },
   scenarioRow: { marginBottom: spacing(3) },
   scenarioHead: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), marginBottom: 4 },
-  scenarioTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
-  scenarioText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19 },
-  scenarioNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: spacing(1) },
+  scenarioTeam: { color: c.text, fontFamily: fonts.bold, fontSize: 14 },
+  scenarioText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19 },
+  scenarioNote: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: spacing(1) },
   lockedNote: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(3),
     marginBottom: spacing(4),
     alignItems: 'center',
   },
-  lockedNoteText: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13 },
+  lockedNoteText: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13 },
 });

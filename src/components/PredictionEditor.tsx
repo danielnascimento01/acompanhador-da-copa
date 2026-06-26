@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Match } from '../data/fixtures';
 import { teamFlag, teamName } from '../data/teams';
 import { MAX_PREDICTION_GOALS, Prediction } from '../lib/storage';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 type Props = {
   match: Match;
@@ -18,6 +19,7 @@ type Props = {
  * Só deve ser exibido para jogos SEM placar real.
  */
 export function PredictionEditor({ match, prediction, onChange, onClear }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const current = prediction ?? null;
 
   const bump = (side: 'home' | 'away', delta: 1 | -1) => {
@@ -81,6 +83,7 @@ function ScoreColumn({
   onPlus: () => void;
   onMinus: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.col}>
       <Text style={styles.team} numberOfLines={1}>
@@ -115,42 +118,42 @@ function ScoreColumn({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.amber,
+    borderColor: c.amber,
     padding: spacing(4),
     marginBottom: spacing(4),
   },
   headRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing(3) },
-  title: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  clear: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, textDecorationLine: 'underline' },
+  title: { color: c.text, fontFamily: fonts.bold, fontSize: 15 },
+  clear: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, textDecorationLine: 'underline' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
   col: { flex: 1, alignItems: 'center', gap: spacing(2) },
-  team: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13 },
-  x: { color: colors.textFaint, fontFamily: fonts.display, fontSize: 18, paddingHorizontal: 2 },
+  team: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13 },
+  x: { color: c.textFaint, fontFamily: fonts.display, fontSize: 18, paddingHorizontal: 2 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing(2) },
   stepBtn: {
     width: 44,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepText: { color: colors.text, fontFamily: fonts.bold, fontSize: 22 },
+  stepText: { color: c.text, fontFamily: fonts.bold, fontSize: 22 },
   score: {
-    color: colors.amber,
+    color: c.amber,
     fontFamily: fonts.display,
     fontSize: 28,
     minWidth: 36,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
-  scoreEmpty: { color: colors.textFaint },
-  hint: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, marginTop: spacing(3) },
+  scoreEmpty: { color: c.textFaint },
+  hint: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, marginTop: spacing(3) },
 });

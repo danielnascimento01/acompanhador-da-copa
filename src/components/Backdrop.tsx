@@ -2,13 +2,14 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 /**
  * Fundo atmosférico: base escura com dois brilhos de gradiente (verde no topo,
  * teal embaixo) bem sutis, dando profundidade sem competir com o conteúdo.
  */
 export function Backdrop({ children }: { children: React.ReactNode }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.root}>
       <LinearGradient
@@ -30,6 +31,6 @@ export function Backdrop({ children }: { children: React.ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
 });

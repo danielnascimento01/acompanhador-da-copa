@@ -3,7 +3,8 @@ import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'rea
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useStore } from '../lib/store';
-import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 // Abre a loja certa para avaliar. Android = Play (foco do crescimento BR);
 // iOS = App Store já na ação de escrever avaliação.
@@ -25,6 +26,8 @@ function openStoreToRate() {
  * Sem dependência nativa nova (abre a loja via Linking) → entregue por OTA.
  */
 export function RatePrompt() {
+  const styles = useThemedStyles(makeStyles);
+  const { g } = useTheme();
   const { ratePromptVisible, dismissRatePrompt } = useStore();
 
   const rate = async () => {
@@ -48,7 +51,7 @@ export function RatePrompt() {
     <Modal visible={ratePromptVisible} animationType="fade" transparent onRequestClose={dismissRatePrompt}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <LinearGradient colors={gradients.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.badge}>
+          <LinearGradient colors={g.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.badge}>
             <Text style={styles.badgeText}>💚 SUA OPINIÃO</Text>
           </LinearGradient>
 
@@ -80,16 +83,16 @@ export function RatePrompt() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: spacing(6) },
-  card: { width: '100%', backgroundColor: colors.bgElev, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing(6) },
+  card: { width: '100%', backgroundColor: c.bgElev, borderRadius: radius.xl, borderWidth: 1, borderColor: c.border, padding: spacing(6) },
   badge: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: spacing(3), paddingVertical: spacing(1), marginBottom: spacing(3) },
-  badgeText: { color: colors.ink, fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.5 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.3, marginBottom: spacing(2) },
-  body: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginBottom: spacing(5) },
-  bold: { color: colors.text, fontFamily: fonts.bold },
-  primaryBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center' },
-  primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
+  badgeText: { color: c.ink, fontFamily: fonts.display, fontSize: 13, letterSpacing: 0.5 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.3, marginBottom: spacing(2) },
+  body: { color: c.textDim, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginBottom: spacing(5) },
+  bold: { color: c.text, fontFamily: fonts.bold },
+  primaryBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center' },
+  primaryText: { color: c.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
   ghostBtn: { paddingVertical: spacing(4), alignItems: 'center', marginTop: spacing(1) },
-  ghostText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 15 },
+  ghostText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 15 },
 });

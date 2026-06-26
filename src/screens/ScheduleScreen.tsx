@@ -14,7 +14,8 @@ import { openSuggestion } from '../lib/links';
 import { isStale } from '../lib/freshness';
 import { useStore } from '../lib/store';
 import { localDayKey, relativeDayLabel } from '../lib/format';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 type DaySection = {
   key: string;
@@ -52,6 +53,8 @@ function groupByDay(list: Match[]): DaySection[] {
 let antiBetsDismissed = false;
 
 export function ScheduleScreen() {
+  const styles = useThemedStyles(makeStyles);
+  const { c } = useTheme();
   const { selected, matches, settings, refresh, refreshing, updatedAt, online, predictions } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
   const [dayOpen, setDayOpen] = useState(false);
@@ -201,8 +204,8 @@ export function ScheduleScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor={colors.accent}
-            colors={[colors.accent]}
+            tintColor={c.accent}
+            colors={[c.accent]}
           />
         }
         ListHeaderComponent={
@@ -266,7 +269,7 @@ export function ScheduleScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   container: { flex: 1 },
   noBetsBanner: {
     flexDirection: 'row',
@@ -278,32 +281,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing(3),
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
   },
   noBetsIcon: { fontSize: 16 },
-  noBetsText: { flex: 1, color: colors.textDim, fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
+  noBetsText: { flex: 1, color: c.textDim, fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
-  subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
-  subtitleOffline: { color: colors.amber },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
+  subtitle: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
+  subtitleOffline: { color: c.amber },
   headerBtns: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2), marginTop: spacing(2) },
   headerBtn: {
     paddingVertical: 5,
     paddingHorizontal: spacing(3),
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: 'rgba(20,224,138,0.08)',
+    borderColor: c.accent,
+    backgroundColor: st.favoriteBg,
   },
-  suggestionBtn: { borderColor: colors.border, backgroundColor: 'transparent' },
-  pastHeaderBtn: { borderColor: colors.border, backgroundColor: colors.surface },
+  suggestionBtn: { borderColor: c.border, backgroundColor: 'transparent' },
+  pastHeaderBtn: { borderColor: c.border, backgroundColor: c.surface },
   shareTodayPressed: { opacity: 0.6 },
-  shareTodayText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 12.5 },
-  suggestionText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
-  pastHeaderText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
+  shareTodayText: { color: c.accent, fontFamily: fonts.bold, fontSize: 12.5 },
+  suggestionText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
+  pastHeaderText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
   day: {
-    color: colors.accent,
+    color: c.accent,
     fontFamily: fonts.extrabold,
     fontSize: 13,
     letterSpacing: 0.5,
@@ -313,7 +316,7 @@ const styles = StyleSheet.create({
   },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing(8) },
   emptyEmoji: { fontSize: 52, marginBottom: spacing(4) },
-  emptyTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 21, marginBottom: spacing(2), textAlign: 'center' },
-  emptyText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  bold: { color: colors.accent, fontFamily: fonts.bold },
+  emptyTitle: { color: c.text, fontFamily: fonts.bold, fontSize: 21, marginBottom: spacing(2), textAlign: 'center' },
+  emptyText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  bold: { color: c.accent, fontFamily: fonts.bold },
 });

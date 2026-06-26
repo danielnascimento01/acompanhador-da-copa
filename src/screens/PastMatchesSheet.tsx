@@ -4,7 +4,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { MatchCard } from '../components/MatchCard';
 import { Match, hasStarted, isFinished, isLive, kickoff } from '../data/fixtures';
 import { localDayKey, relativeDayLabel } from '../lib/format';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 type Props = {
   visible: boolean;
@@ -23,6 +24,7 @@ type DayGroup = { key: string; title: string; data: Match[] };
  * store já tem (sem fetch novo). Acesso rápido pelo botão no topo da aba Jogos.
  */
 export function PastMatchesSheet({ visible, matches, selected, primaryTeam, onClose, onSelectMatch }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const { groups, total } = useMemo(() => {
     const now = new Date();
     const past = matches.filter((m) => isFinished(m) || (hasStarted(m, now) && !isLive(m, now)));
@@ -83,27 +85,27 @@ export function PastMatchesSheet({ visible, matches, selected, primaryTeam, onCl
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
     maxHeight: '88%',
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
-  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(2) },
-  empty: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 15, textAlign: 'center', paddingVertical: spacing(8), lineHeight: 22 },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28 },
+  sub: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(2) },
+  empty: { color: c.textDim, fontFamily: fonts.regular, fontSize: 15, textAlign: 'center', paddingVertical: spacing(8), lineHeight: 22 },
   day: {
-    color: colors.textFaint,
+    color: c.textFaint,
     fontFamily: fonts.extrabold,
     fontSize: 13,
     letterSpacing: 0.5,

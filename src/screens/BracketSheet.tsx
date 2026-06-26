@@ -13,7 +13,8 @@ function whenLabel(utc: string): string {
   const d = new Date(utc);
   return `${formatDayShort(d)} · ${formatTime(d)}`;
 }
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 /** Abas de rodada no topo. A disputa de 3º lugar entra junto da aba "Final". */
 const STAGE_TABS = STAGE_META.filter((s) => s.key !== 'third');
@@ -25,6 +26,7 @@ const STAGE_TABS = STAGE_META.filter((s) => s.key !== 'third');
  * ficam como rótulo até a definição oficial. Nunca inventa um confronto.
  */
 export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   const { matches, selected } = useStore();
   const positions = useMemo(() => groupPositions(matches), [matches]);
   const thirds = useMemo(() => bestThirds(matches), [matches]);
@@ -140,6 +142,7 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
  * empate na fronteira 8/9 vira "disputa"; grupos em andamento ficam provisórios.
  */
 function BestThirdsBlock({ result, selected }: { result: ReturnType<typeof bestThirds>; selected: Set<string> }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.thirdsBlock}>
       <Text style={styles.stageName}>Os 8 melhores terceiros</Text>
@@ -162,6 +165,7 @@ function BestThirdsBlock({ result, selected }: { result: ReturnType<typeof bestT
 }
 
 function ThirdRowView({ row, selected }: { row: ThirdRow; selected: Set<string> }) {
+  const styles = useThemedStyles(makeStyles);
   const fav = row.played > 0 && selected.has(row.teamId);
   const status =
     row.qualifies === 'in'
@@ -208,6 +212,7 @@ function SlotView({
   positions: Record<string, { first?: string; second?: string }>;
   selected: Set<string>;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const teamId = resolveSlot(slot, positions);
   if (teamId) {
     const fav = selected.has(teamId);
@@ -229,37 +234,37 @@ function SlotView({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(5),
     paddingTop: spacing(3),
     maxHeight: '90%',
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
-  sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(3) },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28 },
+  sub: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(3) },
   tabsRow: { flexGrow: 0, marginBottom: spacing(4) },
   tabsContent: { gap: spacing(2), paddingRight: spacing(4) },
   tab: {
     paddingHorizontal: spacing(4),
     paddingVertical: spacing(2),
     borderRadius: radius.pill,
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  tabText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
-  tabTextActive: { color: colors.ink },
+  tabActive: { backgroundColor: c.accent, borderColor: c.accent },
+  tabText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  tabTextActive: { color: c.ink },
   banner: {
     backgroundColor: 'rgba(21,194,214,0.10)',
     borderRadius: radius.md,
@@ -268,10 +273,10 @@ const styles = StyleSheet.create({
     padding: spacing(3),
     marginBottom: spacing(4),
   },
-  bannerText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
+  bannerText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
   stageBlock: { marginBottom: spacing(4) },
   stageName: {
-    color: colors.accent,
+    color: c.accent,
     fontFamily: fonts.extrabold,
     fontSize: 13,
     letterSpacing: 0.5,
@@ -279,39 +284,39 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
   },
   match: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     borderRadius: radius.md,
     padding: spacing(3),
     marginBottom: spacing(2),
   },
-  matchFinal: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.06)' },
+  matchFinal: { borderColor: c.accent, backgroundColor: 'rgba(20,224,138,0.06)' },
   matchHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing(2) },
-  matchN: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.3 },
-  matchDate: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 11 },
+  matchN: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.3 },
+  matchDate: { color: c.textFaint, fontFamily: fonts.semibold, fontSize: 11 },
   slot: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(2),
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderRadius: radius.sm,
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(3),
     minHeight: 38,
   },
-  slotResolved: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: colors.border },
-  slotFav: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
+  slotResolved: { backgroundColor: c.surface2, borderWidth: 1, borderColor: c.border },
+  slotFav: { borderColor: c.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
   slotFlag: { fontSize: 20 },
-  slotTeam: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
-  slotTeamFav: { color: colors.accent },
-  slotLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, flex: 1 },
-  vs: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, textAlign: 'center', paddingVertical: 3 },
-  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
+  slotTeam: { color: c.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
+  slotTeamFav: { color: c.accent },
+  slotLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, flex: 1 },
+  vs: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, textAlign: 'center', paddingVertical: 3 },
+  footer: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
 
   // Calculadora dos melhores terceiros
   thirdsBlock: { marginBottom: spacing(5) },
-  thirdsCriterio: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, marginBottom: spacing(2) },
+  thirdsCriterio: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, marginBottom: spacing(2) },
   thirdsNote: {
     backgroundColor: 'rgba(255,194,51,0.10)',
     borderRadius: radius.sm,
@@ -322,11 +327,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing(3),
   },
   thirdsNoteOk: { backgroundColor: 'rgba(20,224,138,0.10)', borderColor: 'rgba(20,224,138,0.30)' },
-  thirdsNoteText: { color: colors.amber, fontFamily: fonts.semibold, fontSize: 12.5, lineHeight: 18 },
-  thirdsNoteTextOk: { color: colors.accent },
+  thirdsNoteText: { color: c.amber, fontFamily: fonts.semibold, fontSize: 12.5, lineHeight: 18 },
+  thirdsNoteTextOk: { color: c.accent },
   thirdsCut: {
     height: 1,
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     opacity: 0.5,
     marginVertical: spacing(2),
   },
@@ -334,9 +339,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing(2),
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     borderRadius: radius.sm,
     paddingVertical: spacing(2),
     paddingHorizontal: spacing(2),
@@ -344,31 +349,31 @@ const styles = StyleSheet.create({
     minHeight: 40,
   },
   thirdRowIn: { borderColor: 'rgba(20,224,138,0.35)', backgroundColor: 'rgba(20,224,138,0.05)' },
-  thirdRowFav: { borderColor: colors.accent },
-  thirdRank: { color: colors.textFaint, fontFamily: fonts.extrabold, fontSize: 12, width: 24, fontVariant: ['tabular-nums'] },
-  thirdRankIn: { color: colors.accent },
+  thirdRowFav: { borderColor: c.accent },
+  thirdRank: { color: c.textFaint, fontFamily: fonts.extrabold, fontSize: 12, width: 24, fontVariant: ['tabular-nums'] },
+  thirdRankIn: { color: c.accent },
   thirdGroupTag: {
     width: 20,
     height: 20,
     borderRadius: 6,
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  thirdGroupTagText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 11 },
+  thirdGroupTagText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 11 },
   thirdFlag: { fontSize: 17 },
-  thirdName: { color: colors.text, fontFamily: fonts.bold, fontSize: 13.5, flex: 1 },
-  thirdNameFav: { color: colors.accent },
-  thirdProv: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 11 },
-  thirdStats: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 11.5, fontVariant: ['tabular-nums'] },
+  thirdName: { color: c.text, fontFamily: fonts.bold, fontSize: 13.5, flex: 1 },
+  thirdNameFav: { color: c.accent },
+  thirdProv: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 11 },
+  thirdStats: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 11.5, fontVariant: ['tabular-nums'] },
   pill: { borderRadius: radius.pill, paddingVertical: 2, paddingHorizontal: spacing(2), minWidth: 56, alignItems: 'center' },
   pillText: { fontFamily: fonts.bold, fontSize: 10.5, letterSpacing: 0.3, textTransform: 'uppercase' },
-  pillIn: { backgroundColor: colors.accent },
-  pillInText: { color: colors.ink },
-  pillTie: { backgroundColor: 'rgba(255,194,51,0.18)', borderWidth: 1, borderColor: colors.amber },
-  pillTieText: { color: colors.amber },
-  pillOut: { backgroundColor: colors.surface2 },
-  pillOutText: { color: colors.textFaint },
+  pillIn: { backgroundColor: c.accent },
+  pillInText: { color: c.ink },
+  pillTie: { backgroundColor: 'rgba(255,194,51,0.18)', borderWidth: 1, borderColor: c.amber },
+  pillTieText: { color: c.amber },
+  pillOut: { backgroundColor: c.surface2 },
+  pillOutText: { color: c.textFaint },
 });

@@ -4,9 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { FadeInUp } from '../components/Motion';
 import { LINKS, openPrivacy, openSuggestion } from '../lib/links';
-import { colors, fonts, gradients, radius, spacing, elevation } from '../lib/theme';
+import { fonts, radius, spacing, elevation } from '../lib/theme';
+import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
 export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  const { g } = useTheme();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -25,7 +28,7 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
 
           <FadeInUp offset={16}>
             <LinearGradient
-              colors={gradients.amber}
+              colors={g.amber}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[styles.iconBadge, elevation(2)]}
@@ -47,7 +50,7 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
               style={({ pressed }) => pressed && styles.pressed}
             >
               <LinearGradient
-                colors={gradients.accent}
+                colors={g.accent}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={[styles.primaryBtn, elevation(1)]}
@@ -70,23 +73,23 @@ export function SupportSheet({ visible, onClose }: { visible: boolean; onClose: 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismissArea: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: spacing(6),
     paddingTop: spacing(3),
     paddingBottom: spacing(10),
     alignItems: 'center',
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, marginBottom: spacing(4) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, marginBottom: spacing(4) },
   closeBtn: { position: 'absolute', top: spacing(4), right: spacing(5) },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
   iconBadge: {
     width: 76,
     height: 76,
@@ -97,9 +100,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing(4),
   },
   iconEmoji: { fontSize: 40 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, textAlign: 'center', letterSpacing: 0.5 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28, textAlign: 'center', letterSpacing: 0.5 },
   body: {
-    color: colors.textDim,
+    color: c.textDim,
     fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
@@ -108,17 +111,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing(6),
   },
   primaryBtn: { borderRadius: radius.lg, paddingVertical: spacing(4), alignItems: 'center' },
-  primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
+  primaryText: { color: c.ink, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
   secondaryBtn: {
     borderRadius: radius.lg,
     paddingVertical: spacing(4),
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: c.border,
     marginTop: spacing(3),
   },
-  secondaryText: { color: colors.text, fontFamily: fonts.bold, fontSize: 15 },
-  privacyLink: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, textAlign: 'center', marginTop: spacing(5), textDecorationLine: 'underline' },
-  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(3) },
+  secondaryText: { color: c.text, fontFamily: fonts.bold, fontSize: 15 },
+  privacyLink: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, textAlign: 'center', marginTop: spacing(5), textDecorationLine: 'underline' },
+  footer: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(3) },
   pressed: { opacity: 0.8 },
 });

@@ -3,7 +3,8 @@ import { Dimensions, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View
 
 import { APP_ICONS, APP_ICON_GROUPS, AppIconDef } from '../data/appIcons';
 import { changeAppIcon, getCurrentIconKey, ICON_CHANGE_NEEDS_RESTART } from '../lib/appIcon';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 const COLS = 3;
 const SHEET_PAD = spacing(5); // padding horizontal do sheet
@@ -11,6 +12,7 @@ const GRID_GAP = spacing(3);
 const TILE = Math.floor((Dimensions.get('window').width - SHEET_PAD * 2 - GRID_GAP * (COLS - 1)) / COLS);
 
 export function AppIconSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   const [selected, setSelected] = useState<string>('brasil');
   // 'idle' | 'restart' (trocou no Android) | 'unavailable' (Expo Go / sem suporte)
   const [hint, setHint] = useState<'idle' | 'restart' | 'unavailable'>('idle');
@@ -111,39 +113,39 @@ export function AppIconSheet({ visible, onClose }: { visible: boolean; onClose: 
 
 const THUMB = TILE - spacing(2);
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismissArea: { flex: 1 },
   sheet: {
     maxHeight: '88%',
-    backgroundColor: colors.bgElev,
+    backgroundColor: c.bgElev,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     paddingHorizontal: SHEET_PAD,
     paddingTop: spacing(3),
     paddingBottom: spacing(8),
   },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(4) },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(4) },
   closeBtn: { position: 'absolute', top: spacing(4), right: spacing(5) },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.5 },
-  subtitle: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 4, marginBottom: spacing(4) },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 28, letterSpacing: 0.5 },
+  subtitle: { color: c.textDim, fontFamily: fonts.regular, fontSize: 14, marginTop: 4, marginBottom: spacing(4) },
   hintBox: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: c.accent,
     padding: spacing(3),
     marginBottom: spacing(4),
   },
-  hintWarn: { borderColor: colors.amber },
-  hintText: { color: colors.text, fontFamily: fonts.semibold, fontSize: 13, lineHeight: 19 },
+  hintWarn: { borderColor: c.amber },
+  hintText: { color: c.text, fontFamily: fonts.semibold, fontSize: 13, lineHeight: 19 },
   scrollContent: { paddingBottom: spacing(4) },
   section: { marginBottom: spacing(5) },
   sectionTitle: {
-    color: colors.textDim,
+    color: c.textDim,
     fontFamily: fonts.bold,
     fontSize: 13,
     letterSpacing: 1,
@@ -156,13 +158,13 @@ const styles = StyleSheet.create({
     width: TILE,
     height: TILE,
     borderRadius: radius.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  thumbWrapActive: { borderColor: colors.accent },
+  thumbWrapActive: { borderColor: c.accent },
   thumb: { width: THUMB, height: THUMB, borderRadius: radius.md },
   check: {
     position: 'absolute',
@@ -171,14 +173,14 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: colors.bgElev,
+    borderColor: c.bgElev,
   },
-  checkText: { color: colors.ink, fontFamily: fonts.bold, fontSize: 13 },
-  tileLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 12, marginTop: spacing(2), textAlign: 'center' },
-  tileLabelActive: { color: colors.text },
-  footer: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
+  checkText: { color: c.ink, fontFamily: fonts.bold, fontSize: 13 },
+  tileLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 12, marginTop: spacing(2), textAlign: 'center' },
+  tileLabelActive: { color: c.text },
+  footer: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
 });

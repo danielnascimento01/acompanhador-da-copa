@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Match } from '../data/fixtures';
 import { teamFlag } from '../data/teams';
 import { MAX_PREDICTION_GOALS, Prediction } from '../lib/storage';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 type Props = {
   match: Match;
@@ -17,6 +18,7 @@ type Props = {
  * 🇧🇷 [− 2 +] × [− 0 +] 🇲🇦 — permite preencher um grupo inteiro em segundos.
  */
 export const QuickPredictRow = React.memo(function QuickPredictRow({ match, prediction, onChange }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const bump = (side: 'home' | 'away', delta: 1 | -1) => {
     if (!prediction && delta === -1) return; // "−" sem palpite não cria 0×0
     const base = prediction ?? { home: 0, away: 0 };
@@ -54,6 +56,7 @@ function MiniStepper({
   onMinus: () => void;
   onPlus: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View
       style={styles.stepper}
@@ -72,27 +75,27 @@ function MiniStepper({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing(2), paddingVertical: spacing(1) },
   flag: { fontSize: 22 },
-  x: { color: colors.textFaint, fontFamily: fonts.display, fontSize: 14 },
+  x: { color: c.textFaint, fontFamily: fonts.display, fontSize: 14 },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface2,
+    backgroundColor: c.surface2,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   btn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: colors.text, fontFamily: fonts.bold, fontSize: 18 },
+  btnText: { color: c.text, fontFamily: fonts.bold, fontSize: 18 },
   value: {
-    color: colors.amber,
+    color: c.amber,
     fontFamily: fonts.display,
     fontSize: 18,
     minWidth: 26,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
-  valueEmpty: { color: colors.textFaint },
+  valueEmpty: { color: c.textFaint },
 });

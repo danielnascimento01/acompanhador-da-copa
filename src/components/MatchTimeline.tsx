@@ -4,7 +4,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Flag } from './Flag';
 import { Match, hasStarted } from '../data/fixtures';
 import { fetchTimeline, type LiveTimeline, type TimelineEvent } from '../lib/liveEvents';
-import { colors, fonts, radius, spacing, state } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useTheme, useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 /**
  * "Lance a lance" do jogo — minuto ao vivo + gols (autor, minuto, (p) pênalti) e
@@ -15,6 +16,8 @@ import { colors, fonts, radius, spacing, state } from '../lib/theme';
 export type LiveClock = { clock: string | null; halftime: boolean; live: boolean };
 
 export function MatchTimeline({ match, onClock }: { match: Match; onClock?: (c: LiveClock) => void }) {
+  const styles = useThemedStyles(makeStyles);
+  const { c } = useTheme();
   const [timeline, setTimeline] = useState<LiveTimeline | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -59,7 +62,7 @@ export function MatchTimeline({ match, onClock }: { match: Match; onClock?: (c: 
   if (!timeline) {
     return loading ? (
       <View style={styles.loadingRow}>
-        <ActivityIndicator color={colors.accent} size="small" />
+        <ActivityIndicator color={c.accent} size="small" />
         <Text style={styles.loadingText}>Buscando lances ao vivo…</Text>
       </View>
     ) : null;
@@ -92,6 +95,7 @@ export function MatchTimeline({ match, onClock }: { match: Match; onClock?: (c: 
 }
 
 function EventRow({ match, event }: { match: Match; event: TimelineEvent }) {
+  const styles = useThemedStyles(makeStyles);
   const teamId = event.side === 'home' ? match.home : match.away;
   const icon = iconFor(event);
   const isGoal = event.type === 'goal' || event.type === 'own-goal';
@@ -117,29 +121,29 @@ function iconFor(e: TimelineEvent): string {
   return '🟨';
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), paddingVertical: spacing(3), marginBottom: spacing(4) },
-  loadingText: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13 },
+  loadingText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13 },
 
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     padding: spacing(4),
     marginBottom: spacing(4),
   },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing(3) },
-  title: { color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
-  liveBadge: { backgroundColor: 'rgba(255,77,94,0.16)', borderRadius: radius.pill, paddingHorizontal: spacing(2), paddingVertical: 3 },
-  liveText: { color: colors.live, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.4 },
-  empty: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
+  title: { color: c.text, fontFamily: fonts.bold, fontSize: 14 },
+  liveBadge: { backgroundColor: st.liveTint, borderRadius: radius.pill, paddingHorizontal: spacing(2), paddingVertical: 3 },
+  liveText: { color: c.live, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.4 },
+  empty: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2.5), paddingHorizontal: spacing(2), marginHorizontal: -spacing(2), borderRadius: radius.sm },
-  rowGoal: { backgroundColor: state.favoriteBg },
+  rowGoal: { backgroundColor: st.favoriteBg },
   icon: { fontSize: 16, width: 22, textAlign: 'center' },
-  minute: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13, width: 40, fontVariant: ['tabular-nums'] },
-  player: { color: colors.text, fontFamily: fonts.semibold, fontSize: 15, flex: 1 },
+  minute: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13, width: 40, fontVariant: ['tabular-nums'] },
+  player: { color: c.text, fontFamily: fonts.semibold, fontSize: 15, flex: 1 },
   playerGoal: { fontFamily: fonts.bold },
-  suffix: { color: colors.amber, fontFamily: fonts.bold, fontSize: 13 },
+  suffix: { color: c.amber, fontFamily: fonts.bold, fontSize: 13 },
 });

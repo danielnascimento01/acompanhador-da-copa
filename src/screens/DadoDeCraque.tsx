@@ -5,7 +5,8 @@ import { FORMATIONS, TACTICS, dataCounts, getSquads, rollSquad, slotsFor, squadK
 import { calcForces, simulateCampaign } from '../data/draft/engine';
 import type { CampaignResult, FormationKey, Goal, Mode, Player, Slot, Squad, Tactic } from '../data/draft/types';
 import { rewardedAvailable, showRewarded } from '../lib/ads';
-import { colors, fonts, radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
+import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
 const TACTIC_LABEL: Record<Tactic, string> = { defensivo: 'Defensivo', equilibrado: 'Equilibrado', ofensivo: 'Ofensivo' };
@@ -22,7 +23,31 @@ function lastName(name: string): string {
 }
 const pct = (n: number) => `${n}%` as `${number}%`;
 
+// Bandeira (emoji) a partir do código FIFA da seleção (Squad.code). Históricos
+// (URS/TCH/YUG) e a Irlanda do Norte caem no equivalente mais próximo; Inglaterra,
+// Escócia e País de Gales usam a bandeira de sub-nação (sequência de tags).
+const FIFA_ISO: Record<string, string> = {
+  ALG: 'DZ', ARG: 'AR', AUS: 'AU', AUT: 'AT', BEL: 'BE', BRA: 'BR', BUL: 'BG', CHI: 'CL',
+  CIV: 'CI', CMR: 'CM', COL: 'CO', CRC: 'CR', CRO: 'HR', CZE: 'CZ', DEN: 'DK', ECU: 'EC',
+  EGY: 'EG', ESP: 'ES', FRA: 'FR', GER: 'DE', GHA: 'GH', GRE: 'GR', HUN: 'HU', IRL: 'IE',
+  ITA: 'IT', JPN: 'JP', KOR: 'KR', MAR: 'MA', MEX: 'MX', NED: 'NL', NGA: 'NG', NIR: 'GB',
+  PAR: 'PY', PER: 'PE', POL: 'PL', POR: 'PT', ROU: 'RO', RUS: 'RU', SEN: 'SN', SRB: 'RS',
+  SUI: 'CH', SWE: 'SE', TCH: 'CZ', TUR: 'TR', UKR: 'UA', URS: 'RU', URU: 'UY', USA: 'US',
+  YUG: 'RS',
+};
+const subFlag = (region: string) =>
+  '\u{1F3F4}' + [...`gb${region}`].map((ch) => String.fromCodePoint(0xe0000 + ch.charCodeAt(0))).join('') + '\u{E007F}';
+function flagFor(code: string): string {
+  if (code === 'ENG') return subFlag('eng');
+  if (code === 'SCO') return subFlag('sct');
+  if (code === 'WAL') return subFlag('wls');
+  const iso = FIFA_ISO[code];
+  if (!iso) return '🏳️';
+  return String.fromCodePoint(...[...iso].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
 export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   const [phase, setPhase] = useState<Phase>('setup');
   const [formation, setFormation] = useState<FormationKey>('4-3-3');
   const [tactic, setTactic] = useState<Tactic>('equilibrado');
@@ -219,7 +244,7 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
                 </View>
               ) : current ? (
                 <View style={styles.draftBottom}>
-                  <Text style={styles.squadTitle}>🎲 {current.name} {current.year}</Text>
+                  <Text style={styles.squadTitle}>🎲 {flagFor(current.code)} {current.name} {current.year}</Text>
                   {noneFits ? (
                     <Pressable style={styles.rerollBtn} onPress={skipSquad} accessibilityRole="button" accessibilityLabel="Sortear outro elenco">
                       <Text style={styles.rerollText}>🎲 Nenhum encaixa — sortear outro</Text>
@@ -332,6 +357,7 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
 
 /** "Roleta" de seleções: botão ROLAR → várias seleções passam rápido e param na sorteada. */
 function RollReveal({ final, onDone }: { final: Squad; onDone: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   const [spinning, setSpinning] = useState(false);
   const [landed, setLanded] = useState(false);
   const [display, setDisplay] = useState<Squad>(final);
@@ -375,7 +401,7 @@ function RollReveal({ final, onDone }: { final: Squad; onDone: () => void }) {
       ) : (
         <View style={[styles.rollCard, landed && styles.rollCardLanded]}>
           <Text style={[styles.rollSaiu, landed && styles.win]}>{landed ? '✓ SAIU' : 'SORTEANDO…'}</Text>
-          <Text style={styles.rollSel}>{display.name}</Text>
+          <Text style={styles.rollSel}>{flagFor(display.code)} {display.name}</Text>
           <Text style={styles.rollYear}>Copa {display.year}</Text>
         </View>
       )}
@@ -393,6 +419,7 @@ type RevealGame = {
 
 /** Revela a campanha JOGO A JOGO, comemorando vitória por vitória. */
 function CampaignReveal({ result, reveal, setReveal, onFinish }: { result: CampaignResult; reveal: number; setReveal: (n: number) => void; onFinish: () => void }) {
+  const styles = useThemedStyles(makeStyles);
   const games: RevealGame[] = [];
   result.group.games.forEach((g, i) =>
     games.push({ key: `g${i}`, label: g.label, phaseTag: 'FASE DE GRUPOS', gf: g.gf, ga: g.ga, outcome: g.outcome, myGoals: g.myGoals, advGoals: g.advGoals, pen: null, advanced: null, isLastGroup: i === 2, isFinal: false }));
@@ -482,6 +509,7 @@ const fy = (n: number) => pct(6 + n * 0.82);
 
 /** Campo com os 11 slots posicionados por {x,y}. Slots compatíveis ficam tocáveis. */
 function Pitch({ slots, picks, showStats, selectable, onSlot }: { slots: Slot[]; picks: (Player | null)[]; showStats: boolean; selectable: Set<number>; onSlot: (i: number) => void }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.pitch}>
       <View style={styles.pitchLine} />
@@ -510,36 +538,36 @@ function Pitch({ slots, picks, showStats, selectable, onSlot }: { slots: Slot[];
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
-  sheet: { backgroundColor: colors.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), height: '94%' },
-  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
+  sheet: { backgroundColor: c.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: c.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), height: '94%' },
+  grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: c.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 20 },
-  closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
+  closeText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 18 },
   flex1: { flex: 1 },
-  boldA: { fontFamily: fonts.bold, color: colors.accent },
-  boldT: { fontFamily: fonts.bold, color: colors.text },
+  boldA: { fontFamily: fonts.bold, color: c.accent },
+  boldT: { fontFamily: fonts.bold, color: c.text },
   dim: { opacity: 0.4 },
 
-  kicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, marginBottom: 1 },
-  title: { color: colors.text, fontFamily: fonts.display, fontSize: 30 },
-  sub: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, marginTop: spacing(1) },
-  counts: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 12, marginTop: spacing(2), marginBottom: spacing(3) },
-  label: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing(3), marginBottom: spacing(2) },
+  kicker: { color: c.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, marginBottom: 1 },
+  title: { color: c.text, fontFamily: fonts.display, fontSize: 30 },
+  sub: { color: c.textDim, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, marginTop: spacing(1) },
+  counts: { color: c.textFaint, fontFamily: fonts.semibold, fontSize: 12, marginTop: spacing(2), marginBottom: spacing(3) },
+  label: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: spacing(3), marginBottom: spacing(2) },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(2) },
-  optChip: { paddingVertical: spacing(2), paddingHorizontal: spacing(3), borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  optChipOn: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.12)' },
-  optChipText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
-  optChipTextOn: { color: colors.accent },
-  primaryBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(4) },
-  primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 17, letterSpacing: 0.5 },
+  optChip: { paddingVertical: spacing(2), paddingHorizontal: spacing(3), borderRadius: radius.pill, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface },
+  optChipOn: { borderColor: c.accent, backgroundColor: 'rgba(20,224,138,0.12)' },
+  optChipText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  optChipTextOn: { color: c.accent },
+  primaryBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(4) },
+  primaryText: { color: c.ink, fontFamily: fonts.display, fontSize: 17, letterSpacing: 0.5 },
 
   hudRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing(1) },
-  hudText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
+  hudText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
   forcesRow: { flexDirection: 'row', justifyContent: 'center', gap: spacing(5), marginBottom: spacing(2) },
-  forceItem: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 12 },
-  forceVal: { color: colors.accent, fontFamily: fonts.display, fontSize: 15 },
+  forceItem: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 12 },
+  forceVal: { color: c.accent, fontFamily: fonts.display, fontSize: 15 },
 
   pitch: { height: 230, borderRadius: radius.lg, backgroundColor: '#0f3d22', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   pitchLine: { position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
@@ -548,76 +576,76 @@ const styles = StyleSheet.create({
   // o nome flui logo abaixo sem deslocar o chip.
   slotWrap: { position: 'absolute', width: CHIP, marginLeft: -CHIP / 2, marginTop: -16, alignItems: 'center' },
   slotChip: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
-  slotChipOn: { borderColor: colors.accent, backgroundColor: colors.accent },
-  slotChipHi: { borderColor: colors.accent, borderWidth: 2.5, backgroundColor: 'rgba(20,224,138,0.25)' },
-  slotChipText: { color: 'rgba(255,255,255,0.7)', fontFamily: fonts.extrabold, fontSize: 12 },
-  slotChipTextOn: { color: colors.ink },
-  slotChipTextHi: { color: colors.accent, fontSize: 18 },
+  slotChipOn: { borderColor: c.accent, backgroundColor: c.accent },
+  slotChipHi: { borderColor: c.accent, borderWidth: 2.5, backgroundColor: 'rgba(20,224,138,0.25)' },
+  slotChipText: { color: 'rgba(255,255,255,0.7)', fontFamily: fonts.extrabold, fontSize: 12, lineHeight: 14, textAlign: 'center', textAlignVertical: 'center', includeFontPadding: false, width: 32 },
+  slotChipTextOn: { color: c.ink },
+  slotChipTextHi: { color: c.accent, fontSize: 18 },
   slotName: { color: '#fff', fontFamily: fonts.semibold, fontSize: 9.5, marginTop: 2, textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 3 },
 
   draftBottom: { flex: 1, marginTop: spacing(3) },
-  squadTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 19, marginBottom: spacing(2) },
-  rerollBtn: { backgroundColor: 'rgba(20,224,138,0.12)', borderWidth: 1.5, borderColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(3), alignItems: 'center', marginBottom: spacing(2) },
-  rerollOff: { borderColor: colors.border, backgroundColor: 'transparent' },
-  rerollText: { color: colors.accent, fontFamily: fonts.display, fontSize: 15, letterSpacing: 0.3 },
-  pickHint: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 12, marginBottom: spacing(1) },
-  pickHintActive: { color: colors.accent, fontFamily: fonts.bold, fontSize: 13 },
+  squadTitle: { color: c.text, fontFamily: fonts.display, fontSize: 19, marginBottom: spacing(2) },
+  rerollBtn: { backgroundColor: 'rgba(20,224,138,0.12)', borderWidth: 1.5, borderColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(3), alignItems: 'center', marginBottom: spacing(2) },
+  rerollOff: { borderColor: c.border, backgroundColor: 'transparent' },
+  rerollText: { color: c.accent, fontFamily: fonts.display, fontSize: 15, letterSpacing: 0.3 },
+  pickHint: { color: c.textFaint, fontFamily: fonts.semibold, fontSize: 12, marginBottom: spacing(1) },
+  pickHintActive: { color: c.accent, fontFamily: fonts.bold, fontSize: 13 },
   playerList: { flex: 1 },
-  playerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), paddingVertical: spacing(3), paddingHorizontal: spacing(3), borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: spacing(2) },
+  playerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), paddingVertical: spacing(3), paddingHorizontal: spacing(3), borderRadius: radius.sm, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, marginBottom: spacing(2) },
   playerRowOff: { opacity: 0.45, backgroundColor: 'transparent' },
-  playerRowSel: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.14)' },
-  legendStar: { color: colors.amber, fontSize: 12 },
-  playerName: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
-  playerPos: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11 },
-  playerRating: { color: colors.accent, fontFamily: fonts.display, fontSize: 16, width: 28, textAlign: 'right' },
-  readyText: { color: colors.text, fontFamily: fonts.bold, fontSize: 16, textAlign: 'center', marginTop: spacing(2) },
+  playerRowSel: { borderColor: c.accent, backgroundColor: 'rgba(20,224,138,0.14)' },
+  legendStar: { color: c.amber, fontSize: 12 },
+  playerName: { flex: 1, color: c.text, fontFamily: fonts.semibold, fontSize: 15 },
+  playerPos: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11 },
+  playerRating: { color: c.accent, fontFamily: fonts.display, fontSize: 16, width: 28, textAlign: 'right' },
+  readyText: { color: c.text, fontFamily: fonts.bold, fontSize: 16, textAlign: 'center', marginTop: spacing(2) },
 
-  rollOverlay: { position: 'absolute', top: 0, left: -spacing(5), right: -spacing(5), bottom: 0, backgroundColor: colors.bgElev, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing(6), zIndex: 10 },
-  rollPlaceholder: { borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed', borderRadius: radius.lg, paddingVertical: spacing(7), paddingHorizontal: spacing(6), marginBottom: spacing(6), alignSelf: 'stretch' },
-  rollHint: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  rollBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(5), paddingHorizontal: spacing(10), alignItems: 'center', alignSelf: 'stretch' },
-  rollBtnText: { color: colors.ink, fontFamily: fonts.display, fontSize: 26, letterSpacing: 1 },
-  rollCard: { alignItems: 'center', alignSelf: 'stretch', paddingVertical: spacing(9), borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  rollCardLanded: { borderColor: colors.accent, borderWidth: 2 },
-  rollSaiu: { color: colors.textFaint, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.5 },
-  rollSel: { color: colors.text, fontFamily: fonts.display, fontSize: 34, marginTop: spacing(3), textAlign: 'center' },
-  rollYear: { color: colors.accent, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(1) },
+  rollOverlay: { position: 'absolute', top: 0, left: -spacing(5), right: -spacing(5), bottom: 0, backgroundColor: c.bgElev, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing(6), zIndex: 10 },
+  rollPlaceholder: { borderWidth: 1.5, borderColor: c.border, borderStyle: 'dashed', borderRadius: radius.lg, paddingVertical: spacing(7), paddingHorizontal: spacing(6), marginBottom: spacing(6), alignSelf: 'stretch' },
+  rollHint: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  rollBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(5), paddingHorizontal: spacing(10), alignItems: 'center', alignSelf: 'stretch' },
+  rollBtnText: { color: c.ink, fontFamily: fonts.display, fontSize: 26, letterSpacing: 1 },
+  rollCard: { alignItems: 'center', alignSelf: 'stretch', paddingVertical: spacing(9), borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface },
+  rollCardLanded: { borderColor: c.accent, borderWidth: 2 },
+  rollSaiu: { color: c.textFaint, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.5 },
+  rollSel: { color: c.text, fontFamily: fonts.display, fontSize: 34, marginTop: spacing(3), textAlign: 'center' },
+  rollYear: { color: c.accent, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(1) },
 
-  cpKicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, marginTop: spacing(2), textAlign: 'center' },
-  cpLabel: { color: colors.text, fontFamily: fonts.display, fontSize: 24, textAlign: 'center', marginTop: spacing(1) },
-  cpCard: { alignItems: 'center', marginTop: spacing(4), paddingVertical: spacing(5), borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  cpScore: { color: colors.text, fontFamily: fonts.display, fontSize: 54 },
-  cpPen: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, marginTop: 2 },
+  cpKicker: { color: c.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, marginTop: spacing(2), textAlign: 'center' },
+  cpLabel: { color: c.text, fontFamily: fonts.display, fontSize: 24, textAlign: 'center', marginTop: spacing(1) },
+  cpCard: { alignItems: 'center', marginTop: spacing(4), paddingVertical: spacing(5), borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface },
+  cpScore: { color: c.text, fontFamily: fonts.display, fontSize: 54 },
+  cpPen: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, marginTop: 2 },
   cpHead: { fontFamily: fonts.display, fontSize: 20, marginTop: spacing(2) },
   scorers: { flexDirection: 'row', gap: spacing(3), marginTop: spacing(4) },
-  scorerCol: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing(3) },
-  scorerColTitle: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing(2) },
-  scorerLine: { color: colors.text, fontFamily: fonts.semibold, fontSize: 13, marginBottom: 3 },
-  scorerLineAdv: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: 3 },
-  scorerNone: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 13 },
+  scorerCol: { flex: 1, backgroundColor: c.surface, borderRadius: radius.md, borderWidth: 1, borderColor: c.border, padding: spacing(3) },
+  scorerColTitle: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing(2) },
+  scorerLine: { color: c.text, fontFamily: fonts.semibold, fontSize: 13, marginBottom: 3 },
+  scorerLineAdv: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: 3 },
+  scorerNone: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 13 },
   cpBanner: { fontFamily: fonts.bold, fontSize: 15, textAlign: 'center', marginTop: spacing(4), marginBottom: spacing(2) },
 
   resultEmoji: { fontSize: 54, textAlign: 'center', marginTop: spacing(2) },
-  resultHead: { color: colors.text, fontFamily: fonts.display, fontSize: 24, textAlign: 'center', marginTop: spacing(2) },
-  resultRec: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13.5, textAlign: 'center', marginTop: spacing(1) },
-  badge: { alignSelf: 'center', marginTop: spacing(3), paddingVertical: spacing(2), paddingHorizontal: spacing(4), borderRadius: radius.pill, backgroundColor: 'rgba(20,224,138,0.14)', borderWidth: 1, borderColor: colors.accent },
-  badgeText: { color: colors.accent, fontFamily: fonts.display, fontSize: 14 },
-  secTitle: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', marginTop: spacing(5), marginBottom: spacing(2) },
-  table: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, overflow: 'hidden', marginTop: spacing(2) },
-  tableHeadRow: { flexDirection: 'row', backgroundColor: colors.surface, paddingVertical: spacing(2), paddingHorizontal: spacing(3) },
-  th: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11, width: 34, textAlign: 'center' },
+  resultHead: { color: c.text, fontFamily: fonts.display, fontSize: 24, textAlign: 'center', marginTop: spacing(2) },
+  resultRec: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13.5, textAlign: 'center', marginTop: spacing(1) },
+  badge: { alignSelf: 'center', marginTop: spacing(3), paddingVertical: spacing(2), paddingHorizontal: spacing(4), borderRadius: radius.pill, backgroundColor: 'rgba(20,224,138,0.14)', borderWidth: 1, borderColor: c.accent },
+  badgeText: { color: c.accent, fontFamily: fonts.display, fontSize: 14 },
+  secTitle: { color: c.accent, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', marginTop: spacing(5), marginBottom: spacing(2) },
+  table: { borderWidth: 1, borderColor: c.border, borderRadius: radius.md, overflow: 'hidden', marginTop: spacing(2) },
+  tableHeadRow: { flexDirection: 'row', backgroundColor: c.surface, paddingVertical: spacing(2), paddingHorizontal: spacing(3) },
+  th: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, width: 34, textAlign: 'center' },
   thTeam: { flex: 1, textAlign: 'left' },
-  tableRow: { flexDirection: 'row', paddingVertical: spacing(2), paddingHorizontal: spacing(3), borderTopWidth: 1, borderTopColor: colors.border },
+  tableRow: { flexDirection: 'row', paddingVertical: spacing(2), paddingHorizontal: spacing(3), borderTopWidth: 1, borderTopColor: c.border },
   tableRowMe: { backgroundColor: 'rgba(20,224,138,0.08)' },
-  td: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13, width: 34, textAlign: 'center' },
+  td: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, width: 34, textAlign: 'center' },
   tdTeam: { flex: 1, textAlign: 'left' },
-  gameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing(2.5), borderBottomWidth: 1, borderBottomColor: colors.border },
-  gameLabel: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 13.5 },
+  gameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing(2.5), borderBottomWidth: 1, borderBottomColor: c.border },
+  gameLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13.5 },
   koRight: { alignItems: 'flex-end' },
-  gameScore: { color: colors.text, fontFamily: fonts.display, fontSize: 16 },
-  penText: { color: colors.textFaint, fontFamily: fonts.medium, fontSize: 11 },
-  win: { color: colors.accent },
-  loss: { color: colors.live },
+  gameScore: { color: c.text, fontFamily: fonts.display, fontSize: 16 },
+  penText: { color: c.textFaint, fontFamily: fonts.medium, fontSize: 11 },
+  win: { color: c.accent },
+  loss: { color: c.live },
   ghostBtnWide: { paddingVertical: spacing(3), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(1) },
-  ghostText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 14 },
+  ghostText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 14 },
 });
