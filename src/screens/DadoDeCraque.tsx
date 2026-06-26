@@ -1,14 +1,14 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
-import { FORMATIONS, TACTICS, dataCounts, rollSquad, slotsFor, squadKey } from '../data/draft/data';
+import { FORMATIONS, TACTICS, dataCounts, getSquads, rollSquad, slotsFor, squadKey } from '../data/draft/data';
 import { calcForces, simulateCampaign } from '../data/draft/engine';
 import type { CampaignResult, FormationKey, Goal, Mode, Player, Slot, Squad, Tactic } from '../data/draft/types';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
 const TACTIC_LABEL: Record<Tactic, string> = { defensivo: 'Defensivo', equilibrado: 'Equilibrado', ofensivo: 'Ofensivo' };
-const CHIP = 52;
+const CHIP = 56;
 
 type Phase = 'setup' | 'draft' | 'campaign' | 'result';
 
@@ -32,22 +32,22 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
   const [picks, setPicks] = useState<(Player | null)[]>([]);
   const [current, setCurrent] = useState<Squad | null>(null);
   const [rolling, setRolling] = useState(false);
+  const [selected, setSelected] = useState<Player | null>(null); // craque aguardando posição
   const [rerolls, setRerolls] = useState(3);
   const [result, setResult] = useState<CampaignResult | null>(null);
   const [reveal, setReveal] = useState(0);
 
   const usedRef = useRef<Set<string>>(new Set());
   const attemptRef = useRef(0);
-  const excludeRef = useRef<string | undefined>(undefined);
 
   const counts = useMemo(() => dataCounts(), []);
   const filled = useMemo(() => picks.filter(Boolean).length, [picks]);
   const forces = useMemo(() => (slots.length ? calcForces(slots, picks) : { attack: 0, defense: 0, overall: 0 }), [slots, picks]);
   const showStats = mode === 'classico';
 
-  function freshSquad(filledCount: number, exclude?: string): Squad {
+  function nextSquad(filledCount: number, exclude: string | undefined, sd: string): Squad {
     attemptRef.current += 1;
-    return rollSquad(`${seed}:a${attemptRef.current}`, filledCount, exclude);
+    return rollSquad(`${sd}:a${attemptRef.current}`, filledCount, exclude);
   }
 
   const start = () => {
@@ -58,49 +58,57 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
     setPicks(new Array(sl.length).fill(null));
     usedRef.current = new Set();
     attemptRef.current = 0;
-    excludeRef.current = undefined;
     setRerolls(mode === 'almanaque' ? 1 : 3);
     setResult(null);
     setReveal(0);
-    setCurrent(null);
-    setRolling(true); // primeira rolagem do dado
+    setSelected(null);
+    setCurrent(nextSquad(0, undefined, s));
+    setRolling(true);
     setPhase('draft');
   };
 
-  // Chamado quando a animação do dado termina: revela o elenco sorteado.
-  const onRolled = () => {
-    const sq = freshSquad(picks.filter(Boolean).length, excludeRef.current);
-    excludeRef.current = undefined;
-    setCurrent(sq);
-    setRolling(false);
-  };
+  const onRolled = () => setRolling(false);
 
   const pickable = (p: Player): boolean =>
     !usedRef.current.has(p.id) && slots.some((sl, i) => picks[i] === null && p.pos.includes(sl.pos));
 
-  const pick = (p: Player) => {
+  // Toca no craque → fica "selecionado", aguardando o toque na posição do campo.
+  const selectPlayer = (p: Player) => {
     if (!pickable(p)) return;
-    const idx = slots.findIndex((sl, i) => picks[i] === null && p.pos.includes(sl.pos));
-    if (idx < 0) return;
+    setSelected((cur) => (cur && cur.id === p.id ? null : p));
+  };
+
+  // Vagas (slots vazios) compatíveis com o craque selecionado.
+  const slotsForSelected = useMemo(() => {
+    const set = new Set<number>();
+    if (selected) slots.forEach((sl, i) => { if (picks[i] === null && selected.pos.includes(sl.pos)) set.add(i); });
+    return set;
+  }, [selected, slots, picks]);
+
+  // Toca na vaga do campo → escala o craque ali e parte pro próximo sorteio.
+  const placeAt = (i: number) => {
+    if (!selected || picks[i] !== null || !selected.pos.includes(slots[i].pos)) return;
     const np = [...picks];
-    np[idx] = p;
-    usedRef.current.add(p.id);
+    np[i] = selected;
+    usedRef.current.add(selected.id);
     setPicks(np);
-    setCurrent(null);
-    if (np.filter(Boolean).length < np.length) setRolling(true); // rola o próximo
+    setSelected(null);
+    const newFilled = np.filter(Boolean).length;
+    if (newFilled < np.length) { setCurrent(nextSquad(newFilled, undefined, seed)); setRolling(true); }
+    else { setCurrent(null); setRolling(false); }
   };
 
   const reroll = () => {
     if (rerolls <= 0 || !current) return;
     setRerolls((r) => r - 1);
-    excludeRef.current = squadKey(current);
-    setCurrent(null);
+    setSelected(null);
+    setCurrent(nextSquad(filled, squadKey(current), seed));
     setRolling(true);
   };
   const skipSquad = () => {
     if (!current) return;
-    excludeRef.current = squadKey(current);
-    setCurrent(null);
+    setSelected(null);
+    setCurrent(nextSquad(filled, squadKey(current), seed));
     setRolling(true);
   };
 
@@ -118,7 +126,7 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
     }).catch(() => {});
   };
 
-  const reset = () => { setPhase('setup'); setResult(null); setCurrent(null); setRolling(false); };
+  const reset = () => { setPhase('setup'); setResult(null); setCurrent(null); setRolling(false); setSelected(null); };
 
   const currentPickable = current ? current.players.filter(pickable) : [];
   const noneFits = !!current && !rolling && currentPickable.length === 0 && filled < slots.length;
@@ -191,7 +199,7 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
                 </View>
               )}
 
-              <Pitch slots={slots} picks={picks} showStats={showStats} />
+              <Pitch slots={slots} picks={picks} showStats={showStats} selectable={slotsForSelected} onSlot={placeAt} />
 
               {filled >= slots.length ? (
                 <View style={styles.draftBottom}>
@@ -203,7 +211,6 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
               ) : current ? (
                 <View style={styles.draftBottom}>
                   <Text style={styles.squadTitle}>🎲 {current.name} {current.year}</Text>
-                  {/* Re-sortear em destaque, ACIMA da lista */}
                   {noneFits ? (
                     <Pressable style={styles.rerollBtn} onPress={skipSquad} accessibilityRole="button" accessibilityLabel="Sortear outro elenco">
                       <Text style={styles.rerollText}>🎲 Nenhum encaixa — sortear outro</Text>
@@ -213,14 +220,17 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
                       <Text style={[styles.rerollText, rerolls <= 0 && styles.dim]}>🔄 Re-sortear  ·  {rerolls} restante{rerolls === 1 ? '' : 's'}</Text>
                     </Pressable>
                   )}
-                  <Text style={styles.pickHint}>Toque num craque pra escalar:</Text>
-                  <ScrollView style={styles.playerList} showsVerticalScrollIndicator>
+                  <Text style={[styles.pickHint, selected && styles.pickHintActive]}>
+                    {selected ? `Toque na posição do campo pra escalar ${lastName(selected.name)} ⬆️` : 'Toque num craque pra escalar:'}
+                  </Text>
+                  <ScrollView style={styles.playerList} showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: spacing(2) }}>
                     {current.players.map((p) => {
                       const ok = pickable(p);
+                      const sel = selected?.id === p.id;
                       return (
-                        <Pressable key={p.id} onPress={() => pick(p)} disabled={!ok} style={[styles.playerRow, !ok && styles.playerRowOff]} accessibilityRole="button" accessibilityLabel={`Escalar ${p.name}`}>
+                        <Pressable key={p.id} onPress={() => selectPlayer(p)} disabled={!ok} style={[styles.playerRow, !ok && styles.playerRowOff, sel && styles.playerRowSel]} accessibilityRole="button" accessibilityLabel={`Escolher ${p.name}`}>
                           {p.legend && <Text style={styles.legendStar}>★</Text>}
-                          <Text style={[styles.playerName, !ok && styles.dim]} numberOfLines={1}>{p.name}</Text>
+                          <Text style={[styles.playerName, !ok && styles.dim, sel && styles.boldA]} numberOfLines={1}>{p.name}</Text>
                           <Text style={[styles.playerPos, !ok && styles.dim]}>{p.pos.join('/')}</Text>
                           {showStats && <Text style={[styles.playerRating, !ok && styles.dim]}>{p.rating}</Text>}
                         </Pressable>
@@ -232,7 +242,7 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
                 <View style={styles.draftBottom} />
               )}
 
-              {rolling && <DiceRoller onRolled={onRolled} label="Toque pra rolar o dado" />}
+              {rolling && current && <RollReveal final={current} onDone={onRolled} />}
             </View>
           )}
 
@@ -303,27 +313,55 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
   );
 }
 
-/** Overlay do dado: cobre a tela; ao tocar, anima e revela o elenco. */
-function DiceRoller({ onRolled, label }: { onRolled: () => void; label: string }) {
-  const spin = useRef(new Animated.Value(0)).current;
-  const [busy, setBusy] = useState(false);
+/** "Roleta" de seleções: botão ROLAR → várias seleções passam rápido e param na sorteada. */
+function RollReveal({ final, onDone }: { final: Squad; onDone: () => void }) {
+  const [spinning, setSpinning] = useState(false);
+  const [landed, setLanded] = useState(false);
+  const [display, setDisplay] = useState<Squad>(final);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const pool = useMemo(() => getSquads(), []);
+
+  useEffect(() => () => { timers.current.forEach(clearTimeout); }, []);
+
   const roll = () => {
-    if (busy) return;
-    setBusy(true);
-    spin.setValue(0);
-    Animated.timing(spin, { toValue: 1, duration: 850, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(() => {
-      setBusy(false);
-      onRolled();
-    });
+    if (spinning || landed) return;
+    setSpinning(true);
+    const frames = 16;
+    let i = 0;
+    const tick = () => {
+      if (i >= frames) {
+        setDisplay(final);
+        setSpinning(false);
+        setLanded(true);
+        timers.current.push(setTimeout(onDone, 650)); // segura na sorteada e abre os jogadores
+        return;
+      }
+      setDisplay(pool[Math.floor(Math.random() * pool.length)]);
+      const delay = 30 + Math.floor(i * i * 0.7); // acelera a desaceleração (slot machine)
+      i++;
+      timers.current.push(setTimeout(tick, delay));
+    };
+    tick();
   };
-  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '720deg'] });
-  const scale = spin.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.35, 1] });
+
   return (
-    <View style={styles.diceOverlay}>
-      <Pressable onPress={roll} disabled={busy} accessibilityRole="button" accessibilityLabel="Rolar o dado" hitSlop={20}>
-        <Animated.Text style={[styles.diceBig, { transform: [{ rotate }, { scale }] }]}>🎲</Animated.Text>
-      </Pressable>
-      <Text style={styles.diceLabel}>{busy ? 'Rolando…' : label}</Text>
+    <View style={styles.rollOverlay}>
+      {!spinning && !landed ? (
+        <>
+          <View style={styles.rollPlaceholder}>
+            <Text style={styles.rollHint}>Role para sortear uma seleção e uma Copa do Mundo</Text>
+          </View>
+          <Pressable style={styles.rollBtn} onPress={roll} accessibilityRole="button" accessibilityLabel="Rolar o dado">
+            <Text style={styles.rollBtnText}>ROLAR  🎲</Text>
+          </Pressable>
+        </>
+      ) : (
+        <View style={[styles.rollCard, landed && styles.rollCardLanded]}>
+          <Text style={[styles.rollSaiu, landed && styles.win]}>{landed ? '✓ SAIU' : 'SORTEANDO…'}</Text>
+          <Text style={styles.rollSel}>{display.name}</Text>
+          <Text style={styles.rollYear}>Copa {display.year}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -420,21 +458,30 @@ function CampaignReveal({ result, reveal, setReveal, onFinish }: { result: Campa
   );
 }
 
-/** Campo com os 11 slots posicionados por {x,y}. */
-function Pitch({ slots, picks, showStats }: { slots: Slot[]; picks: (Player | null)[]; showStats: boolean }) {
+/** Campo com os 11 slots posicionados por {x,y}. Slots compatíveis ficam tocáveis. */
+function Pitch({ slots, picks, showStats, selectable, onSlot }: { slots: Slot[]; picks: (Player | null)[]; showStats: boolean; selectable: Set<number>; onSlot: (i: number) => void }) {
   return (
     <View style={styles.pitch}>
       <View style={styles.pitchLine} />
       <View style={styles.pitchCircle} />
       {slots.map((s, i) => {
         const p = picks[i];
+        const hi = selectable.has(i);
         return (
-          <View key={i} style={[styles.slotWrap, { left: pct(s.x), top: pct(s.y) }]} pointerEvents="none">
-            <View style={[styles.slotChip, p && styles.slotChipOn]}>
-              <Text style={[styles.slotChipText, p && styles.slotChipTextOn]} numberOfLines={1}>{p ? (showStats ? p.rating : '✓') : s.pos}</Text>
+          <Pressable
+            key={i}
+            style={[styles.slotWrap, { left: pct(s.x), top: pct(s.y) }]}
+            onPress={hi ? () => onSlot(i) : undefined}
+            disabled={!hi}
+            pointerEvents={hi ? 'auto' : 'none'}
+            hitSlop={8}
+            accessibilityLabel={hi ? `Escalar na posição ${s.pos}` : undefined}
+          >
+            <View style={[styles.slotChip, p && styles.slotChipOn, hi && styles.slotChipHi]}>
+              <Text style={[styles.slotChipText, p && styles.slotChipTextOn, hi && styles.slotChipTextHi]} numberOfLines={1}>{hi ? '+' : p ? (showStats ? p.rating : '✓') : s.pos}</Text>
             </View>
-            <Text style={styles.slotName} numberOfLines={1}>{p ? lastName(p.name) : s.pos}</Text>
-          </View>
+            <Text style={[styles.slotName, hi && styles.win]} numberOfLines={1}>{p ? lastName(p.name) : s.pos}</Text>
+          </Pressable>
         );
       })}
     </View>
@@ -444,7 +491,7 @@ function Pitch({ slots, picks, showStats }: { slots: Slot[]; picks: (Player | nu
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
-  sheet: { backgroundColor: colors.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), height: '92%' },
+  sheet: { backgroundColor: colors.bgElev, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: spacing(5), paddingTop: spacing(3), height: '94%' },
   grabber: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.borderBright, alignSelf: 'center', marginBottom: spacing(3) },
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 20 },
   closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
@@ -472,14 +519,16 @@ const styles = StyleSheet.create({
   forceItem: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 12 },
   forceVal: { color: colors.accent, fontFamily: fonts.display, fontSize: 15 },
 
-  pitch: { height: 250, borderRadius: radius.lg, backgroundColor: '#0f3d22', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  pitch: { height: 230, borderRadius: radius.lg, backgroundColor: '#0f3d22', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   pitchLine: { position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
-  pitchCircle: { position: 'absolute', alignSelf: 'center', top: '50%', width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', marginTop: -32 },
+  pitchCircle: { position: 'absolute', alignSelf: 'center', top: '50%', width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', marginTop: -29 },
   slotWrap: { position: 'absolute', width: CHIP, marginLeft: -CHIP / 2, marginTop: -CHIP / 2, alignItems: 'center' },
   slotChip: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   slotChipOn: { borderColor: colors.accent, backgroundColor: colors.accent },
+  slotChipHi: { borderColor: colors.accent, borderWidth: 2.5, backgroundColor: 'rgba(20,224,138,0.25)' },
   slotChipText: { color: 'rgba(255,255,255,0.7)', fontFamily: fonts.extrabold, fontSize: 12 },
   slotChipTextOn: { color: colors.ink },
+  slotChipTextHi: { color: colors.accent, fontSize: 18 },
   slotName: { color: '#fff', fontFamily: fonts.semibold, fontSize: 9.5, marginTop: 2, textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 3 },
 
   draftBottom: { flex: 1, marginTop: spacing(3) },
@@ -488,18 +537,27 @@ const styles = StyleSheet.create({
   rerollOff: { borderColor: colors.border, backgroundColor: 'transparent' },
   rerollText: { color: colors.accent, fontFamily: fonts.display, fontSize: 15, letterSpacing: 0.3 },
   pickHint: { color: colors.textFaint, fontFamily: fonts.semibold, fontSize: 12, marginBottom: spacing(1) },
-  playerList: { maxHeight: 168 },
-  playerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), paddingVertical: spacing(2), paddingHorizontal: spacing(3), borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: spacing(1.5) },
+  pickHintActive: { color: colors.accent, fontFamily: fonts.bold, fontSize: 13 },
+  playerList: { flex: 1 },
+  playerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(2), paddingVertical: spacing(3), paddingHorizontal: spacing(3), borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: spacing(2) },
   playerRowOff: { opacity: 0.45, backgroundColor: 'transparent' },
+  playerRowSel: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.14)' },
   legendStar: { color: colors.amber, fontSize: 12 },
-  playerName: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 14 },
+  playerName: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 15 },
   playerPos: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 11 },
   playerRating: { color: colors.accent, fontFamily: fonts.display, fontSize: 16, width: 28, textAlign: 'right' },
   readyText: { color: colors.text, fontFamily: fonts.bold, fontSize: 16, textAlign: 'center', marginTop: spacing(2) },
 
-  diceOverlay: { position: 'absolute', top: 0, left: -spacing(5), right: -spacing(5), bottom: 0, backgroundColor: colors.bgElev, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  diceBig: { fontSize: 110 },
-  diceLabel: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 15, marginTop: spacing(5) },
+  rollOverlay: { position: 'absolute', top: 0, left: -spacing(5), right: -spacing(5), bottom: 0, backgroundColor: colors.bgElev, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing(6), zIndex: 10 },
+  rollPlaceholder: { borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed', borderRadius: radius.lg, paddingVertical: spacing(7), paddingHorizontal: spacing(6), marginBottom: spacing(6), alignSelf: 'stretch' },
+  rollHint: { color: colors.textDim, fontFamily: fonts.semibold, fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  rollBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(5), paddingHorizontal: spacing(10), alignItems: 'center', alignSelf: 'stretch' },
+  rollBtnText: { color: colors.ink, fontFamily: fonts.display, fontSize: 26, letterSpacing: 1 },
+  rollCard: { alignItems: 'center', alignSelf: 'stretch', paddingVertical: spacing(9), borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  rollCardLanded: { borderColor: colors.accent, borderWidth: 2 },
+  rollSaiu: { color: colors.textFaint, fontFamily: fonts.extrabold, fontSize: 12, letterSpacing: 1.5 },
+  rollSel: { color: colors.text, fontFamily: fonts.display, fontSize: 34, marginTop: spacing(3), textAlign: 'center' },
+  rollYear: { color: colors.accent, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(1) },
 
   cpKicker: { color: colors.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 1.5, marginTop: spacing(2), textAlign: 'center' },
   cpLabel: { color: colors.text, fontFamily: fonts.display, fontSize: 24, textAlign: 'center', marginTop: spacing(1) },
