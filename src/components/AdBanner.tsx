@@ -1,18 +1,20 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 
-import { ADS_ENABLED, bannerUnitId, requestNonPersonalizedAdsOnly } from '../lib/ads';
+import { ADS_ENABLED, bannerComponent, bannerUnitId, requestNonPersonalizedAdsOnly } from '../lib/ads';
 import { spacing } from '../lib/theme';
 
 /**
- * Banner leve (adaptativo, ancorado). Aparece só se os anúncios estiverem ligados
- * e houver unidade configurada — senão renderiza nada (sem buraco na tela).
- * Falhas de carregamento são silenciosas: anúncio nunca atrapalha o conteúdo.
+ * Banner leve (adaptativo, ancorado). Só aparece se os anúncios estiverem ligados,
+ * houver unidade E o módulo nativo existir (build nativo) — senão renderiza nada
+ * (em OTA no binário antigo, simplesmente não mostra). Falhas são silenciosas.
  */
 export function AdBanner() {
+  if (!ADS_ENABLED) return null; // antes de tocar no módulo nativo (OTA-safe)
   const unitId = bannerUnitId();
-  if (!ADS_ENABLED || !unitId) return null;
+  const cmp = bannerComponent();
+  if (!unitId || !cmp) return null;
+  const { BannerAd, BannerAdSize } = cmp;
   return (
     <View style={styles.wrap}>
       <BannerAd

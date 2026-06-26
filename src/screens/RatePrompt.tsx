@@ -1,7 +1,6 @@
 import React from 'react';
 import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as StoreReview from 'expo-store-review';
 
 import { useStore } from '../lib/store';
 import { colors, fonts, gradients, radius, spacing } from '../lib/theme';
@@ -29,11 +28,12 @@ export function RatePrompt() {
   const { ratePromptVisible, dismissRatePrompt } = useStore();
 
   const rate = async () => {
-    // Prefere o prompt NATIVO de avaliação (in-app, sem sair do app). Cai pra
-    // loja se não estiver disponível (quota, sem conta, etc.).
+    // Prefere o prompt NATIVO de avaliação (expo-store-review, in-app). Carregado
+    // com proteção: se o módulo não existir neste binário, cai pra loja via link.
     try {
-      if (await StoreReview.isAvailableAsync()) {
-        await StoreReview.requestReview();
+      const SR = require('expo-store-review');
+      if (await SR.isAvailableAsync()) {
+        await SR.requestReview();
         dismissRatePrompt();
         return;
       }

@@ -1,73 +1,104 @@
 /**
- * AdMob — configuração central e leve dos anúncios (só banner; NUNCA intersticial).
+ * AdMob — config central dos anúncios (só banner + premiado opt-in; NUNCA intersticial).
  *
- * IMPORTANTE (precisa de BUILD NATIVO — não vai por OTA):
- *  1. Trocar os App IDs de TESTE no app.json (androidAppId/iosAppId) pelos REAIS
- *     do AdMob (formato ca-app-pub-3514963763580625~XXXXXXXXXX).
- *  2. Preencher REAL_BANNER abaixo com os IDs dos blocos de banner (formato
- *     ca-app-pub-3514963763580625/XXXXXXXXXX), um por plataforma.
- *  3. No console do AdMob → Controles de bloqueio → BLOQUEAR "Apostas e jogos de
- *     azar" (o filtro de bets é feito lá; aqui só limitamos a classificação).
+ * CARREGAMENTO OPCIONAL: o módulo nativo (`react-native-google-mobile-ads`) é
+ * carregado com proteção (require em try/catch). Assim o mesmo bundle roda por OTA
+ * num binário SEM o módulo (ex.: 1.3.0) — aí os anúncios simplesmente não aparecem,
+ * sem quebrar o app. No build nativo (1.3.1+), tudo ativa.
  *
- * Em desenvolvimento (__DEV__) sempre usa unidades de TESTE do Google (anúncios
- * de teste), pra validar o layout sem violar política. Em produção usa os reais;
- * se estiverem vazios, o banner simplesmente não aparece (nunca quebra o app).
+ * Em __DEV__ usa unidades de TESTE; em produção usa os IDs reais abaixo.
+ * Filtro de bets: feito no console do AdMob (Controles de bloqueio) + maxAdContentRating PG.
  */
 import { Platform } from 'react-native';
-import mobileAds, {
-  AdEventType, MaxAdContentRating, RewardedAd, RewardedAdEventType, TestIds,
-} from 'react-native-google-mobile-ads';
-import { getTrackingPermissionsAsync, requestTrackingPermissionsAsync } from 'expo-tracking-transparency';
 
-/** Liga/desliga geral dos anúncios. */
-export const ADS_ENABLED = true;
+// ⚠️ LIGAR (true) SÓ no build nativo 1.3.1 (junto com a versão 1.3.1 no app.json).
+// Em OTA no binário 1.3.0 fica false → o módulo nativo do AdMob NUNCA é carregado,
+// garantindo que a OTA não quebra o app antigo. (Banner/premiado só aparecem com o build.)
+export const ADS_ENABLED = false;
 
-// === IDs REAIS DOS BLOCOS DE BANNER ===
-const REAL_BANNER: { ios: string; android: string } = {
-  ios: 'ca-app-pub-3514963763580625/9773109893',
-  android: 'ca-app-pub-3514963763580625/3736360755',
-};
-
-// === IDs REAIS DOS BLOCOS PREMIADOS (REWARDED) — opt-in (+1 re-sorteio etc.) ===
-// Criar no AdMob → Bloco "Premiado" (1 por plataforma) e colar aqui. Enquanto
-// vazios, o recurso de "assistir anúncio" fica OCULTO em produção (não engana).
-const REAL_REWARDED: { ios: string; android: string } = {
-  ios: 'ca-app-pub-3514963763580625/1459084142',
-  android: 'ca-app-pub-3514963763580625/5929233655',
-};
-
+const REAL_BANNER = { ios: 'ca-app-pub-3514963763580625/9773109893', android: 'ca-app-pub-3514963763580625/3736360755' };
+const REAL_REWARDED = { ios: 'ca-app-pub-3514963763580625/1459084142', android: 'ca-app-pub-3514963763580625/5929233655' };
 const realBanner = (Platform.OS === 'ios' ? REAL_BANNER.ios : REAL_BANNER.android) || '';
 const realRewarded = (Platform.OS === 'ios' ? REAL_REWARDED.ios : REAL_REWARDED.android) || '';
 
-/** Unidade de banner a usar: teste em dev; real em produção (vazio → sem anúncio). */
+// Módulo nativo carregado só se existir. Em OTA no binário antigo → null → no-op.
+let _mod: any; let _tried = false;
+function adsMod(): any {
+  if (!_tried) {
+    _tried = true;
+    try { _mod = require('react-native-google-mobile-ads'); } catch { _mod = null; }
+  }
+  return _mod;
+}
+
+/** Componentes de banner do módulo (ou null se indisponível). Usado pelo AdBanner. */
+export function bannerComponent(): { BannerAd: any; BannerAdSize: any } | null {
+  const m = adsMod();
+  return m ? { BannerAd: m.BannerAd, BannerAdSize: m.BannerAdSize } : null;
+}
+
+/** Unidade de banner: teste em dev; real em produção (vazio/sem módulo → null). */
 export function bannerUnitId(): string | null {
   if (!ADS_ENABLED) return null;
-  if (__DEV__) return TestIds.ADAPTIVE_BANNER;
+  const m = adsMod();
+  if (!m) return null;
+  if (__DEV__) return m.TestIds.ADAPTIVE_BANNER;
   return realBanner || null;
 }
 
-/** Unidade do anúncio premiado (rewarded): teste em dev; real em prod. */
 function rewardedUnitId(): string | null {
   if (!ADS_ENABLED) return null;
-  if (__DEV__) return TestIds.REWARDED;
+  const m = adsMod();
+  if (!m) return null;
+  if (__DEV__) return m.TestIds.REWARDED;
   return realRewarded || null;
 }
 
-/** O recurso "assistir anúncio pra ganhar X" está disponível? (oculta o botão se não). */
+/** O premiado (rewarded) está disponível? (oculta o botão se não). */
 export const rewardedAvailable = (): boolean => rewardedUnitId() !== null;
 
+let attGranted = false;
+export const requestNonPersonalizedAdsOnly = (): boolean => !attGranted;
+
+let initialized = false;
+/** Inicializa o SDK uma vez (no boot). Pede ATT no iOS. No-op sem módulo. Nunca lança. */
+export async function initAds(): Promise<void> {
+  if (!ADS_ENABLED || initialized) return;
+  const m = adsMod();
+  if (!m) return;
+  initialized = true;
+  try {
+    if (Platform.OS === 'ios') {
+      try {
+        const att = require('expo-tracking-transparency');
+        const cur = await att.getTrackingPermissionsAsync();
+        const status = cur.status === 'undetermined' ? (await att.requestTrackingPermissionsAsync()).status : cur.status;
+        attGranted = status === 'granted';
+      } catch { /* sem ATT disponível */ }
+    }
+    await m.default().setRequestConfiguration({
+      maxAdContentRating: m.MaxAdContentRating.PG, // bets bloqueadas no console
+      tagForChildDirectedTreatment: false,
+      tagForUnderAgeOfConsent: false,
+    });
+    await m.default().initialize();
+  } catch { /* anúncios nunca podem quebrar o app */ }
+}
+
 /**
- * Mostra um anúncio premiado e resolve o desfecho. O jogo concede a recompensa
- * em 'earned' (ganhou) e também em 'unavailable' (não carregou — não punir o
- * usuário que escolheu assistir); em 'dismissed' (fechou antes) NÃO concede.
+ * Mostra um anúncio premiado. Concede recompensa em 'earned' e em 'unavailable'
+ * (não punir quem escolheu assistir e o anúncio não carregou); 'dismissed' = fechou
+ * antes → sem recompensa.
  */
 export async function showRewarded(): Promise<'earned' | 'dismissed' | 'unavailable'> {
+  if (!ADS_ENABLED) return 'unavailable';
   const unitId = rewardedUnitId();
-  if (!unitId) return 'unavailable';
+  const m = adsMod();
+  if (!unitId || !m) return 'unavailable';
   return new Promise((resolve) => {
     let earned = false;
     let settled = false;
-    const ad = RewardedAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: requestNonPersonalizedAdsOnly() });
+    const ad = m.RewardedAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: requestNonPersonalizedAdsOnly() });
     const subs: Array<() => void> = [];
     const finish = (r: 'earned' | 'dismissed' | 'unavailable') => {
       if (settled) return;
@@ -76,42 +107,11 @@ export async function showRewarded(): Promise<'earned' | 'dismissed' | 'unavaila
       subs.forEach((u) => { try { u(); } catch { /* ignore */ } });
       resolve(r);
     };
-    const timeout = setTimeout(() => finish('unavailable'), 12000); // nunca trava
-    subs.push(ad.addAdEventListener(RewardedAdEventType.LOADED, () => { ad.show().catch(() => finish('unavailable')); }));
-    subs.push(ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => { earned = true; }));
-    subs.push(ad.addAdEventListener(AdEventType.CLOSED, () => finish(earned ? 'earned' : 'dismissed')));
-    subs.push(ad.addAdEventListener(AdEventType.ERROR, () => finish('unavailable')));
+    const timeout = setTimeout(() => finish('unavailable'), 12000);
+    subs.push(ad.addAdEventListener(m.RewardedAdEventType.LOADED, () => { ad.show().catch(() => finish('unavailable')); }));
+    subs.push(ad.addAdEventListener(m.RewardedAdEventType.EARNED_REWARD, () => { earned = true; }));
+    subs.push(ad.addAdEventListener(m.AdEventType.CLOSED, () => finish(earned ? 'earned' : 'dismissed')));
+    subs.push(ad.addAdEventListener(m.AdEventType.ERROR, () => finish('unavailable')));
     try { ad.load(); } catch { finish('unavailable'); }
   });
-}
-
-// Anúncios não-personalizados por padrão (privacidade). Vira personalizado só se
-// o usuário autorizar o rastreamento (ATT) no iOS.
-let attGranted = false;
-export const requestNonPersonalizedAdsOnly = (): boolean => !attGranted;
-
-let initialized = false;
-
-/** Inicializa o SDK uma vez (no boot). Pede ATT no iOS antes. Nunca lança. */
-export async function initAds(): Promise<void> {
-  if (!ADS_ENABLED || initialized) return;
-  initialized = true;
-  try {
-    if (Platform.OS === 'ios') {
-      const current = await getTrackingPermissionsAsync();
-      const status = current.status === 'undetermined'
-        ? (await requestTrackingPermissionsAsync()).status
-        : current.status;
-      attGranted = status === 'granted';
-    }
-    await mobileAds().setRequestConfiguration({
-      // Sem conteúdo adulto. (Apostas/bets são bloqueadas no console do AdMob.)
-      maxAdContentRating: MaxAdContentRating.PG,
-      tagForChildDirectedTreatment: false,
-      tagForUnderAgeOfConsent: false,
-    });
-    await mobileAds().initialize();
-  } catch {
-    /* anúncios nunca podem quebrar o app */
-  }
 }

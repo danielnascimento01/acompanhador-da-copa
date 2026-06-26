@@ -4,14 +4,18 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 
-import * as Haptics from 'expo-haptics';
-
 import { addGameScore, loadGameScores, loadNick, loadSkin, saveNick, saveSkin, type ScoreEntry } from '../lib/funStorage';
 import { fetchGlobalLeaderboard, getDeviceId, submitGlobalScore, type GlobalEntry } from '../lib/leaderboard';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
-/** Vibração leve (ignora silenciosamente se o aparelho não suportar). */
-const buzz = (style: Haptics.ImpactFeedbackStyle) => { Haptics.impactAsync(style).catch(() => {}); };
+/** Vibração — carrega expo-haptics com proteção (no-op se o módulo não existir). */
+type FB = 'Light' | 'Medium' | 'Heavy';
+const buzz = (k: FB) => {
+  try {
+    const H = require('expo-haptics');
+    H.impactAsync(H.ImpactFeedbackStyle[k]).catch(() => {});
+  } catch { /* sem haptics neste binário */ }
+};
 
 const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
 const GAME = 'embaixadinhas';
@@ -313,10 +317,10 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
         const perfect = Math.abs(off) < SWEET; // cabeçada bem no centro da testa
         const ms = milestoneFor(touchesRef.current);
         const isRecord = touchesRef.current === record + 1 && record > 0;
-        if (isRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); doShake(7); }
-        else if (isRecord) { showFlash('Novo recorde! 🎉', 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); doShake(7); }
-        else if (ms) { showFlash(ms, touchesRef.current >= 100 ? 1600 : 900); buzz(Haptics.ImpactFeedbackStyle.Medium); doShake(5); }
-        else buzz(perfect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light); // centro vibra mais
+        if (isRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz('Heavy'); doShake(7); }
+        else if (isRecord) { showFlash('Novo recorde! 🎉', 1600); buzz('Heavy'); doShake(7); }
+        else if (ms) { showFlash(ms, touchesRef.current >= 100 ? 1600 : 900); buzz('Medium'); doShake(5); }
+        else buzz(perfect ? 'Medium' : 'Light'); // centro vibra mais
       }
     }
 
