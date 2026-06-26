@@ -143,7 +143,7 @@ export const QUIZ: Record<QuizMode, Question[]> = {
     { q: 'A Copa de 2026 é a maior da história em número de jogos?', options: ['Sim', 'Não, a de 2022', 'Não, a de 2014', 'São iguais'], answer: 0 },
     { q: 'Com 48 seleções, 2026 é a maior em número de participantes?', options: ['Sim', 'Não, 2014', 'Não, 1982', 'São iguais'], answer: 0 },
     { q: 'Em que estádio será a final da Copa de 2026?', options: ['MetLife Stadium', 'Estádio Azteca', 'Rose Bowl', 'SoFi Stadium'], answer: 0 },
-    { q: 'Em que estádio será o jogo de abertura de 2026?', options: ['Estádio Azteca', 'MetLife Stadium', 'Rose Bowl', 'Hard Rock'], answer: 0 },
+    { q: 'Em que estádio será o jogo de abertura de 2026?', options: ['Estádio Azteca', 'MetLife Stadium', 'Rose Bowl', 'Hard Rock Stadium'], answer: 0 },
     { q: 'Em que cidade será a abertura da Copa de 2026?', options: ['Cidade do México', 'Nova York', 'Los Angeles', 'Toronto'], answer: 0 },
     { q: 'Qual país sedia o jogo de abertura de 2026?', options: ['México', 'Estados Unidos', 'Canadá', 'Brasil'], answer: 0 },
     { q: 'Qual país sedia a final de 2026?', options: ['Estados Unidos', 'México', 'Canadá', 'Brasil'], answer: 0 },

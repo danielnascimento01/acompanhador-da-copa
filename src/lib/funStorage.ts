@@ -21,7 +21,7 @@ export async function loadNick(): Promise<string> {
 }
 export async function saveNick(nick: string): Promise<void> {
   try {
-    await AsyncStorage.setItem(KEY_NICK, nick.slice(0, 16));
+    await AsyncStorage.setItem(KEY_NICK, nick.trim().slice(0, 16));
   } catch {
     /* ignore */
   }
@@ -60,14 +60,18 @@ export async function loadGameScores(): Promise<ScoreEntry[]> {
  */
 export async function addGameScore(nick: string, score: number): Promise<ScoreEntry[]> {
   const list = await loadGameScores();
-  list.push({ nick: nick.slice(0, 16) || 'Você', score });
+  // apara o apelido: vazio ou só espaços viram 'Você' (nada de linha em branco)
+  const clean = nick.trim().slice(0, 16) || 'Você';
+  list.push({ nick: clean, score });
 
-  // mantém só o melhor de cada apelido (comparação sem diferenciar maiúsculas)
+  // mantém só o melhor de cada apelido (sem diferenciar maiúsculas), preservando
+  // a grafia já consolidada pra não trocar a escrita de forma surpreendente.
   const best = new Map<string, ScoreEntry>();
   for (const e of list) {
     const key = e.nick.trim().toLowerCase();
     const cur = best.get(key);
-    if (!cur || e.score > cur.score) best.set(key, e);
+    if (!cur) best.set(key, e);
+    else best.set(key, { nick: cur.nick, score: Math.max(cur.score, e.score) });
   }
 
   const top = [...best.values()].sort((a, b) => b.score - a.score).slice(0, 10);

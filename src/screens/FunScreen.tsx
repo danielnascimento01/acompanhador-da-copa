@@ -33,7 +33,7 @@ export function FunScreen() {
           <Text style={styles.cardEmoji}>⚽</Text>
           <View style={styles.flex1}>
             <Text style={styles.cardTitle}>Embaixadinhas</Text>
-            <Text style={styles.cardDesc}>Arraste o dedo, cabeceie a bola e bata seu recorde. Entra pro ranking!</Text>
+            <Text style={styles.cardDesc}>Arraste o dedo, cabeceie a bola e bata seu recorde. Entra pro ranking deste aparelho!</Text>
           </View>
           <Text style={styles.chevron}>›</Text>
         </Pressable>

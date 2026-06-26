@@ -81,6 +81,8 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const [touches, setTouches] = useState(0);
   const [flash, setFlash] = useState<string | null>(null);
   const [newRecord, setNewRecord] = useState(false);
+  // Mostra "toque pra começar" enquanto a bola fica flutuando, antes do 1º toque.
+  const [waiting, setWaiting] = useState(false);
 
   // Dimensões da área de jogo.
   const dims = useRef({ w: 0, h: 0 });
@@ -93,6 +95,12 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   // "Quero começar" pendente até a área de jogo ser medida (onLayout). Evita o
   // bug de iniciar com tamanho 0 (a bola "cairia" na hora → fim instantâneo).
   const wantStart = useRef(false);
+  // A gravidade só liga no 1º toque (bola flutua até lá → o jogador se posiciona).
+  const startedRef = useRef(false);
+  // Estamos numa partida ativa? (usado pelo PanResponder, que não enxerga o state)
+  const playingRef = useRef(false);
+  // Timer do "flash" de marco — guardado pra ser cancelado junto com o loop.
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Posições animadas (atualizadas imperativamente, sem re-render do React).
   const ballTX = useRef(new Animated.Value(0)).current;
@@ -108,6 +116,8 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     } else {
       stop();
       wantStart.current = false;
+      startedRef.current = false;
+      setWaiting(false);
       setPhase('menu');
     }
     return stop;
@@ -117,6 +127,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   function stop() {
     if (raf.current != null) cancelAnimationFrame(raf.current);
     raf.current = null;
+    if (flashTimer.current) {
+      clearTimeout(flashTimer.current);
+      flashTimer.current = null;
+    }
+    playingRef.current = false;
   }
 
   const moveChar = (x: number) => {
@@ -127,17 +142,31 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     charTX.setValue(cx - CW / 2);
   };
 
+  // Liga a gravidade no 1º toque da partida (a bola estava flutuando até aqui).
+  const armOnFirstTouch = () => {
+    if (playingRef.current && !startedRef.current) {
+      startedRef.current = true;
+      setWaiting(false);
+      last.current = 0; // zera o dt pra não dar um "salto" no 1º frame
+    }
+  };
+
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => moveChar(e.nativeEvent.locationX),
+      onPanResponderGrant: (e) => {
+        moveChar(e.nativeEvent.locationX);
+        armOnFirstTouch();
+      },
       onPanResponderMove: (e) => moveChar(e.nativeEvent.locationX),
     }),
   ).current;
 
   const onLayout = (e: LayoutChangeEvent) => {
     dims.current = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height };
+    // Numa partida em andamento, re-encaixa o boneco na nova largura (rotação/split).
+    if (playingRef.current) moveChar(charX.current);
     // Se o jogador pediu pra começar antes de termos o tamanho, começa agora.
     if (wantStart.current) beginPlay();
   };
@@ -156,17 +185,22 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   };
 
   // Arranca de fato a partida (tamanho já conhecido): centraliza boneco e bola.
+  // A bola fica FLUTUANDO (gravidade desligada) até o jogador encostar na tela.
   const beginPlay = () => {
     const { w, h } = dims.current;
     if (!w || !h) return; // ainda não medido — onLayout chama de novo
     wantStart.current = false;
+    startedRef.current = false;
+    playingRef.current = true;
+    setWaiting(true);
     charX.current = w / 2;
     charTX.setValue(w / 2 - CW / 2);
-    ball.current = { x: w / 2, y: R + 8, vx: (Math.random() - 0.5) * 80, vy: 0 };
+    ball.current = { x: w / 2, y: R + 8, vx: 0, vy: 0 };
     ballTX.setValue(w / 2 - R);
     ballTY.setValue(8);
     last.current = 0;
     stop();
+    playingRef.current = true; // stop() zera; reativa após cancelar o frame antigo
     raf.current = requestAnimationFrame(loop);
   };
 
@@ -174,6 +208,12 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     const { w, h } = dims.current;
     // Defesa: sem tamanho válido, não processa física (evita "queda" falsa).
     if (!w || !h) {
+      last.current = 0;
+      raf.current = requestAnimationFrame(loop);
+      return;
+    }
+    // Antes do 1º toque: bola parada flutuando, sem gravidade nem fim de jogo.
+    if (!startedRef.current) {
       last.current = 0;
       raf.current = requestAnimationFrame(loop);
       return;
@@ -203,8 +243,10 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
         touchesRef.current += 1;
         setTouches(touchesRef.current);
         const ms = milestoneFor(touchesRef.current);
-        if (touchesRef.current === record + 1 && record > 0) showFlash('Novo recorde! 🎉');
-        else if (ms) showFlash(ms);
+        const isRecord = touchesRef.current === record + 1 && record > 0;
+        if (isRecord && ms) showFlash(`Novo recorde! ${ms}`, 1600);
+        else if (isRecord) showFlash('Novo recorde! 🎉', 1600);
+        else if (ms) showFlash(ms, touchesRef.current >= 100 ? 1600 : 900);
       }
     }
 
@@ -219,11 +261,10 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     raf.current = requestAnimationFrame(loop);
   };
 
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showFlash = (msg: string) => {
+  const showFlash = (msg: string, ms: number = 900) => {
     setFlash(msg);
     if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setFlash(null), 900);
+    flashTimer.current = setTimeout(() => setFlash(null), ms);
   };
 
   const end = async () => {
@@ -304,6 +345,12 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 <Animated.View style={[styles.char, { transform: [{ translateX: charTX }] }]} pointerEvents="none">
                   <Player />
                 </Animated.View>
+                {waiting && (
+                  <View style={styles.startOverlay} pointerEvents="none">
+                    <Text style={styles.startBig}>Toque e arraste! 👆</Text>
+                    <Text style={styles.startSmall}>A bola cai quando você encostar na tela</Text>
+                  </View>
+                )}
               </View>
               <Text style={styles.hint}>Arraste o dedo na tela pra mover ⬅️➡️</Text>
             </View>
@@ -315,11 +362,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
               <Text style={styles.overScore}>{touches}</Text>
               <Text style={styles.overLabel}>toques</Text>
               {newRecord ? <Text style={styles.overRecord}>Novo recorde! 🏆</Text> : <Text style={styles.overMsg}>Recorde: {record} · fica embaixo da bola pra não deixar cair!</Text>}
-              <Pressable style={styles.primaryBtn} onPress={startGame} accessibilityRole="button" accessibilityLabel="Jogar de novo">
-                <Text style={styles.primaryText}>Jogar de novo</Text>
+              <Pressable style={styles.primaryBtn} onPress={shareScore} accessibilityRole="button" accessibilityLabel="Compartilhar pontuação e desafiar amigos">
+                <Text style={styles.primaryText}>Desafiar amigos 📲</Text>
               </Pressable>
-              <Pressable style={styles.shareBtn} onPress={shareScore} accessibilityRole="button" accessibilityLabel="Compartilhar pontuação">
-                <Text style={styles.shareText}>Desafiar amigos 📲</Text>
+              <Pressable style={styles.ghostBtn} onPress={startGame} accessibilityRole="button" accessibilityLabel="Jogar de novo">
+                <Text style={styles.ghostText}>Jogar de novo</Text>
               </Pressable>
               <Pressable style={styles.ghostBtn} onPress={() => setPhase('menu')} accessibilityRole="button" accessibilityLabel="Voltar ao menu">
                 <Text style={styles.ghostText}>Voltar</Text>
@@ -345,6 +392,9 @@ const styles = StyleSheet.create({
   input: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, color: colors.text, fontFamily: fonts.semibold, fontSize: 16, paddingVertical: spacing(3), paddingHorizontal: spacing(4), marginBottom: spacing(4) },
   primaryBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch' },
   primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
+  startOverlay: { position: 'absolute', top: '38%', left: 0, right: 0, alignItems: 'center', zIndex: 5, paddingHorizontal: spacing(4) },
+  startBig: { color: '#fff', fontFamily: fonts.display, fontSize: 26, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 8, textAlign: 'center' },
+  startSmall: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.semibold, fontSize: 13, marginTop: spacing(1), textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, textAlign: 'center' },
   recordLine: { color: colors.amber, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(4) },
   rankBlock: { marginTop: spacing(5) },
   rankTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(2) },

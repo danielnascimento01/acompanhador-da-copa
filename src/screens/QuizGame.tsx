@@ -29,6 +29,7 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
   const [score, setScore] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [best, setBest] = useState<Partial<Record<QuizMode, number>>>({});
+  const [newRecord, setNewRecord] = useState(false);
 
   useEffect(() => {
     if (visible) loadQuizBest().then(setBest);
@@ -36,11 +37,14 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
   }, [visible]);
 
   const start = (m: QuizMode) => {
+    const qs = prepare(drawQuestions(m));
+    if (qs.length === 0) return; // defesa: modo sem perguntas (não deve ocorrer)
     setMode(m);
-    setQuestions(prepare(drawQuestions(m)));
+    setQuestions(qs);
     setIdx(0);
     setScore(0);
     setPicked(null);
+    setNewRecord(false);
     setPhase('playing');
   };
 
@@ -54,7 +58,9 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
     if (idx + 1 >= questions.length) {
       // fim — salva recorde
       const prev = best[mode] ?? 0;
-      if (score > prev) {
+      const beat = score > prev;
+      setNewRecord(beat);
+      if (beat) {
         const nb = { ...best, [mode]: score };
         setBest(nb);
         saveQuizBest(nb);
@@ -102,42 +108,47 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
           )}
 
           {phase === 'playing' && (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
-              <View style={styles.progressRow}>
-                <Text style={styles.progressText}>{modeMeta.emoji} {modeMeta.label}</Text>
-                <Text style={styles.progressText}>{idx + 1}/{questions.length} · ✓ {score}</Text>
-              </View>
-              <View style={styles.bar}>
-                <View style={[styles.barFill, { width: `${((idx + 1) / questions.length) * 100}%` }]} />
-              </View>
+            <View style={styles.playCol}>
+              <ScrollView style={styles.flex1} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(4) }}>
+                <View style={styles.progressRow}>
+                  <Text style={styles.progressText}>{modeMeta.emoji} {modeMeta.label}</Text>
+                  <Text style={styles.progressText}>{idx + 1}/{questions.length} · ✓ {score}</Text>
+                </View>
+                <View style={styles.bar} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: questions.length, now: idx + 1 }}>
+                  <View style={[styles.barFill, { width: `${((idx + 1) / questions.length) * 100}%` }]} />
+                </View>
 
-              <Text style={styles.question}>{questions[idx].q}</Text>
-              {questions[idx].options.map((opt, i) => {
-                const isAnswer = i === questions[idx].answer;
-                const reveal = picked !== null;
-                const wrongPick = reveal && i === picked && !isAnswer;
-                return (
-                  <Pressable
-                    key={i}
-                    style={[styles.opt, reveal && isAnswer && styles.optRight, wrongPick && styles.optWrong]}
-                    onPress={() => pick(i)}
-                    disabled={reveal}
-                    accessibilityRole="button"
-                    accessibilityLabel={opt}
-                  >
-                    <Text style={[styles.optText, reveal && isAnswer && styles.optTextRight, wrongPick && styles.optTextWrong]}>
-                      {reveal && isAnswer ? '✓ ' : wrongPick ? '✕ ' : ''}{opt}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                <Text style={styles.question}>{questions[idx].q}</Text>
+                {questions[idx].options.map((opt, i) => {
+                  const isAnswer = i === questions[idx].answer;
+                  const reveal = picked !== null;
+                  const wrongPick = reveal && i === picked && !isAnswer;
+                  const a11y = reveal
+                    ? `${opt}. ${isAnswer ? 'Resposta correta' : wrongPick ? 'Sua resposta, incorreta' : ''}`
+                    : opt;
+                  return (
+                    <Pressable
+                      key={i}
+                      style={[styles.opt, reveal && isAnswer && styles.optRight, wrongPick && styles.optWrong]}
+                      onPress={() => pick(i)}
+                      disabled={reveal}
+                      accessibilityRole="button"
+                      accessibilityLabel={a11y}
+                    >
+                      <Text style={[styles.optText, reveal && isAnswer && styles.optTextRight, wrongPick && styles.optTextWrong]}>
+                        {reveal && isAnswer ? '✓ ' : wrongPick ? '✕ ' : ''}{opt}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
               {picked !== null && (
                 <Pressable style={styles.nextBtn} onPress={next} accessibilityRole="button" accessibilityLabel="Próxima pergunta">
                   <Text style={styles.nextText}>{idx + 1 >= questions.length ? 'Ver resultado' : 'Próxima'}</Text>
                 </Pressable>
               )}
-            </ScrollView>
+            </View>
           )}
 
           {phase === 'result' && (
@@ -147,6 +158,7 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
               <Text style={styles.resultMsg}>
                 {score === questions.length ? 'Perfeito! Você é craque!' : score >= questions.length * 0.7 ? 'Muito bom! Quase tudo certo.' : score >= questions.length * 0.4 ? 'Boa! Dá pra melhorar.' : 'Bora estudar a Copa e tentar de novo!'}
               </Text>
+              {newRecord && <Text style={styles.resultRecord}>Novo recorde! 🎉</Text>}
               {best[mode] != null && <Text style={styles.resultBest}>Seu recorde no modo {modeMeta.label}: 🏅 {best[mode]}/{questions.length}</Text>}
 
               <Pressable style={styles.primaryBtn} onPress={shareResult} accessibilityRole="button" accessibilityLabel="Compartilhar resultado e desafiar amigos">
@@ -174,6 +186,7 @@ const styles = StyleSheet.create({
   close: { position: 'absolute', top: spacing(4), right: spacing(5), zIndex: 2 },
   closeText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 18 },
   flex1: { flex: 1 },
+  playCol: { flex: 1 },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 28 },
   sub: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginBottom: spacing(4) },
   modeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing(4), marginBottom: spacing(3) },
@@ -198,7 +211,8 @@ const styles = StyleSheet.create({
   resultEmoji: { fontSize: 56 },
   resultScore: { color: colors.text, fontFamily: fonts.display, fontSize: 52, marginTop: spacing(2) },
   resultMsg: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 15, textAlign: 'center', marginTop: spacing(2), marginBottom: spacing(2) },
-  resultBest: { color: colors.amber, fontFamily: fonts.bold, fontSize: 13, marginBottom: spacing(4) },
+  resultRecord: { color: colors.accent, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(1) },
+  resultBest: { color: colors.amber, fontFamily: fonts.bold, fontSize: 13, marginTop: spacing(1), marginBottom: spacing(4) },
   primaryBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), paddingHorizontal: spacing(8), alignItems: 'center', alignSelf: 'stretch' },
   primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 16, letterSpacing: 0.5 },
   ghostBtn: { paddingVertical: spacing(3), alignItems: 'center', alignSelf: 'stretch' },

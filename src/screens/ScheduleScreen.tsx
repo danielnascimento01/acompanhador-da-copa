@@ -19,7 +19,6 @@ type DaySection = {
   key: string;
   title: string;
   data: Match[];
-  kind?: 'upcoming' | 'past';
 };
 
 function updatedLabel(updatedAt: number | null): string {
@@ -31,8 +30,8 @@ function updatedLabel(updatedAt: number | null): string {
   return `atualizado há ${h}h`;
 }
 
-/** Agrupa jogos por dia (no fuso local). `reverse` deixa os dias mais recentes no topo. */
-function groupByDay(list: Match[], kind: 'upcoming' | 'past'): DaySection[] {
+/** Agrupa os jogos (futuros/ao vivo) por dia, no fuso local. */
+function groupByDay(list: Match[]): DaySection[] {
   const byDay = new Map<string, Match[]>();
   for (const m of list) {
     const key = localDayKey(kickoff(m));
@@ -40,13 +39,10 @@ function groupByDay(list: Match[], kind: 'upcoming' | 'past'): DaySection[] {
     arr.push(m);
     byDay.set(key, arr);
   }
-  let entries = [...byDay.entries()];
-  if (kind === 'past') entries = entries.reverse();
-  return entries.map(([key, data]) => ({
+  return [...byDay.entries()].map(([key, data]) => ({
     key,
     title: relativeDayLabel(kickoff(data[0])),
     data,
-    kind,
   }));
 }
 
@@ -132,7 +128,7 @@ export function ScheduleScreen() {
       if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) pastCount++;
       else upcoming.push(m);
     }
-    return { sections: groupByDay(upcoming, 'upcoming'), hasPast: pastCount > 0 };
+    return { sections: groupByDay(upcoming), hasPast: pastCount > 0 };
   }, [matches]);
 
   return (
@@ -203,11 +199,7 @@ export function ScheduleScreen() {
             ) : null}
           </>
         }
-        renderSectionHeader={({ section }) => (
-          <Text style={[styles.day, (section as DaySection).kind === 'past' && styles.dayPast]}>
-            {section.title}
-          </Text>
-        )}
+        renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
         renderItem={({ item }) => (
           <MatchCard
             match={item}
@@ -280,7 +272,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
     textTransform: 'uppercase',
   },
-  dayPast: { color: colors.textFaint },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing(8) },
   emptyEmoji: { fontSize: 52, marginBottom: spacing(4) },
   emptyTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 21, marginBottom: spacing(2), textAlign: 'center' },

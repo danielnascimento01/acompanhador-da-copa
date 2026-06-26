@@ -37,7 +37,7 @@ export function RatePrompt() {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <LinearGradient colors={gradients.accent} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.badge}>
-            <Text style={styles.badgeText}>⭐ AJUDA RÁPIDA</Text>
+            <Text style={styles.badgeText}>💚 SUA OPINIÃO</Text>
           </LinearGradient>
 
           <Text style={styles.title}>Curtindo o app?</Text>
@@ -52,7 +52,7 @@ export function RatePrompt() {
             accessibilityRole="button"
             accessibilityLabel="Avaliar o app na loja"
           >
-            <Text style={styles.primaryText}>Avaliar com ⭐⭐⭐⭐⭐</Text>
+            <Text style={styles.primaryText}>Avaliar na loja</Text>
           </Pressable>
           <Pressable
             style={styles.ghostBtn}
