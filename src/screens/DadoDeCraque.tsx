@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'rea
 import { FORMATIONS, TACTICS, dataCounts, getSquads, rollSquad, slotsFor, squadKey } from '../data/draft/data';
 import { calcForces, simulateCampaign } from '../data/draft/engine';
 import type { CampaignResult, FormationKey, Goal, Mode, Player, Slot, Squad, Tactic } from '../data/draft/types';
+import { rewardedAvailable, showRewarded } from '../lib/ads';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
@@ -98,18 +99,23 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
     else { setCurrent(null); setRolling(false); }
   };
 
-  const reroll = () => {
-    if (rerolls <= 0 || !current) return;
-    setRerolls((r) => r - 1);
-    setSelected(null);
-    setCurrent(nextSquad(filled, squadKey(current), seed));
-    setRolling(true);
-  };
-  const skipSquad = () => {
+  // Núcleo do re-sorteio (não mexe no contador): sorteia outro elenco.
+  const doReroll = () => {
     if (!current) return;
     setSelected(null);
     setCurrent(nextSquad(filled, squadKey(current), seed));
     setRolling(true);
+  };
+  const reroll = () => {
+    if (rerolls <= 0 || !current) return;
+    setRerolls((r) => r - 1);
+    doReroll();
+  };
+  const skipSquad = doReroll;
+  // Anúncio premiado opcional: assistir → ganha 1 re-sorteio extra.
+  const watchForReroll = async () => {
+    const r = await showRewarded();
+    if (r === 'earned' || r === 'unavailable') doReroll();
   };
 
   const simulate = () => {
@@ -215,9 +221,17 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
                     <Pressable style={styles.rerollBtn} onPress={skipSquad} accessibilityRole="button" accessibilityLabel="Sortear outro elenco">
                       <Text style={styles.rerollText}>🎲 Nenhum encaixa — sortear outro</Text>
                     </Pressable>
+                  ) : rerolls > 0 ? (
+                    <Pressable style={styles.rerollBtn} onPress={reroll} accessibilityRole="button" accessibilityLabel="Re-sortear o elenco">
+                      <Text style={styles.rerollText}>🔄 Re-sortear  ·  {rerolls} restante{rerolls === 1 ? '' : 's'}</Text>
+                    </Pressable>
+                  ) : rewardedAvailable() ? (
+                    <Pressable style={styles.rerollBtn} onPress={watchForReroll} accessibilityRole="button" accessibilityLabel="Assistir anúncio para ganhar um re-sorteio">
+                      <Text style={styles.rerollText}>🎬 Assistir anúncio → +1 re-sorteio</Text>
+                    </Pressable>
                   ) : (
-                    <Pressable style={[styles.rerollBtn, rerolls <= 0 && styles.rerollOff]} onPress={reroll} disabled={rerolls <= 0} accessibilityRole="button" accessibilityLabel="Re-sortear o elenco">
-                      <Text style={[styles.rerollText, rerolls <= 0 && styles.dim]}>🔄 Re-sortear  ·  {rerolls} restante{rerolls === 1 ? '' : 's'}</Text>
+                    <Pressable style={[styles.rerollBtn, styles.rerollOff]} disabled accessibilityRole="button" accessibilityLabel="Sem re-sorteios">
+                      <Text style={[styles.rerollText, styles.dim]}>🔄 Re-sortear  ·  0 restantes</Text>
                     </Pressable>
                   )}
                   <Text style={[styles.pickHint, selected && styles.pickHintActive]}>
@@ -326,18 +340,18 @@ function RollReveal({ final, onDone }: { final: Squad; onDone: () => void }) {
   const roll = () => {
     if (spinning || landed) return;
     setSpinning(true);
-    const frames = 16;
+    const frames = 15;
     let i = 0;
     const tick = () => {
       if (i >= frames) {
         setDisplay(final);
         setSpinning(false);
         setLanded(true);
-        timers.current.push(setTimeout(onDone, 650)); // segura na sorteada e abre os jogadores
+        timers.current.push(setTimeout(onDone, 500)); // segura ~0,5s na sorteada e abre os jogadores
         return;
       }
       setDisplay(pool[Math.floor(Math.random() * pool.length)]);
-      const delay = 30 + Math.floor(i * i * 0.7); // acelera a desaceleração (slot machine)
+      const delay = 32 + Math.floor(i * i * 0.7); // ~1,2s girando, desacelerando (slot machine)
       i++;
       timers.current.push(setTimeout(tick, delay));
     };
@@ -458,6 +472,11 @@ function CampaignReveal({ result, reveal, setReveal, onFinish }: { result: Campa
   );
 }
 
+// Mapeia as coordenadas {0..100} pra dentro do campo com margem (evita os chips
+// colarem nas bordas). X é simétrico (50→50); Y deixa mais folga embaixo (goleiro).
+const fx = (n: number) => pct(6 + n * 0.88);
+const fy = (n: number) => pct(6 + n * 0.82);
+
 /** Campo com os 11 slots posicionados por {x,y}. Slots compatíveis ficam tocáveis. */
 function Pitch({ slots, picks, showStats, selectable, onSlot }: { slots: Slot[]; picks: (Player | null)[]; showStats: boolean; selectable: Set<number>; onSlot: (i: number) => void }) {
   return (
@@ -470,7 +489,7 @@ function Pitch({ slots, picks, showStats, selectable, onSlot }: { slots: Slot[];
         return (
           <Pressable
             key={i}
-            style={[styles.slotWrap, { left: pct(s.x), top: pct(s.y) }]}
+            style={[styles.slotWrap, { left: fx(s.x), top: fy(s.y) }]}
             onPress={hi ? () => onSlot(i) : undefined}
             disabled={!hi}
             pointerEvents={hi ? 'auto' : 'none'}
@@ -522,7 +541,9 @@ const styles = StyleSheet.create({
   pitch: { height: 230, borderRadius: radius.lg, backgroundColor: '#0f3d22', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   pitchLine: { position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
   pitchCircle: { position: 'absolute', alignSelf: 'center', top: '50%', width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', marginTop: -29 },
-  slotWrap: { position: 'absolute', width: CHIP, marginLeft: -CHIP / 2, marginTop: -CHIP / 2, alignItems: 'center' },
+  // marginTop = -metade da ALTURA do chip (32) → centra o chip exatamente no ponto;
+  // o nome flui logo abaixo sem deslocar o chip.
+  slotWrap: { position: 'absolute', width: CHIP, marginLeft: -CHIP / 2, marginTop: -16, alignItems: 'center' },
   slotChip: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   slotChipOn: { borderColor: colors.accent, backgroundColor: colors.accent },
   slotChipHi: { borderColor: colors.accent, borderWidth: 2.5, backgroundColor: 'rgba(20,224,138,0.25)' },

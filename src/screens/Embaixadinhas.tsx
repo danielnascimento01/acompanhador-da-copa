@@ -129,10 +129,21 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
   useEffect(() => {
     if (visible) {
-      loadNick().then(setNick);
-      loadGameScores().then(setScores);
       getDeviceId().then((id) => { myId.current = id; });
-      refreshGlobal();
+      // Carrega apelido + recorde local e SINCRONIZA com o ranking mundial:
+      // envia o melhor recorde local (pode ser anterior ao ranking). Como o
+      // servidor mantém só o MAIOR por aparelho, sua entrada no mundial passa a
+      // refletir seu recorde de verdade — fim do "recorde 102 mas no mundial 18".
+      Promise.all([loadNick(), loadGameScores()]).then(([n, sc]) => {
+        setNick(n);
+        setScores(sc);
+        const best = sc.length ? sc[0].score : 0;
+        if (best > 0) {
+          submitGlobalScore(GAME, n, best).then((g) => { if (g) setGlobalScores(g); else refreshGlobal(); });
+        } else {
+          refreshGlobal();
+        }
+      });
     } else {
       stop();
       wantStart.current = false;
