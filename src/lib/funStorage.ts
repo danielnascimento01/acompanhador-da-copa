@@ -53,12 +53,24 @@ export async function loadGameScores(): Promise<ScoreEntry[]> {
     return [];
   }
 }
-/** Registra uma pontuação e devolve o ranking atualizado (top 10, desc). */
+/**
+ * Registra uma pontuação e devolve o ranking atualizado (top 10, desc).
+ * Cada apelido aparece UMA vez só, com o seu maior recorde — jogar várias
+ * vezes não polui o ranking com entradas repetidas do mesmo jogador.
+ */
 export async function addGameScore(nick: string, score: number): Promise<ScoreEntry[]> {
   const list = await loadGameScores();
   list.push({ nick: nick.slice(0, 16) || 'Você', score });
-  list.sort((a, b) => b.score - a.score);
-  const top = list.slice(0, 10);
+
+  // mantém só o melhor de cada apelido (comparação sem diferenciar maiúsculas)
+  const best = new Map<string, ScoreEntry>();
+  for (const e of list) {
+    const key = e.nick.trim().toLowerCase();
+    const cur = best.get(key);
+    if (!cur || e.score > cur.score) best.set(key, e);
+  }
+
+  const top = [...best.values()].sort((a, b) => b.score - a.score).slice(0, 10);
   try {
     await AsyncStorage.setItem(KEY_GAME, JSON.stringify(top));
   } catch {

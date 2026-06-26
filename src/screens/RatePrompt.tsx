@@ -42,8 +42,8 @@ export function RatePrompt() {
 
           <Text style={styles.title}>Curtindo o app?</Text>
           <Text style={styles.body}>
-            Uma avaliação sua na loja ajuda <Text style={styles.bold}>demais</Text> mais torcedores a
-            encontrarem o app. Leva 10 segundos. 💚
+            Uma avaliação sua faz o app aparecer pra <Text style={styles.bold}>muito mais</Text> torcedores
+            na loja. Leva só 10 segundos. 💚
           </Text>
 
           <Pressable

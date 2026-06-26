@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
-import { QUIZ, QUIZ_MODES, shuffle, type QuizMode, type Question } from '../data/quiz';
+import { QUESTIONS_PER_ROUND, QUIZ_MODES, drawQuestions, shuffle, type QuizMode, type Question } from '../data/quiz';
 import { loadQuizBest, saveQuizBest } from '../lib/funStorage';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -37,7 +37,7 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
 
   const start = (m: QuizMode) => {
     setMode(m);
-    setQuestions(prepare(QUIZ[m]));
+    setQuestions(prepare(drawQuestions(m)));
     setIdx(0);
     setScore(0);
     setPicked(null);
@@ -87,7 +87,7 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
           {phase === 'menu' && (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
               <Text style={styles.title}>Quiz da Copa</Text>
-              <Text style={styles.sub}>Escolha um modo e mostre que você manja 🧠</Text>
+              <Text style={styles.sub}>Escolha um modo e mostre que você manja 🧠 As perguntas mudam a cada partida!</Text>
               {QUIZ_MODES.map((m) => (
                 <Pressable key={m.key} style={styles.modeCard} onPress={() => start(m.key)} accessibilityRole="button" accessibilityLabel={`Jogar quiz ${m.label}`}>
                   <Text style={styles.modeEmoji}>{m.emoji}</Text>
@@ -95,7 +95,7 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
                     <Text style={styles.modeLabel}>{m.label}</Text>
                     <Text style={styles.modeDesc}>{m.desc}</Text>
                   </View>
-                  {best[m.key] != null && <Text style={styles.modeBest}>🏅 {best[m.key]}/{QUIZ[m.key].length}</Text>}
+                  {best[m.key] != null && <Text style={styles.modeBest}>🏅 {best[m.key]}/{QUESTIONS_PER_ROUND}</Text>}
                 </Pressable>
               ))}
             </ScrollView>

@@ -28,6 +28,52 @@ function milestoneFor(t: number): string | null {
   return null;
 }
 
+// ── Boneco (camisa do Brasil) montado com formas — leve, nítido e sem assets ──
+function Player() {
+  return (
+    <View style={pl.body} pointerEvents="none">
+      <View style={pl.head}>
+        <View style={pl.hair} />
+      </View>
+      <View style={pl.jersey}>
+        <View style={pl.collar} />
+        <View style={[pl.sleeve, pl.sleeveL]} />
+        <View style={[pl.sleeve, pl.sleeveR]} />
+        <Text style={pl.num}>10</Text>
+      </View>
+      <View style={pl.shorts} />
+      <View style={pl.legsRow}>
+        <View style={pl.leg} />
+        <View style={pl.leg} />
+      </View>
+    </View>
+  );
+}
+
+// ── Fundo do campo: torcida, gol, linhas e faixas (memo: render uma vez só) ──
+const STRIPES = ['#10421f', '#0d3a1b', '#10421f', '#0d3a1b', '#10421f', '#0d3a1b'];
+const CROWD_COLORS = ['#1f7a44', '#f4c20d', '#e9e9e9', '#1b3fae', '#2a9d5a', '#d23b3b'];
+const CROWD = Array.from({ length: 60 });
+const FieldBg = React.memo(function FieldBg() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={StyleSheet.absoluteFill}>
+        {STRIPES.map((c, i) => (
+          <View key={i} style={{ flex: 1, backgroundColor: c }} />
+        ))}
+      </View>
+      <View style={fbg.crowd}>
+        {CROWD.map((_, i) => (
+          <View key={i} style={[fbg.dot, { backgroundColor: CROWD_COLORS[i % CROWD_COLORS.length] }]} />
+        ))}
+      </View>
+      <View style={fbg.goal} />
+      <View style={fbg.circle} />
+      <View style={fbg.outline} />
+    </View>
+  );
+});
+
 export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [phase, setPhase] = useState<Phase>('menu');
   const [nick, setNick] = useState('');
@@ -226,13 +272,13 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 <Text style={styles.hudLabel}>toques · recorde {record}</Text>
               </View>
               <View style={styles.field} onLayout={onLayout} {...pan.panHandlers}>
+                <FieldBg />
                 {flash && <Text style={styles.flash}>{flash}</Text>}
                 <Animated.View style={[styles.ball, { transform: [{ translateX: ballTX }, { translateY: ballTY }] }]} pointerEvents="none">
                   <Text style={styles.ballEmoji}>⚽</Text>
                 </Animated.View>
                 <Animated.View style={[styles.char, { transform: [{ translateX: charTX }] }]} pointerEvents="none">
-                  <Text style={styles.charEmoji}>🧍</Text>
-                  <View style={styles.jersey}><Text style={styles.jerseyText}>10</Text></View>
+                  <Player />
                 </Animated.View>
               </View>
               <Text style={styles.hint}>Arraste o dedo na tela pra mover ⬅️➡️</Text>
@@ -287,13 +333,10 @@ const styles = StyleSheet.create({
   hudTouches: { color: colors.text, fontFamily: fonts.display, fontSize: 44, fontVariant: ['tabular-nums'] },
   hudLabel: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 12, marginTop: -4 },
   field: { flex: 1, backgroundColor: '#0c2a16', borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(20,224,138,0.25)', overflow: 'hidden' },
-  flash: { position: 'absolute', alignSelf: 'center', top: '32%', color: colors.amber, fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6, zIndex: 3 },
-  ball: { position: 'absolute', left: 0, top: 0, width: R * 2, height: R * 2, alignItems: 'center', justifyContent: 'center' },
+  flash: { position: 'absolute', alignSelf: 'center', top: '32%', color: colors.amber, fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6, zIndex: 4 },
+  ball: { position: 'absolute', left: 0, top: 0, width: R * 2, height: R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   ballEmoji: { fontSize: R * 2 - 6 },
-  char: { position: 'absolute', left: 0, bottom: 0, width: CW, height: CH, alignItems: 'center', justifyContent: 'flex-end' },
-  charEmoji: { fontSize: CH - 8 },
-  jersey: { position: 'absolute', bottom: 18, backgroundColor: colors.accent, borderRadius: 4, paddingHorizontal: 4 },
-  jerseyText: { color: colors.ink, fontFamily: fonts.extrabold, fontSize: 11 },
+  char: { position: 'absolute', left: 0, bottom: 0, width: CW, height: CH, alignItems: 'center', justifyContent: 'flex-end', zIndex: 2 },
   hint: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
   over: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: spacing(6) },
   overEmoji: { fontSize: 60 },
@@ -305,4 +348,44 @@ const styles = StyleSheet.create({
   shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 15 },
   ghostBtn: { paddingVertical: spacing(2), alignItems: 'center', alignSelf: 'stretch' },
   ghostText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 14 },
+});
+
+// Boneco com a camisa do Brasil (amarelo/verde/azul) — montado com formas.
+const pl = StyleSheet.create({
+  body: { width: CW, height: CH, alignItems: 'center', justifyContent: 'flex-end' },
+  head: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#E8B98A', borderWidth: 2, borderColor: 'rgba(0,0,0,0.18)', alignItems: 'center', zIndex: 2 },
+  hair: { position: 'absolute', top: -3, width: 28, height: 13, borderTopLeftRadius: 14, borderTopRightRadius: 14, backgroundColor: '#241712' },
+  jersey: { width: 42, height: 30, backgroundColor: '#FFD200', borderRadius: 8, marginTop: -2, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0A7B3E' },
+  collar: { position: 'absolute', top: 0, width: 14, height: 6, backgroundColor: '#0A7B3E', borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
+  sleeve: { position: 'absolute', top: 3, width: 9, height: 13, backgroundColor: '#0A7B3E', borderRadius: 4 },
+  sleeveL: { left: -5 },
+  sleeveR: { right: -5 },
+  num: { color: '#0A7B3E', fontFamily: fonts.extrabold, fontSize: 15 },
+  shorts: { width: 34, height: 14, backgroundColor: '#1B3FAE', borderBottomLeftRadius: 4, borderBottomRightRadius: 4, marginTop: -1 },
+  legsRow: { flexDirection: 'row', gap: 6, marginTop: 0 },
+  leg: { width: 10, height: 16, backgroundColor: '#E8B98A', borderBottomWidth: 5, borderBottomColor: '#fff', borderRadius: 3 },
+});
+
+// Fundo do campinho: torcida no topo, gol, círculo central e linhas laterais.
+const fbg = StyleSheet.create({
+  crowd: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: '13%',
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', alignItems: 'center',
+    paddingHorizontal: 4, overflow: 'hidden', backgroundColor: '#07180e',
+    borderBottomWidth: 2, borderBottomColor: 'rgba(255,255,255,0.15)',
+  },
+  dot: { width: 7, height: 7, borderRadius: 4, margin: 1.5, opacity: 0.85 },
+  goal: {
+    position: 'absolute', top: '14%', left: '34%', right: '34%', height: 24,
+    borderColor: 'rgba(255,255,255,0.7)', borderWidth: 3, borderBottomWidth: 0,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  circle: {
+    position: 'absolute', alignSelf: 'center', top: '44%', width: 96, height: 96,
+    borderRadius: 48, borderWidth: 2, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  outline: {
+    position: 'absolute', top: '13%', left: 6, right: 6, bottom: 6,
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)', borderRadius: radius.md,
+  },
 });
