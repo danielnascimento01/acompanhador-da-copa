@@ -20,10 +20,10 @@ import { getTrackingPermissionsAsync, requestTrackingPermissionsAsync } from 'ex
 /** Liga/desliga geral dos anúncios. */
 export const ADS_ENABLED = true;
 
-// === IDs REAIS DOS BLOCOS DE BANNER (preencher antes do build de produção) ===
+// === IDs REAIS DOS BLOCOS DE BANNER ===
 const REAL_BANNER: { ios: string; android: string } = {
-  ios: '',     // TODO: ca-app-pub-3514963763580625/XXXXXXXXXX  (banner iOS)
-  android: '', // TODO: ca-app-pub-3514963763580625/XXXXXXXXXX  (banner Android)
+  ios: 'ca-app-pub-3514963763580625/9773109893',
+  android: 'ca-app-pub-3514963763580625/3736360755',
 };
 
 const realBanner = (Platform.OS === 'ios' ? REAL_BANNER.ios : REAL_BANNER.android) || '';
