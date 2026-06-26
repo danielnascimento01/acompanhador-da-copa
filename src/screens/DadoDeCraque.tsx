@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { FORMATIONS, TACTICS, dataCounts, getSquads, rollSquad, slotsFor, squadKey } from '../data/draft/data';
 import { calcForces, simulateCampaign } from '../data/draft/engine';
@@ -162,16 +162,34 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
     setPicks([]); setSlots([]); setReveal(0); usedRef.current = new Set(); attemptRef.current = 0;
   };
 
+  // Fechar SEMPRE reinicia (ao reabrir, começa uma partida nova). Se há um time
+  // sendo montado (draft/campanha), confirma antes para não perder o progresso sem querer.
+  const requestClose = () => {
+    if (phase === 'draft' || phase === 'campaign') {
+      Alert.alert(
+        'Sair do jogo?',
+        'Você vai perder o time que montou — ao voltar, o Dado de Craque recomeça do zero.',
+        [
+          { text: 'Continuar montando', style: 'cancel' },
+          { text: 'Sair e recomeçar', style: 'destructive', onPress: () => { reset(); onClose(); } },
+        ],
+      );
+    } else {
+      reset();
+      onClose();
+    }
+  };
+
   const currentPickable = current ? current.players.filter(pickable) : [];
   const noneFits = !!current && !rolling && currentPickable.length === 0 && filled < slots.length;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={requestClose}>
       <View style={styles.backdrop}>
-        <Pressable style={styles.dismiss} onPress={onClose} accessibilityLabel="Fechar" />
+        <Pressable style={styles.dismiss} onPress={requestClose} accessibilityLabel="Fechar" />
         <View style={styles.sheet}>
           <View style={styles.grabber} />
-          <Pressable style={styles.close} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fechar" hitSlop={10}>
+          <Pressable style={styles.close} onPress={requestClose} accessibilityRole="button" accessibilityLabel="Fechar" hitSlop={10}>
             <Text style={styles.closeText}>✕</Text>
           </Pressable>
 
