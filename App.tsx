@@ -21,19 +21,21 @@ import { TeamsScreen } from './src/screens/TeamsScreen';
 import { ScheduleScreen } from './src/screens/ScheduleScreen';
 import { StandingsScreen } from './src/screens/StandingsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { FunScreen } from './src/screens/FunScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SupportSheet } from './src/screens/SupportScreen';
 import { AnnouncementSheet } from './src/screens/AnnouncementSheet';
 import { RatePrompt } from './src/screens/RatePrompt';
 import { colors, fonts, gradients, spacing } from './src/lib/theme';
 
-type TabKey = 'schedule' | 'standings' | 'teams' | 'settings';
+type TabKey = 'schedule' | 'standings' | 'teams' | 'fun' | 'settings';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TABS: { key: TabKey; label: string; icon: IconName }[] = [
   { key: 'schedule', label: 'Jogos', icon: 'football-outline' },
   { key: 'standings', label: 'Grupos', icon: 'stats-chart-outline' },
   { key: 'teams', label: 'Seleções', icon: 'globe-outline' },
+  { key: 'fun', label: 'Diversão', icon: 'game-controller-outline' },
   { key: 'settings', label: 'Avisos', icon: 'notifications-outline' },
 ];
 
@@ -72,6 +74,7 @@ function Shell() {
         {tab === 'schedule' && <ScheduleScreen />}
         {tab === 'standings' && <StandingsScreen />}
         {tab === 'teams' && <TeamsScreen />}
+        {tab === 'fun' && <FunScreen />}
         {tab === 'settings' && <SettingsScreen />}
       </View>
 
