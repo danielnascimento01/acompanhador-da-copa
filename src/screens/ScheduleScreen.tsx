@@ -133,6 +133,12 @@ export function ScheduleScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.noBetsBanner} accessibilityRole="text">
+        <Text style={styles.noBetsIcon}>🚫</Text>
+        <Text style={styles.noBetsText}>
+          Temos noção do prejuízo que as apostas podem trazer. Aqui você nunca verá anúncios de bets.
+        </Text>
+      </View>
       <View style={styles.header}>
         <Text style={styles.title}>Jogos da Copa</Text>
         <Text style={[styles.subtitle, !online && styles.subtitleOffline]}>
@@ -244,6 +250,21 @@ export function ScheduleScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  noBetsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2),
+    marginHorizontal: spacing(4),
+    marginTop: spacing(2),
+    paddingVertical: spacing(2),
+    paddingHorizontal: spacing(3),
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  noBetsIcon: { fontSize: 16 },
+  noBetsText: { flex: 1, color: colors.textDim, fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
   header: { paddingHorizontal: spacing(4), paddingTop: spacing(2), paddingBottom: spacing(3) },
   title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.3 },
   subtitle: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 13, marginTop: 2 },
