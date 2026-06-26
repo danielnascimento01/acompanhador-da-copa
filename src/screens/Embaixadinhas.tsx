@@ -17,9 +17,9 @@ const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascim
 const GAME = 'embaixadinhas';
 
 // Tamanhos (px) e física do mini-game.
-const CW = 64;   // largura do boneco
-const CH = 84;   // altura do boneco
-const R = 26;    // raio da bola
+const CW = 80;   // largura do boneco (maior)
+const CH = 104;  // altura do boneco (maior)
+const R = 32;    // raio da bola (maior)
 const BOUNCE = 560;    // velocidade pra cima ao cabecear (FIXA — não subir junto da gravidade)
 const HEAD_BAND = 34;  // tolerância vertical do toque na cabeça
 // Rampa de dificuldade: a gravidade começa leve e SOBE a cada toque (o jogo aperta
@@ -75,8 +75,9 @@ function Player({ skin }: { skin: Skin }) {
 }
 
 // ── Fundo do campo: torcida, gol, linhas e faixas (memo: render uma vez só) ──
-const STRIPES = ['#10421f', '#0d3a1b', '#10421f', '#0d3a1b', '#10421f', '#0d3a1b'];
-const CROWD_COLORS = ['#1f7a44', '#f4c20d', '#e9e9e9', '#1b3fae', '#2a9d5a', '#d23b3b'];
+// Verde mais CLARO (o boneco aparece mais) + torcida mais VIVA.
+const STRIPES = ['#1f7d40', '#1b7038', '#1f7d40', '#1b7038', '#1f7d40', '#1b7038'];
+const CROWD_COLORS = ['#34d36a', '#ffd60a', '#ffffff', '#3b6fff', '#ff5da2', '#ff5a4d', '#19e08a'];
 const CROWD = Array.from({ length: 60 });
 const FieldBg = React.memo(function FieldBg() {
   return (
@@ -477,14 +478,15 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
               <Text style={styles.overScore}>{touches}</Text>
               <Text style={styles.overLabel}>toques</Text>
               {newRecord ? <Text style={styles.overRecord}>Novo recorde! 🏆</Text> : <Text style={styles.overMsg}>Recorde: {record} · fica embaixo da bola pra não deixar cair!</Text>}
-              <Pressable style={styles.primaryBtn} onPress={shareScore} accessibilityRole="button" accessibilityLabel="Compartilhar pontuação e desafiar amigos">
-                <Text style={styles.primaryText}>Desafiar amigos 📲</Text>
+              <Pressable style={styles.replayBtn} onPress={startGame} accessibilityRole="button" accessibilityLabel="Jogar de novo">
+                <Text style={styles.replayText}>🔄 Jogar de novo</Text>
               </Pressable>
-              <Pressable style={styles.ghostBtn} onPress={startGame} accessibilityRole="button" accessibilityLabel="Jogar de novo">
-                <Text style={styles.ghostText}>Jogar de novo</Text>
+              <Pressable style={styles.shareBtn} onPress={shareScore} accessibilityRole="button" accessibilityLabel="Compartilhar pontuação e desafiar amigos">
+                <Text style={styles.shareText}>Desafiar amigos 📲</Text>
               </Pressable>
-              <Pressable style={styles.ghostBtn} onPress={() => setPhase('menu')} accessibilityRole="button" accessibilityLabel="Voltar ao menu">
-                <Text style={styles.ghostText}>Voltar</Text>
+              <View style={styles.voltarSep} />
+              <Pressable style={styles.voltarBtn} onPress={() => setPhase('menu')} accessibilityRole="button" accessibilityLabel="Voltar ao menu">
+                <Text style={styles.voltarText}>← Voltar</Text>
               </Pressable>
             </View>
           )}
@@ -535,7 +537,7 @@ const styles = StyleSheet.create({
   hud: { alignItems: 'center', marginBottom: spacing(2) },
   hudTouches: { color: colors.text, fontFamily: fonts.display, fontSize: 44, fontVariant: ['tabular-nums'] },
   hudLabel: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 12, marginTop: -4 },
-  field: { flex: 1, backgroundColor: '#0c2a16', borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(20,224,138,0.25)', overflow: 'hidden' },
+  field: { flex: 1, backgroundColor: '#1b7038', borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(20,224,138,0.35)', overflow: 'hidden' },
   flash: { position: 'absolute', alignSelf: 'center', top: '32%', color: colors.amber, fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6, zIndex: 4 },
   ball: { position: 'absolute', left: 0, top: 0, width: R * 2, height: R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   ballEmoji: { fontSize: R * 2 - 6 },
@@ -547,8 +549,13 @@ const styles = StyleSheet.create({
   overLabel: { color: colors.textDim, fontFamily: fonts.medium, fontSize: 16, marginTop: -8 },
   overRecord: { color: colors.amber, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(2), marginBottom: spacing(4) },
   overMsg: { color: colors.textDim, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', marginTop: spacing(2), marginBottom: spacing(4), paddingHorizontal: spacing(4), lineHeight: 19 },
+  replayBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(2) },
+  replayText: { color: colors.ink, fontFamily: fonts.display, fontSize: 17, letterSpacing: 0.5 },
   shareBtn: { paddingVertical: spacing(3), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(1) },
   shareText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 15 },
+  voltarSep: { height: 1, alignSelf: 'stretch', backgroundColor: colors.border, marginTop: spacing(4), marginBottom: spacing(1) },
+  voltarBtn: { paddingVertical: spacing(2.5), alignItems: 'center', alignSelf: 'stretch' },
+  voltarText: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 14 },
   ghostBtn: { paddingVertical: spacing(2), alignItems: 'center', alignSelf: 'stretch' },
   ghostText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 14 },
 });
@@ -556,28 +563,28 @@ const styles = StyleSheet.create({
 // Boneco com a camisa do Brasil (amarelo/verde/azul) — montado com formas.
 const pl = StyleSheet.create({
   body: { width: CW, height: CH, alignItems: 'center', justifyContent: 'flex-end' },
-  head: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#E8B98A', borderWidth: 2, borderColor: 'rgba(0,0,0,0.18)', alignItems: 'center', zIndex: 2 },
-  hair: { position: 'absolute', top: -3, width: 28, height: 13, borderTopLeftRadius: 14, borderTopRightRadius: 14, backgroundColor: '#241712' },
-  jersey: { width: 42, height: 30, backgroundColor: '#FFD200', borderRadius: 8, marginTop: -2, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#0A7B3E' },
-  collar: { position: 'absolute', top: 0, width: 14, height: 6, backgroundColor: '#0A7B3E', borderBottomLeftRadius: 6, borderBottomRightRadius: 6 },
-  sleeve: { position: 'absolute', top: 3, width: 9, height: 13, backgroundColor: '#0A7B3E', borderRadius: 4 },
-  sleeveL: { left: -5 },
-  sleeveR: { right: -5 },
-  num: { color: '#0A7B3E', fontFamily: fonts.extrabold, fontSize: 15 },
-  shorts: { width: 34, height: 14, backgroundColor: '#1B3FAE', borderBottomLeftRadius: 4, borderBottomRightRadius: 4, marginTop: -1 },
-  legsRow: { flexDirection: 'row', gap: 6, marginTop: 0 },
-  leg: { width: 10, height: 16, backgroundColor: '#E8B98A', borderBottomWidth: 5, borderBottomColor: '#fff', borderRadius: 3 },
+  head: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#E8B98A', borderWidth: 2, borderColor: 'rgba(0,0,0,0.18)', alignItems: 'center', zIndex: 2 },
+  hair: { position: 'absolute', top: -3, width: 34, height: 16, borderTopLeftRadius: 17, borderTopRightRadius: 17, backgroundColor: '#241712' },
+  jersey: { width: 52, height: 38, backgroundColor: '#FFD200', borderRadius: 9, marginTop: -2, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#0A7B3E' },
+  collar: { position: 'absolute', top: 0, width: 18, height: 7, backgroundColor: '#0A7B3E', borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
+  sleeve: { position: 'absolute', top: 4, width: 11, height: 16, backgroundColor: '#0A7B3E', borderRadius: 5 },
+  sleeveL: { left: -6 },
+  sleeveR: { right: -6 },
+  num: { color: '#0A7B3E', fontFamily: fonts.extrabold, fontSize: 19 },
+  shorts: { width: 42, height: 18, backgroundColor: '#1B3FAE', borderBottomLeftRadius: 5, borderBottomRightRadius: 5, marginTop: -1 },
+  legsRow: { flexDirection: 'row', gap: 7, marginTop: 0 },
+  leg: { width: 12, height: 20, backgroundColor: '#E8B98A', borderBottomWidth: 6, borderBottomColor: '#fff', borderRadius: 3 },
 });
 
 // Fundo do campinho: torcida no topo, gol, círculo central e linhas laterais.
 const fbg = StyleSheet.create({
   crowd: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: '13%',
+    position: 'absolute', top: 0, left: 0, right: 0, height: '16%',
     flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', alignItems: 'center',
-    paddingHorizontal: 4, overflow: 'hidden', backgroundColor: '#07180e',
-    borderBottomWidth: 2, borderBottomColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 4, overflow: 'hidden', backgroundColor: '#0a2516',
+    borderBottomWidth: 2, borderBottomColor: 'rgba(255,255,255,0.22)',
   },
-  dot: { width: 7, height: 7, borderRadius: 4, margin: 1.5, opacity: 0.85 },
+  dot: { width: 9, height: 9, borderRadius: 5, margin: 1.5, opacity: 1 },
   goal: {
     position: 'absolute', top: '14%', left: '34%', right: '34%', height: 24,
     borderColor: 'rgba(255,255,255,0.7)', borderWidth: 3, borderBottomWidth: 0,

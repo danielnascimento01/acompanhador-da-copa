@@ -4,6 +4,7 @@ import { AppState, Pressable, RefreshControl, SectionList, StyleSheet, Text, Vie
 import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
 import { TeamStatusBanner } from '../components/TeamStatusBanner';
+import { AdBanner } from '../components/AdBanner';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
 import { PastMatchesSheet } from './PastMatchesSheet';
@@ -46,11 +47,23 @@ function groupByDay(list: Match[]): DaySection[] {
   }));
 }
 
+// Aviso anti-apostas: aparece só nos primeiros ~15s da sessão; some ao trocar de
+// aba ou no fim do tempo, e não volta (flag de módulo = dura enquanto o app vive).
+let antiBetsDismissed = false;
+
 export function ScheduleScreen() {
   const { selected, matches, settings, refresh, refreshing, updatedAt, online, predictions } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
   const [dayOpen, setDayOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
+  const [showAntiBets, setShowAntiBets] = useState(!antiBetsDismissed);
+
+  // Esconde o aviso anti-apostas após 15s — ou ao sair da aba (cleanup). Não reaparece.
+  useEffect(() => {
+    if (!showAntiBets) return;
+    const t = setTimeout(() => { antiBetsDismissed = true; setShowAntiBets(false); }, 15000);
+    return () => { clearTimeout(t); antiBetsDismissed = true; };
+  }, [showAntiBets]);
 
   // Ao abrir a aba (mount), reatualiza se o cache estiver VELHO (por idade, não só
   // se estiver vazio) — cobre a troca de aba com dados defasados. Independe de
@@ -133,12 +146,14 @@ export function ScheduleScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.noBetsBanner} accessibilityRole="text">
-        <Text style={styles.noBetsIcon}>🚫</Text>
-        <Text style={styles.noBetsText}>
-          Temos noção do prejuízo que apostas podem trazer. Por isso, aqui você nunca verá anúncios de bets.
-        </Text>
-      </View>
+      {showAntiBets && (
+        <View style={styles.noBetsBanner} accessibilityRole="text">
+          <Text style={styles.noBetsIcon}>🚫</Text>
+          <Text style={styles.noBetsText}>
+            Temos noção do prejuízo que apostas podem trazer. Por isso, aqui você nunca verá anúncios de bets.
+          </Text>
+        </View>
+      )}
       <View style={styles.header}>
         <Text style={styles.title}>Jogos da Copa</Text>
         <Text style={[styles.subtitle, !online && styles.subtitleOffline]}>
@@ -206,6 +221,9 @@ export function ScheduleScreen() {
           </>
         }
         renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
+        renderSectionFooter={({ section }) =>
+          sections.length > 0 && (section as DaySection).key === sections[0].key ? <AdBanner /> : null
+        }
         renderItem={({ item }) => (
           <MatchCard
             match={item}

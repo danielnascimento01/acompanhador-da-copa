@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { Flag } from '../components/Flag';
+import { AdBanner } from '../components/AdBanner';
 import { GROUPS, TEAMS, Team } from '../data/teams';
 import { useStore } from '../lib/store';
 import { colors, fonts, radius, spacing, state } from '../lib/theme';
@@ -69,6 +70,9 @@ export function TeamsScreen() {
             onStar={() => setPrimary(item.id)}
           />
         )}
+        renderSectionFooter={({ section }) =>
+          sections.length > 0 && section.title === sections[0].title ? <AdBanner /> : null
+        }
       />
     </View>
   );
