@@ -6,7 +6,7 @@ import {
 
 import * as Haptics from 'expo-haptics';
 
-import { addGameScore, loadGameScores, loadNick, saveNick, type ScoreEntry } from '../lib/funStorage';
+import { addGameScore, loadGameScores, loadNick, loadSkin, saveNick, saveSkin, type ScoreEntry } from '../lib/funStorage';
 import { fetchGlobalLeaderboard, getDeviceId, submitGlobalScore, type GlobalEntry } from '../lib/leaderboard';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
@@ -20,11 +20,28 @@ const GAME = 'embaixadinhas';
 const CW = 64;   // largura do boneco
 const CH = 84;   // altura do boneco
 const R = 26;    // raio da bola
-const GRAVITY = 900;   // px/s²
-const BOUNCE = 560;    // velocidade pra cima ao cabecear
+const BOUNCE = 560;    // velocidade pra cima ao cabecear (FIXA — não subir junto da gravidade)
 const HEAD_BAND = 34;  // tolerância vertical do toque na cabeça
+// Rampa de dificuldade: a gravidade começa leve e SOBE a cada toque (o jogo aperta
+// sozinho, sem "ponto morto" eterno). BOUNCE fica fixo de propósito.
+const GRAVITY_BASE = 780;
+const GRAVITY_MAX = 1900;
+const GRAVITY_STEP = 16;
+const SWEET = 12; // tolerância (px) do "no alvo" — cabeçada bem no centro
+const gravityAt = (touches: number) => Math.min(GRAVITY_MAX, GRAVITY_BASE + touches * GRAVITY_STEP);
 
 type Phase = 'menu' | 'playing' | 'over';
+
+/** Camisas (skins) — só cores, destravam por recorde. Nº sempre curto (≤2 dígitos). */
+type Skin = { id: string; name: string; threshold: number; jersey: string; trim: string; shorts: string; num: string; numColor: string };
+const SKINS: Skin[] = [
+  { id: 'brasil', name: 'Canarinho', threshold: 0, jersey: '#FFD200', trim: '#0A7B3E', shorts: '#1B3FAE', num: '10', numColor: '#0A7B3E' },
+  { id: 'celeste', name: 'Celeste', threshold: 25, jersey: '#6CACE4', trim: '#FFFFFF', shorts: '#0B1B33', num: '10', numColor: '#0B3A6B' },
+  { id: 'tricolor', name: 'Azulão', threshold: 50, jersey: '#1B3FAE', trim: '#FFFFFF', shorts: '#FFFFFF', num: '7', numColor: '#FFFFFF' },
+  { id: 'roxa', name: 'Fantasma', threshold: 75, jersey: '#7C3AED', trim: '#E9D5FF', shorts: '#2A1B5E', num: '9', numColor: '#FFFFFF' },
+  { id: 'lenda', name: 'Lenda', threshold: 100, jersey: '#FFD700', trim: '#111111', shorts: '#111111', num: '7', numColor: '#111111' },
+];
+const skinById = (id: string): Skin => SKINS.find((s) => s.id === id) ?? SKINS[0];
 
 function milestoneFor(t: number): string | null {
   if (t === 10) return 'UAU! 🔥';
@@ -35,20 +52,20 @@ function milestoneFor(t: number): string | null {
   return null;
 }
 
-// ── Boneco (camisa do Brasil) montado com formas — leve, nítido e sem assets ──
-function Player() {
+// ── Boneco montado com formas — leve, nítido e sem assets. Cores vêm da skin. ──
+function Player({ skin }: { skin: Skin }) {
   return (
     <View style={pl.body} pointerEvents="none">
       <View style={pl.head}>
         <View style={pl.hair} />
       </View>
-      <View style={pl.jersey}>
-        <View style={pl.collar} />
-        <View style={[pl.sleeve, pl.sleeveL]} />
-        <View style={[pl.sleeve, pl.sleeveR]} />
-        <Text style={pl.num}>10</Text>
+      <View style={[pl.jersey, { backgroundColor: skin.jersey, borderColor: skin.trim }]}>
+        <View style={[pl.collar, { backgroundColor: skin.trim }]} />
+        <View style={[pl.sleeve, pl.sleeveL, { backgroundColor: skin.trim }]} />
+        <View style={[pl.sleeve, pl.sleeveR, { backgroundColor: skin.trim }]} />
+        <Text style={[pl.num, { color: skin.numColor }]}>{skin.num}</Text>
       </View>
-      <View style={pl.shorts} />
+      <View style={[pl.shorts, { backgroundColor: skin.shorts }]} />
       <View style={pl.legsRow}>
         <View style={pl.leg} />
         <View style={pl.leg} />
@@ -93,6 +110,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   // Ranking ÚNICO: o mundial (entre todos os usuários). Sua pontuação entra nele.
   const [globalScores, setGlobalScores] = useState<GlobalEntry[] | null>(null);
   const [loadingGlobal, setLoadingGlobal] = useState(false);
+  const [skinId, setSkinId] = useState('brasil');
   const myId = useRef<string>('');
 
   // Dimensões da área de jogo.
@@ -103,6 +121,8 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const touchesRef = useRef(0);
   const raf = useRef<number | null>(null);
   const last = useRef(0);
+  // Gravidade atual da partida (sobe com os toques — rampa de dificuldade).
+  const gravityRef = useRef(GRAVITY_BASE);
   // "Quero começar" pendente até a área de jogo ser medida (onLayout). Evita o
   // bug de iniciar com tamanho 0 (a bola "cairia" na hora → fim instantâneo).
   const wantStart = useRef(false);
@@ -117,8 +137,20 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const ballTX = useRef(new Animated.Value(0)).current;
   const ballTY = useRef(new Animated.Value(0)).current;
   const charTX = useRef(new Animated.Value(0)).current;
+  // Tremor do campo (juice) — anima só o CONTÊINER, nunca os 60 pontos da torcida.
+  const shakeX = useRef(new Animated.Value(0)).current;
 
   const record = scores.length ? scores[0].score : 0;
+  const skin = skinById(skinId);
+
+  const doShake = (amp: number) => {
+    Animated.sequence([
+      Animated.timing(shakeX, { toValue: amp, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -amp * 0.7, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: amp * 0.4, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+  };
 
   const refreshGlobal = () => {
     setLoadingGlobal(true);
@@ -130,6 +162,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   useEffect(() => {
     if (visible) {
       getDeviceId().then((id) => { myId.current = id; });
+      loadSkin().then(setSkinId);
       // Carrega apelido + recorde local e SINCRONIZA com o ranking mundial:
       // envia o melhor recorde local (pode ser anterior ao ranking). Como o
       // servidor mantém só o MAIOR por aparelho, sua entrada no mundial passa a
@@ -223,6 +256,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     wantStart.current = false;
     startedRef.current = false;
     playingRef.current = true;
+    gravityRef.current = GRAVITY_BASE; // reinicia a rampa de dificuldade
     setWaiting(true);
     charX.current = w / 2;
     charTX.setValue(w / 2 - CW / 2);
@@ -254,7 +288,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     last.current = t;
 
     const b = ball.current;
-    b.vy += GRAVITY * dt;
+    b.vy += gravityRef.current * dt; // gravidade da rampa (sobe com os toques)
     b.y += b.vy * dt;
     b.x += b.vx * dt;
 
@@ -266,19 +300,22 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     const headY = h - CH + 16;
     if (b.vy > 0 && b.y + R >= headY && b.y + R <= headY + HEAD_BAND) {
       const cx = charX.current;
-      if (Math.abs(b.x - cx) < CW / 2 + R * 0.6) {
+      const off = b.x - cx;
+      if (Math.abs(off) < CW / 2 + R * 0.6) {
         b.y = headY - R;
         b.vy = -BOUNCE;
-        b.vx += (b.x - cx) * 4.5; // desvia conforme onde bate → habilidade
+        b.vx += off * 4.5; // desvia conforme onde bate → habilidade
         b.vx = Math.max(-280, Math.min(280, b.vx));
         touchesRef.current += 1;
         setTouches(touchesRef.current);
+        gravityRef.current = gravityAt(touchesRef.current); // aperta a cada toque
+        const perfect = Math.abs(off) < SWEET; // cabeçada bem no centro da testa
         const ms = milestoneFor(touchesRef.current);
         const isRecord = touchesRef.current === record + 1 && record > 0;
-        if (isRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); }
-        else if (isRecord) { showFlash('Novo recorde! 🎉', 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); }
-        else if (ms) { showFlash(ms, touchesRef.current >= 100 ? 1600 : 900); buzz(Haptics.ImpactFeedbackStyle.Medium); }
-        else buzz(Haptics.ImpactFeedbackStyle.Light); // toque comum: vibração leve
+        if (isRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); doShake(7); }
+        else if (isRecord) { showFlash('Novo recorde! 🎉', 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); doShake(7); }
+        else if (ms) { showFlash(ms, touchesRef.current >= 100 ? 1600 : 900); buzz(Haptics.ImpactFeedbackStyle.Medium); doShake(5); }
+        else buzz(perfect ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light); // centro vibra mais
       }
     }
 
@@ -352,6 +389,34 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
               {record > 0 && <Text style={styles.recordLine}>🏆 Seu recorde: {record} toques</Text>}
 
+              <View style={styles.skinBlock}>
+                <Text style={styles.skinTitle}>👕 Camisas — destravam pelo seu recorde</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.skinRow}>
+                  {SKINS.map((sk) => {
+                    const unlocked = record >= sk.threshold;
+                    const equipped = skinId === sk.id;
+                    return (
+                      <Pressable
+                        key={sk.id}
+                        disabled={!unlocked}
+                        onPress={() => { setSkinId(sk.id); saveSkin(sk.id); }}
+                        style={[styles.skinCard, equipped && styles.skinCardOn, !unlocked && styles.skinCardLocked]}
+                        accessibilityRole="button"
+                        accessibilityLabel={unlocked ? `Equipar camisa ${sk.name}` : `Camisa ${sk.name}, destrava com ${sk.threshold} toques`}
+                      >
+                        <View style={[styles.skinSwatch, { backgroundColor: sk.jersey, borderColor: sk.trim }]}>
+                          <Text style={[styles.skinSwatchNum, { color: sk.numColor }]}>{sk.num}</Text>
+                        </View>
+                        <Text style={styles.skinName} numberOfLines={1}>{sk.name}</Text>
+                        <Text style={[styles.skinLock, equipped && styles.skinLockOn]}>
+                          {unlocked ? (equipped ? '✓ equipada' : 'tocar') : `🔒 ${sk.threshold}`}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
               <View style={styles.rankBlock}>
                 <Text style={styles.rankTitle}>🌎 Ranking mundial</Text>
                 {loadingGlobal && globalScores === null ? (
@@ -386,14 +451,14 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 <Text style={styles.hudTouches}>{touches}</Text>
                 <Text style={styles.hudLabel}>toques · recorde {record}</Text>
               </View>
-              <View style={styles.field} onLayout={onLayout} {...pan.panHandlers}>
+              <Animated.View style={[styles.field, { transform: [{ translateX: shakeX }] }]} onLayout={onLayout} {...pan.panHandlers}>
                 <FieldBg />
                 {flash && <Text style={styles.flash}>{flash}</Text>}
                 <Animated.View style={[styles.ball, { transform: [{ translateX: ballTX }, { translateY: ballTY }] }]} pointerEvents="none">
                   <Text style={styles.ballEmoji}>⚽</Text>
                 </Animated.View>
                 <Animated.View style={[styles.char, { transform: [{ translateX: charTX }] }]} pointerEvents="none">
-                  <Player />
+                  <Player skin={skin} />
                 </Animated.View>
                 {waiting && (
                   <View style={styles.startOverlay} pointerEvents="none">
@@ -401,7 +466,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                     <Text style={styles.startSmall}>A bola cai quando você encostar na tela</Text>
                   </View>
                 )}
-              </View>
+              </Animated.View>
               <Text style={styles.hint}>Arraste o dedo na tela pra mover ⬅️➡️</Text>
             </View>
           )}
@@ -442,6 +507,17 @@ const styles = StyleSheet.create({
   input: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, color: colors.text, fontFamily: fonts.semibold, fontSize: 16, paddingVertical: spacing(3), paddingHorizontal: spacing(4), marginBottom: spacing(4) },
   primaryBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch' },
   primaryText: { color: colors.ink, fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.5 },
+  skinBlock: { marginTop: spacing(4) },
+  skinTitle: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5, marginBottom: spacing(2) },
+  skinRow: { gap: spacing(2), paddingRight: spacing(2) },
+  skinCard: { width: 72, alignItems: 'center', paddingVertical: spacing(2), borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  skinCardOn: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
+  skinCardLocked: { opacity: 0.5 },
+  skinSwatch: { width: 34, height: 34, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: spacing(1) },
+  skinSwatchNum: { fontFamily: fonts.extrabold, fontSize: 14 },
+  skinName: { color: colors.text, fontFamily: fonts.semibold, fontSize: 11.5 },
+  skinLock: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 10, marginTop: 1 },
+  skinLockOn: { color: colors.accent },
   startOverlay: { position: 'absolute', top: '38%', left: 0, right: 0, alignItems: 'center', zIndex: 5, paddingHorizontal: spacing(4) },
   startBig: { color: '#fff', fontFamily: fonts.display, fontSize: 26, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 8, textAlign: 'center' },
   startSmall: { color: 'rgba(255,255,255,0.9)', fontFamily: fonts.semibold, fontSize: 13, marginTop: spacing(1), textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, textAlign: 'center' },

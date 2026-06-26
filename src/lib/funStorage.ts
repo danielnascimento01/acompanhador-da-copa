@@ -9,6 +9,7 @@ import type { QuizMode } from '../data/quiz';
 const KEY_NICK = 'copa2026:nick';
 const KEY_QUIZ_BEST = 'copa2026:quizBest';
 const KEY_GAME = 'copa2026:embaixadinhas';
+const KEY_SKIN = 'copa2026:embaixadinhasSkin';
 
 export type ScoreEntry = { nick: string; score: number };
 
@@ -22,6 +23,22 @@ export async function loadNick(): Promise<string> {
 export async function saveNick(nick: string): Promise<void> {
   try {
     await AsyncStorage.setItem(KEY_NICK, nick.trim().slice(0, 16));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Skin (camisa) equipada nas embaixadinhas. Default = 'brasil'. */
+export async function loadSkin(): Promise<string> {
+  try {
+    return (await AsyncStorage.getItem(KEY_SKIN)) ?? 'brasil';
+  } catch {
+    return 'brasil';
+  }
+}
+export async function saveSkin(id: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEY_SKIN, id);
   } catch {
     /* ignore */
   }
