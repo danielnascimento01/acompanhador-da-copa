@@ -85,8 +85,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const [newRecord, setNewRecord] = useState(false);
   // Mostra "toque pra começar" enquanto a bola fica flutuando, antes do 1º toque.
   const [waiting, setWaiting] = useState(false);
-  // Ranking: 'global' (online) ou 'local' (este aparelho).
-  const [rankTab, setRankTab] = useState<'global' | 'local'>('global');
+  // Ranking ÚNICO: o mundial (entre todos os usuários). Sua pontuação entra nele.
   const [globalScores, setGlobalScores] = useState<GlobalEntry[] | null>(null);
   const [loadingGlobal, setLoadingGlobal] = useState(false);
   const myId = useRef<string>('');
@@ -337,56 +336,28 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
               {record > 0 && <Text style={styles.recordLine}>🏆 Seu recorde: {record} toques</Text>}
 
               <View style={styles.rankBlock}>
-                <View style={styles.rankTabs}>
-                  <Pressable
-                    style={[styles.rankTab, rankTab === 'global' && styles.rankTabActive]}
-                    onPress={() => { setRankTab('global'); if (globalScores === null) refreshGlobal(); }}
-                    accessibilityRole="button" accessibilityLabel="Ranking global"
-                  >
-                    <Text style={[styles.rankTabText, rankTab === 'global' && styles.rankTabTextActive]}>🌎 Global</Text>
+                <Text style={styles.rankTitle}>🌎 Ranking mundial</Text>
+                {loadingGlobal && globalScores === null ? (
+                  <Text style={styles.rankNote}>Carregando ranking…</Text>
+                ) : globalScores === null ? (
+                  <Pressable onPress={refreshGlobal} accessibilityRole="button" accessibilityLabel="Tentar carregar o ranking de novo">
+                    <Text style={styles.rankNote}>Sem internet pra carregar o ranking. Toque pra tentar de novo.</Text>
                   </Pressable>
-                  <Pressable
-                    style={[styles.rankTab, rankTab === 'local' && styles.rankTabActive]}
-                    onPress={() => setRankTab('local')}
-                    accessibilityRole="button" accessibilityLabel="Ranking deste aparelho"
-                  >
-                    <Text style={[styles.rankTabText, rankTab === 'local' && styles.rankTabTextActive]}>📱 Este aparelho</Text>
-                  </Pressable>
-                </View>
-
-                {rankTab === 'global' ? (
-                  loadingGlobal && globalScores === null ? (
-                    <Text style={styles.rankNote}>Carregando ranking…</Text>
-                  ) : globalScores === null ? (
-                    <Pressable onPress={refreshGlobal} accessibilityRole="button" accessibilityLabel="Tentar carregar o ranking de novo">
-                      <Text style={styles.rankNote}>Sem internet pra carregar o ranking. Toque pra tentar de novo.</Text>
-                    </Pressable>
-                  ) : globalScores.length === 0 ? (
-                    <Text style={styles.rankNote}>Ninguém no ranking ainda. Jogue e seja o primeiro! 🥇</Text>
-                  ) : (
-                    globalScores.map((s, i) => {
-                      const mine = s.id === myId.current;
-                      return (
-                        <View key={s.id} style={[styles.rankRow, mine && styles.rankRowMine]}>
-                          <Text style={styles.rankPos}>{i + 1}º</Text>
-                          <Text style={[styles.rankNick, mine && styles.rankNickMine]} numberOfLines={1}>
-                            {s.nick}{mine ? ' (você)' : ''}
-                          </Text>
-                          <Text style={styles.rankScore}>{s.score}</Text>
-                        </View>
-                      );
-                    })
-                  )
-                ) : scores.length === 0 ? (
-                  <Text style={styles.rankNote}>Jogue pra entrar no ranking deste aparelho.</Text>
+                ) : globalScores.length === 0 ? (
+                  <Text style={styles.rankNote}>Ninguém no ranking ainda. Jogue e seja o primeiro! 🥇</Text>
                 ) : (
-                  scores.map((s, i) => (
-                    <View key={i} style={styles.rankRow}>
-                      <Text style={styles.rankPos}>{i + 1}º</Text>
-                      <Text style={styles.rankNick} numberOfLines={1}>{s.nick}</Text>
-                      <Text style={styles.rankScore}>{s.score}</Text>
-                    </View>
-                  ))
+                  globalScores.map((s, i) => {
+                    const mine = s.id === myId.current;
+                    return (
+                      <View key={s.id} style={[styles.rankRow, mine && styles.rankRowMine]}>
+                        <Text style={styles.rankPos}>{i + 1}º</Text>
+                        <Text style={[styles.rankNick, mine && styles.rankNickMine]} numberOfLines={1}>
+                          {s.nick}{mine ? ' (você)' : ''}
+                        </Text>
+                        <Text style={styles.rankScore}>{s.score}</Text>
+                      </View>
+                    );
+                  })
                 )}
               </View>
             </ScrollView>
@@ -460,11 +431,6 @@ const styles = StyleSheet.create({
   recordLine: { color: colors.amber, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(4) },
   rankBlock: { marginTop: spacing(5) },
   rankTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(2) },
-  rankTabs: { flexDirection: 'row', gap: spacing(2), marginBottom: spacing(3) },
-  rankTab: { flex: 1, paddingVertical: spacing(2), borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center' },
-  rankTabActive: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
-  rankTabText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
-  rankTabTextActive: { color: colors.accent },
   rankNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', paddingVertical: spacing(5), lineHeight: 19 },
   rankRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2), borderBottomWidth: 1, borderBottomColor: colors.border },
   rankRowMine: { backgroundColor: 'rgba(20,224,138,0.08)', borderRadius: radius.sm },
