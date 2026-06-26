@@ -32,8 +32,8 @@ const REAL_BANNER: { ios: string; android: string } = {
 // Criar no AdMob → Bloco "Premiado" (1 por plataforma) e colar aqui. Enquanto
 // vazios, o recurso de "assistir anúncio" fica OCULTO em produção (não engana).
 const REAL_REWARDED: { ios: string; android: string } = {
-  ios: '',     // TODO: ca-app-pub-3514963763580625/XXXXXXXXXX (rewarded iOS)
-  android: '', // TODO: ca-app-pub-3514963763580625/XXXXXXXXXX (rewarded Android)
+  ios: 'ca-app-pub-3514963763580625/1459084142',
+  android: 'ca-app-pub-3514963763580625/5929233655',
 };
 
 const realBanner = (Platform.OS === 'ios' ? REAL_BANNER.ios : REAL_BANNER.android) || '';
