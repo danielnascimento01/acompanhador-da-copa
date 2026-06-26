@@ -5,9 +5,11 @@ import {
 } from 'react-native';
 
 import { addGameScore, loadGameScores, loadNick, saveNick, type ScoreEntry } from '../lib/funStorage';
+import { fetchGlobalLeaderboard, getDeviceId, submitGlobalScore, type GlobalEntry } from '../lib/leaderboard';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
+const GAME = 'embaixadinhas';
 
 // Tamanhos (px) e física do mini-game.
 const CW = 64;   // largura do boneco
@@ -83,6 +85,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const [newRecord, setNewRecord] = useState(false);
   // Mostra "toque pra começar" enquanto a bola fica flutuando, antes do 1º toque.
   const [waiting, setWaiting] = useState(false);
+  // Ranking: 'global' (online) ou 'local' (este aparelho).
+  const [rankTab, setRankTab] = useState<'global' | 'local'>('global');
+  const [globalScores, setGlobalScores] = useState<GlobalEntry[] | null>(null);
+  const [loadingGlobal, setLoadingGlobal] = useState(false);
+  const myId = useRef<string>('');
 
   // Dimensões da área de jogo.
   const dims = useRef({ w: 0, h: 0 });
@@ -109,10 +116,19 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
   const record = scores.length ? scores[0].score : 0;
 
+  const refreshGlobal = () => {
+    setLoadingGlobal(true);
+    fetchGlobalLeaderboard(GAME)
+      .then((r) => setGlobalScores(r))
+      .finally(() => setLoadingGlobal(false));
+  };
+
   useEffect(() => {
     if (visible) {
       loadNick().then(setNick);
       loadGameScores().then(setScores);
+      getDeviceId().then((id) => { myId.current = id; });
+      refreshGlobal();
     } else {
       stop();
       wantStart.current = false;
@@ -275,6 +291,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     setPhase('over');
     const top = await addGameScore(nick, final);
     setScores(top);
+    // Envia pro ranking global (silencioso se offline). Só vale a pena se tocou.
+    if (final > 0) {
+      const g = await submitGlobalScore(GAME, nick, final);
+      if (g) setGlobalScores(g);
+    }
   };
 
   const shareScore = () => {
@@ -313,20 +334,61 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 <Text style={styles.primaryText}>▶ Jogar</Text>
               </Pressable>
 
-              {record > 0 && <Text style={styles.recordLine}>🏆 Recorde: {record} toques</Text>}
+              {record > 0 && <Text style={styles.recordLine}>🏆 Seu recorde: {record} toques</Text>}
 
-              {scores.length > 0 && (
-                <View style={styles.rankBlock}>
-                  <Text style={styles.rankTitle}>🏅 Ranking</Text>
-                  {scores.map((s, i) => (
+              <View style={styles.rankBlock}>
+                <View style={styles.rankTabs}>
+                  <Pressable
+                    style={[styles.rankTab, rankTab === 'global' && styles.rankTabActive]}
+                    onPress={() => { setRankTab('global'); if (globalScores === null) refreshGlobal(); }}
+                    accessibilityRole="button" accessibilityLabel="Ranking global"
+                  >
+                    <Text style={[styles.rankTabText, rankTab === 'global' && styles.rankTabTextActive]}>🌎 Global</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.rankTab, rankTab === 'local' && styles.rankTabActive]}
+                    onPress={() => setRankTab('local')}
+                    accessibilityRole="button" accessibilityLabel="Ranking deste aparelho"
+                  >
+                    <Text style={[styles.rankTabText, rankTab === 'local' && styles.rankTabTextActive]}>📱 Este aparelho</Text>
+                  </Pressable>
+                </View>
+
+                {rankTab === 'global' ? (
+                  loadingGlobal && globalScores === null ? (
+                    <Text style={styles.rankNote}>Carregando ranking…</Text>
+                  ) : globalScores === null ? (
+                    <Pressable onPress={refreshGlobal} accessibilityRole="button" accessibilityLabel="Tentar carregar o ranking de novo">
+                      <Text style={styles.rankNote}>Sem internet pra carregar o ranking. Toque pra tentar de novo.</Text>
+                    </Pressable>
+                  ) : globalScores.length === 0 ? (
+                    <Text style={styles.rankNote}>Ninguém no ranking ainda. Jogue e seja o primeiro! 🥇</Text>
+                  ) : (
+                    globalScores.map((s, i) => {
+                      const mine = s.id === myId.current;
+                      return (
+                        <View key={s.id} style={[styles.rankRow, mine && styles.rankRowMine]}>
+                          <Text style={styles.rankPos}>{i + 1}º</Text>
+                          <Text style={[styles.rankNick, mine && styles.rankNickMine]} numberOfLines={1}>
+                            {s.nick}{mine ? ' (você)' : ''}
+                          </Text>
+                          <Text style={styles.rankScore}>{s.score}</Text>
+                        </View>
+                      );
+                    })
+                  )
+                ) : scores.length === 0 ? (
+                  <Text style={styles.rankNote}>Jogue pra entrar no ranking deste aparelho.</Text>
+                ) : (
+                  scores.map((s, i) => (
                     <View key={i} style={styles.rankRow}>
                       <Text style={styles.rankPos}>{i + 1}º</Text>
                       <Text style={styles.rankNick} numberOfLines={1}>{s.nick}</Text>
                       <Text style={styles.rankScore}>{s.score}</Text>
                     </View>
-                  ))}
-                </View>
-              )}
+                  ))
+                )}
+              </View>
             </ScrollView>
           )}
 
@@ -398,9 +460,17 @@ const styles = StyleSheet.create({
   recordLine: { color: colors.amber, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(4) },
   rankBlock: { marginTop: spacing(5) },
   rankTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 14, marginBottom: spacing(2) },
+  rankTabs: { flexDirection: 'row', gap: spacing(2), marginBottom: spacing(3) },
+  rankTab: { flex: 1, paddingVertical: spacing(2), borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center' },
+  rankTabActive: { borderColor: colors.accent, backgroundColor: 'rgba(20,224,138,0.10)' },
+  rankTabText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13 },
+  rankTabTextActive: { color: colors.accent },
+  rankNote: { color: colors.textFaint, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', paddingVertical: spacing(5), lineHeight: 19 },
   rankRow: { flexDirection: 'row', alignItems: 'center', gap: spacing(3), paddingVertical: spacing(2), borderBottomWidth: 1, borderBottomColor: colors.border },
+  rankRowMine: { backgroundColor: 'rgba(20,224,138,0.08)', borderRadius: radius.sm },
   rankPos: { color: colors.textFaint, fontFamily: fonts.extrabold, fontSize: 13, width: 28 },
   rankNick: { flex: 1, color: colors.text, fontFamily: fonts.semibold, fontSize: 14 },
+  rankNickMine: { color: colors.accent, fontFamily: fonts.bold },
   rankScore: { color: colors.accent, fontFamily: fonts.display, fontSize: 16 },
   playWrap: { flex: 1 },
   hud: { alignItems: 'center', marginBottom: spacing(2) },

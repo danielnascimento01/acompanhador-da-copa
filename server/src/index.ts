@@ -15,6 +15,7 @@ import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
 import { wantsGoal, wantsFullTime, type SubscriberPrefs } from './filter';
 import { buildGoalNotification, buildFullTimeNotification, pickScorerFromDetails } from './notify';
+import { submitScore, topScores } from './leaderboard';
 
 export interface Env {
   KV: KVNamespace;
@@ -324,6 +325,26 @@ async function handleScorers(env: Env): Promise<Response> {
   return json({ scorers, ok: true });
 }
 
+/** Ranking global dos mini-games (aba Diversão). */
+async function handleScoreSubmit(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  let body: { game?: unknown; id?: unknown; nick?: unknown; score?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+  const result = await submitScore(env.KV, body, Date.now());
+  if (!result.ok) return json({ error: result.error }, 400);
+  return json({ ok: true, top: result.top });
+}
+
+async function handleLeaderboard(url: URL, env: Env): Promise<Response> {
+  const game = url.searchParams.get('game') ?? '';
+  const top = await topScores(env.KV, game);
+  return json({ ok: true, top });
+}
+
 async function handleHealth(env: Env): Promise<Response> {
   const subs = await loadSubscribers(env);
   const tokens = Object.keys(subs);
@@ -343,9 +364,23 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === '/api/register') return handleRegister(request, env);
-    if (url.pathname === '/api/scorers')  return handleScorers(env);
-    if (url.pathname === '/api/health')   return handleHealth(env);
+    // Preflight CORS (caso o app rode na web algum dia).
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
+    }
+
+    if (url.pathname === '/api/register')    return handleRegister(request, env);
+    if (url.pathname === '/api/scorers')     return handleScorers(env);
+    if (url.pathname === '/api/score')       return handleScoreSubmit(request, env);
+    if (url.pathname === '/api/leaderboard') return handleLeaderboard(url, env);
+    if (url.pathname === '/api/health')      return handleHealth(env);
 
     return new Response('Copa 2026 Worker', { status: 200 });
   },
