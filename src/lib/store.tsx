@@ -54,6 +54,9 @@ type Store = {
   /** Popup de novidade deve aparecer? (uma vez, só p/ quem já usava o app). */
   announceVisible: boolean;
   dismissAnnounce: () => void;
+  /** Pedido de avaliação deve aparecer? (uma vez, usuário engajado). */
+  ratePromptVisible: boolean;
+  dismissRatePrompt: () => void;
   completeOnboarding: () => void;
   refresh: () => Promise<void>;
   setPrediction: (matchId: string, p: Prediction) => void;
@@ -74,6 +77,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [online, setOnline] = useState(true);
   const [predictions, setPredictions] = useState<PredictionMap>({});
   const [announceVisible, setAnnounceVisible] = useState(false);
+  const [ratePromptVisible, setRatePromptVisible] = useState(false);
 
   // Evita reagendar/persistir antes do carregamento inicial.
   const loaded = useRef(false);
@@ -95,6 +99,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     saveLastAnnounce(CURRENT_ANNOUNCE_ID);
   }, []);
 
+  // Fecha o pedido de avaliação e marca como feito (não importuna de novo).
+  const dismissRatePrompt = useCallback(() => {
+    setRatePromptVisible(false);
+    setSettings((prev) => {
+      if (prev.ratePromptDone) return prev;
+      const next = { ...prev, ratePromptDone: true };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     (async () => {
       const [teams, s, cached, ob, preds, lastAnnounce] = await Promise.all([
@@ -106,12 +121,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         loadLastAnnounce(),
       ]);
       setSelectedState(new Set(teams));
-      setSettings(s);
       setOnboarded(ob);
+      // Conta esta abertura e persiste na hora (o efeito de persistência pula a
+      // 1ª escrita pós-load). Base para pedir avaliação no momento certo.
+      const opens = (s.appOpens ?? 0) + 1;
+      const s2 = { ...s, appOpens: opens };
+      setSettings(s2);
+      saveSettings(s2);
       // Popup de novidade: só para quem JÁ usava o app (onboarded numa sessão
-      // anterior) e ainda não viu este aviso. Usuário novo nunca vê (a novidade
-      // já faz parte do app para ele).
-      if (ob && lastAnnounce !== CURRENT_ANNOUNCE_ID) setAnnounceVisible(true);
+      // anterior) e ainda não viu este aviso. Usuário novo nunca vê.
+      const showAnnounce = ob && lastAnnounce !== CURRENT_ANNOUNCE_ID;
+      if (showAnnounce) {
+        setAnnounceVisible(true);
+      } else if (ob && opens >= 3 && !s.ratePromptDone) {
+        // Avaliação: usuário engajado (3ª+ abertura), uma vez, e NUNCA junto do
+        // popup de novidade (não empilha 2 modais).
+        setRatePromptVisible(true);
+      }
       // null = falha de leitura: começa vazio em memória, mas NÃO regrava o
       // disco até o usuário mexer (protege os palpites salvos).
       setPredictions(preds ?? {});
@@ -358,6 +384,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       registerForGoalPush,
       announceVisible,
       dismissAnnounce,
+      ratePromptVisible,
+      dismissRatePrompt,
       completeOnboarding: () => {
         setOnboarded(true);
         saveOnboarded(true);
@@ -375,7 +403,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }),
       clearAllPredictions: () => mutatePredictions(() => ({})),
     }),
-    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh, grantSupporter, registerForGoalPush, announceVisible, dismissAnnounce],
+    [ready, selected, settings, onboarded, matches, refreshing, updatedAt, online, predictions, refresh, grantSupporter, registerForGoalPush, announceVisible, dismissAnnounce, ratePromptVisible, dismissRatePrompt],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

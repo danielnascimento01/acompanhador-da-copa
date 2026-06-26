@@ -24,6 +24,7 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SupportSheet } from './src/screens/SupportScreen';
 import { AnnouncementSheet } from './src/screens/AnnouncementSheet';
+import { RatePrompt } from './src/screens/RatePrompt';
 import { colors, fonts, gradients, spacing } from './src/lib/theme';
 
 type TabKey = 'schedule' | 'standings' | 'teams' | 'settings';
@@ -109,6 +110,7 @@ function Shell() {
       </View>
 
       <AnnouncementSheet />
+      <RatePrompt />
     </View>
   );
 }

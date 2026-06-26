@@ -12,8 +12,10 @@ import { teamFlag, teamName } from '../data/teams';
 import { formatDayLong, formatTime } from './format';
 
 const APP = 'Acompanhador da Copa 2026';
-const LINK = 'https://danielnascimento01.github.io/acompanhador-da-copa/';
-const SIG = `\n\nvia ${APP}\n${LINK}`;
+// Links DIRETOS das lojas — cada compartilhamento vira um convite de download.
+const PLAY = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
+const APPSTORE = 'https://apps.apple.com/app/id6779020711';
+const SIG = `\n\n— ${APP}\n📲 Baixe grátis:\n🤖 Android: ${PLAY}\n🍏 iPhone: ${APPSTORE}`;
 
 /** Texto de UM jogo: placar (se já tem) ou data/hora do confronto. */
 export function matchShareText(m: Match): string {

@@ -76,6 +76,10 @@ export type Settings = {
   fullTimePush: 'all' | 'mine' | 'off';
   /** Jogos específicos seguidos para push de gol (ids de Match), além das seleções. */
   followedMatches: string[];
+  /** Quantas vezes o app foi aberto (p/ pedir avaliação no momento certo). */
+  appOpens: number;
+  /** Já mostramos o pedido de avaliação? (mostra só uma vez, não importuna). */
+  ratePromptDone: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -89,6 +93,8 @@ export const DEFAULT_SETTINGS: Settings = {
   goalPush: 'mine',
   fullTimePush: 'off',
   followedMatches: [],
+  appOpens: 0,
+  ratePromptDone: false,
 };
 
 export async function loadSelectedTeams(): Promise<string[]> {
