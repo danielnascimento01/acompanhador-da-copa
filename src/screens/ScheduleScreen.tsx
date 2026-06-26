@@ -136,7 +136,7 @@ export function ScheduleScreen() {
       <View style={styles.noBetsBanner} accessibilityRole="text">
         <Text style={styles.noBetsIcon}>🚫</Text>
         <Text style={styles.noBetsText}>
-          Temos noção do prejuízo que as apostas podem trazer. Aqui você nunca verá anúncios de bets.
+          Temos noção do prejuízo que apostas podem trazer. Por isso, aqui você nunca verá anúncios de bets.
         </Text>
       </View>
       <View style={styles.header}>
