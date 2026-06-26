@@ -3,8 +3,10 @@
  * Determinística por seed. Toda a matemática é genérica (médias ponderadas +
  * modelo de gols de Poisson), construída do zero. A engine é agnóstica ao rating.
  */
-import { makeRng, type Rng } from './rng';
-import type { CampaignResult, Forces, GroupRow, KnockoutGame, Player, Position, Slot } from './types';
+import { makeRng, pickWeighted, type Rng } from './rng';
+import type { CampaignResult, Forces, Goal, GroupRow, KnockoutGame, PenaltyShootout, Player, Position, Slot } from './types';
+
+export type Lineup = { slots: Slot[]; players: (Player | null)[] };
 
 // ── Pesos de ataque/defesa por posição (constantes de balanceamento) ───────────
 export const PESO_ATAQUE: Record<Position, number> = {
@@ -89,10 +91,64 @@ function outcomeOf(gf: number, ga: number): 'V' | 'E' | 'D' {
   return gf > ga ? 'V' : gf < ga ? 'D' : 'E';
 }
 
+/** Pool ofensivo (jogadores de pegada de ataque) para atribuir os autores dos gols. */
+function offensivePool(lineup?: Lineup): { players: Player[]; weights: number[] } {
+  const players: Player[] = [];
+  const weights: number[] = [];
+  if (lineup) {
+    lineup.slots.forEach((s, i) => {
+      const p = lineup.players[i];
+      const w = PESO_ATAQUE[s.pos];
+      if (p && w > 0) { players.push(p); weights.push(w * p.rating); }
+    });
+  }
+  return { players, weights };
+}
+
+/** Gera minuto + autor de cada gol de uma partida (subseed próprio, não altera placares). */
+function genGoals(seed: string, gi: number, gf: number, ga: number, pool: { players: Player[]; weights: number[] }): { myGoals: Goal[]; advGoals: Goal[] } {
+  const rng = makeRng(`${seed}:copa:min:${gi}`);
+  const used = new Set<number>();
+  const minute = (): number => {
+    let m = 1 + Math.floor(90 * Math.pow(rng(), 0.85));
+    while (used.has(m)) m = (m % 90) + 1;
+    used.add(m);
+    return m;
+  };
+  const myGoals: Goal[] = [];
+  for (let i = 0; i < gf; i++) {
+    const scorer = pool.players.length ? pickWeighted(rng, pool.players, pool.weights).name : null;
+    myGoals.push({ minute: minute(), scorer });
+  }
+  const advGoals: Goal[] = [];
+  for (let i = 0; i < ga; i++) advGoals.push({ minute: minute(), scorer: null });
+  myGoals.sort((a, b) => a.minute - b.minute);
+  advGoals.sort((a, b) => a.minute - b.minute);
+  return { myGoals, advGoals };
+}
+
+/** Encenação dos pênaltis coerente com o vencedor já decidido (meWin). */
+function genShootout(seed: string, gi: number, meWin: boolean): PenaltyShootout {
+  const rng = makeRng(`${seed}:copa:pen:${gi}`);
+  const kick = (): boolean => rng() < 0.78;
+  const me: boolean[] = [];
+  const adv: boolean[] = [];
+  for (let i = 0; i < 5; i++) { me.push(kick()); adv.push(kick()); }
+  const count = (a: boolean[]) => a.filter(Boolean).length;
+  while (count(me) === count(adv)) { me.push(kick()); adv.push(kick()); } // morte súbita
+  let scoreMe = count(me), scoreAdv = count(adv);
+  // Ajusta pro vencedor decidido pela probabilidade: troca os lados se divergir.
+  if ((scoreMe > scoreAdv) !== meWin) {
+    return { me: adv, adv: me, scoreMe: scoreAdv, scoreAdv: scoreMe };
+  }
+  return { me, adv, scoreMe, scoreAdv };
+}
+
 /** Simula a campanha inteira (7 jogos) a partir da força do time e da seed. */
-export function simulateCampaign(forces: Forces, seed: string): CampaignResult {
+export function simulateCampaign(forces: Forces, seed: string, lineup?: Lineup): CampaignResult {
   const rng = makeRng(`${seed}:copa`);
   const me: Team = { name: 'Seu time', isMe: true, f: forces };
+  const pool = offensivePool(lineup);
 
   // ── Fase de grupos: round-robin de 4 (você + 3 adversários 68/72/76) ──
   const o1 = opp('Adv. 68', GRUPO_OVERALLS[0]);
@@ -125,8 +181,9 @@ export function simulateCampaign(forces: Forces, seed: string): CampaignResult {
       const myGf = a.isMe ? ga : gb;
       const myGa = a.isMe ? gb : ga;
       const advOverall = (a.isMe ? b : a).f.overall;
-      const n = groupGames.length + 1;
-      groupGames.push({ label: `Grupo · ${n}º jogo`, advOverall, gf: myGf, ga: myGa, outcome: outcomeOf(myGf, myGa) });
+      const gi = groupGames.length;
+      const goals = genGoals(seed, gi, myGf, myGa, pool);
+      groupGames.push({ label: `Grupo · ${gi + 1}º jogo`, advOverall, gf: myGf, ga: myGa, outcome: outcomeOf(myGf, myGa), ...goals });
     }
   });
 
@@ -153,15 +210,18 @@ export function simulateCampaign(forces: Forces, seed: string): CampaignResult {
     goalsFor += ga; goalsAgainst += gb;
     if (outcome === 'V') wins++; else if (outcome === 'E') draws++; else losses++;
 
+    const gi = 3 + knockouts.length; // grupos usaram 0,1,2
+    const goals = genGoals(seed, gi, ga, gb, pool);
+
     let penalties: KnockoutGame['penalties'] = null;
     let advancedThis = outcome === 'V';
     if (outcome === 'E') {
       const prob = probPenaltis(me.f.overall, ko.overall);
       const meWin = rng() < prob;
-      penalties = { meWin, prob };
+      penalties = { meWin, prob, shootout: genShootout(seed, gi, meWin) };
       advancedThis = meWin;
     }
-    knockouts.push({ phase: ko.phase, label: ko.label, advOverall: ko.overall, gf: ga, ga: gb, outcome, penalties, advanced: advancedThis });
+    knockouts.push({ phase: ko.phase, label: ko.label, advOverall: ko.overall, gf: ga, ga: gb, outcome, ...goals, penalties, advanced: advancedThis });
     if (!advancedThis) { alive = false; eliminatedAt = ko.phase; }
   }
 

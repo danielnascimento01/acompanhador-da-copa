@@ -117,5 +117,39 @@ for (let i = 0; i < 300; i++) {
 }
 check('perfect ⇒ campeão com 7 vitórias e 0 tropeços', badInv === 0);
 
+// ── 6. Artilheiros, minutos e pênaltis ───────────────────────────────────────
+console.log('\n— Artilheiros / minutos / pênaltis —');
+{
+  const slots = slotsFor('4-3-3', 'equilibrado');
+  const players: Player[] = slots.map((sl, i) => ({ id: `g${i}`, name: `Jogador ${i}`, pos: [sl.pos], rating: 80, num: i, legend: false }));
+  const lineup = { slots, players };
+  const forces = calcForces(slots, players);
+  let badGoals = 0, badScorer = 0, badMinute = 0, badPen = 0, pens = 0;
+  for (let i = 0; i < 200; i++) {
+    const r = simulateCampaign(forces, `gols-${i}`, lineup);
+    const games = [...r.group.games, ...r.knockouts];
+    for (const g of games) {
+      if (g.myGoals.length !== g.gf || g.advGoals.length !== g.ga) badGoals++;
+      for (const go of g.myGoals) { if (!go.scorer) badScorer++; if (go.minute < 1 || go.minute > 90) badMinute++; }
+    }
+    for (const k of r.knockouts) {
+      if (k.penalties) {
+        pens++;
+        const s = k.penalties.shootout;
+        if ((s.scoreMe > s.scoreAdv) !== k.penalties.meWin) badPen++;
+        if (s.scoreMe === s.scoreAdv) badPen++;
+      }
+    }
+  }
+  check('nº de gols por jogo bate com o placar', badGoals === 0);
+  check('todo gol meu tem autor (pool ofensivo)', badScorer === 0);
+  check('todo minuto entre 1 e 90', badMinute === 0);
+  check(`pênaltis coerentes com o vencedor (${pens} disputas)`, badPen === 0 && pens > 0);
+  // determinismo inclui gols/pênaltis
+  const a = JSON.stringify(simulateCampaign(forces, 'det-pen', lineup));
+  const b = JSON.stringify(simulateCampaign(forces, 'det-pen', lineup));
+  check('determinismo com lineup (gols+pênaltis idênticos)', a === b);
+}
+
 console.log(`\n${fail === 0 ? '✅' : '❌'} Dado de Craque: ${pass} ok, ${fail} falhas`);
 if (fail > 0) process.exit(1);

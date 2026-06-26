@@ -31,6 +31,12 @@ export type Slot = { pos: Position; x: number; y: number };
 
 export type Forces = { attack: number; defense: number; overall: number };
 
+/** Um gol numa partida: minuto e (se for nosso) o autor. */
+export type Goal = { minute: number; scorer: string | null };
+
+/** Sequência de pênaltis (encenação coerente com o vencedor já decidido). */
+export type PenaltyShootout = { me: boolean[]; adv: boolean[]; scoreMe: number; scoreAdv: number };
+
 /** Resultado de uma partida (na perspectiva do nosso time). */
 export type MatchResult = {
   gf: number;        // gols a favor
@@ -52,13 +58,25 @@ export type KnockoutGame = {
   gf: number;
   ga: number;
   outcome: 'V' | 'E' | 'D';
-  penalties: { meWin: boolean; prob: number } | null;
+  myGoals: Goal[];
+  advGoals: Goal[];
+  penalties: { meWin: boolean; prob: number; shootout: PenaltyShootout } | null;
   advanced: boolean;
+};
+
+export type GroupGame = {
+  label: string;
+  advOverall: number;
+  gf: number;
+  ga: number;
+  outcome: 'V' | 'E' | 'D';
+  myGoals: Goal[];
+  advGoals: Goal[];
 };
 
 export type CampaignResult = {
   group: {
-    games: { label: string; advOverall: number; gf: number; ga: number; outcome: 'V' | 'E' | 'D' }[];
+    games: GroupGame[];
     table: GroupRow[];
     rank: number;
     advanced: boolean;
