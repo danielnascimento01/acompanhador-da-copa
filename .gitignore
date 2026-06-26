@@ -39,3 +39,6 @@ yarn-error.*
 # Artefatos de loja (regeneráveis; binários pesados)
 store/build/
 store/screenshots/
+
+# Material de referência do jogo de draft (PI de terceiro — não versionar)
+files7a0/
