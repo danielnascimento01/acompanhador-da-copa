@@ -2,9 +2,8 @@
  * Regressão do "X jogos hoje" (planAll / planDailyDigests).
  * Roda com: npx tsx scripts/daily-digest.test.ts
  *
- * Bug que isto trava: o resumo diário vinha FILTRADO pelas seleções marcadas
- * (mostrou "2 jogos hoje" quando havia 4). O resumo tem que listar TODOS os jogos
- * do dia; só os avisos de "jogo começando" é que filtram pelas seleções.
+ * Comportamento: resumo diário e avisos de "começando" são das seleções marcadas.
+ * Sem nenhuma seleção marcada, o resumo cai pra todos os jogos do dia.
  */
 import type { Match } from '../src/data/fixtures';
 import type { Settings } from '../src/lib/storage';
@@ -45,18 +44,24 @@ const settings = {
 // "Agora" às 08:00 BRT do dia → resumo das 09:00 ainda no futuro.
 const now = new Date(`${D}T11:00:00Z`);
 
-// planDailyDigests recebendo TODOS → conta 4.
+// planDailyDigests lista exatamente o que recebe (aqui os 4).
 const digests = planDailyDigests(matches, settings, now);
 check('há um resumo diário', digests.length === 1);
-check('resumo conta os 4 jogos do dia (não 2)', digests[0]?.title.includes('4 jogos'));
-check('corpo do resumo tem 4 linhas', (digests[0]?.body.split('\n').length) === 4);
+check('lista o que recebe (4 jogos)', digests[0]?.body.split('\n').length === 4);
 
-// planAll: resumo continua com 4; avisos de "começando" só das 2 marcadas.
+// planAll com 2 seleções marcadas → resumo só dos 2 jogos delas; começando = 2.
 const planned = planAll(matches, teamIds, settings, now, 16, 60);
 const digest = planned.find((p) => p.data.type === 'daily-digest');
 const starts = planned.filter((p) => p.data.type === 'match-start');
-check('planAll: resumo com os 4 jogos', !!digest && digest.title.includes('4 jogos'));
-check('planAll: avisos de "começando" só das 2 seleções marcadas', starts.length === 2);
+check('resumo só das seleções marcadas (2 jogos)', !!digest && digest.title.includes('2 jogos'));
+check('avisos de "começando" só das 2 seleções', starts.length === 2);
+
+// planAll SEM seleção marcada → resumo cai pra todos os 4 jogos do dia.
+const plannedAll = planAll(matches, [], settings, now, 16, 60);
+const digestAll = plannedAll.find((p) => p.data.type === 'daily-digest');
+const startsAll = plannedAll.filter((p) => p.data.type === 'match-start');
+check('sem seleção marcada → resumo com todos (4 jogos)', !!digestAll && digestAll.title.includes('4 jogos'));
+check('sem seleção marcada → nenhum aviso de "começando"', startsAll.length === 0);
 
 console.log(`\n${fail === 0 ? '✅' : '❌'} Resumo diário: ${pass} ok, ${fail} falhas`);
 if (fail > 0) process.exit(1);

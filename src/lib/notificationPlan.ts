@@ -3,9 +3,9 @@
  * testável fora do app. Decide O QUÊ e QUANDO notificar; o agendamento em si
  * (expo-notifications) fica em notifications.ts.
  *
- * Regra importante: o resumo diário "X jogos hoje" lista TODOS os jogos do dia
- * (é pra repassar a grade); os avisos de "jogo começando" é que são filtrados
- * pelas seleções marcadas. Não misturar as duas listas (bug do "2 de 4 jogos").
+ * Regra: tanto o resumo diário "X jogos hoje" quanto os avisos de "jogo começando"
+ * são das SELEÇÕES MARCADAS pelo usuário. Exceção: se ele não marcou nenhuma
+ * seleção, o resumo mostra todos os jogos do dia (senão não receberia nada).
  */
 import { filterByTeams, isFinished, kickoff, type Match } from '../data/fixtures';
 import { teamName, teamFlag } from '../data/teams';
@@ -42,7 +42,7 @@ export function planMatchStartNotifications(matches: Match[], settings: Settings
   return out;
 }
 
-/** Resumo diário com TODOS os jogos do dia (recebe a lista COMPLETA, não filtrada). */
+/** Resumo diário "X jogos hoje" a partir da lista de jogos recebida (já escolhida pelo chamador). */
 export function planDailyDigests(matches: Match[], settings: Settings, now: Date): PlannedNotification[] {
   if (!settings.dailyDigest) return [];
 
@@ -84,10 +84,11 @@ export function byDateAsc(a: PlannedNotification, b: PlannedNotification): numbe
 }
 
 /**
- * Decide a agenda final (puro): resumo diário a partir de TODOS os jogos não
- * encerrados; avisos de "começando" só das seleções marcadas. Reserva até
- * maxDigests resumos e preenche o resto com os avisos mais próximos.
- * É aqui que mora a separação das listas — testada em scripts/daily-digest.test.ts.
+ * Decide a agenda final (puro): resumo diário e avisos de "começando", ambos das
+ * SELEÇÕES MARCADAS. Se o usuário não marcou nenhuma seleção, o resumo cai pra
+ * todos os jogos do dia (senão ficaria sem nada). Reserva até maxDigests resumos
+ * e preenche o resto com os avisos mais próximos.
+ * É aqui que mora a escolha das listas — testada em scripts/daily-digest.test.ts.
  */
 export function planAll(
   allMatches: Match[],
@@ -98,9 +99,11 @@ export function planAll(
   maxPending: number,
 ): PlannedNotification[] {
   const live = allMatches.filter((m) => !isFinished(m));
-  const mine = filterByTeams(live, teamIds); // só p/ "jogo começando"
+  const mine = filterByTeams(live, teamIds);
+  // Resumo: jogos das seleções marcadas; sem nenhuma marcada → todos do dia.
+  const digestSource = teamIds.length > 0 ? mine : live;
 
-  const digests = planDailyDigests(live, settings, now).sort(byDateAsc).slice(0, maxDigests);
+  const digests = planDailyDigests(digestSource, settings, now).sort(byDateAsc).slice(0, maxDigests);
   const remaining = Math.max(0, maxPending - digests.length);
   const matchStarts = planMatchStartNotifications(mine, settings, now).sort(byDateAsc).slice(0, remaining);
 
