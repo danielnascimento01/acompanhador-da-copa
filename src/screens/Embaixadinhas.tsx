@@ -4,9 +4,14 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 
+import * as Haptics from 'expo-haptics';
+
 import { addGameScore, loadGameScores, loadNick, saveNick, type ScoreEntry } from '../lib/funStorage';
 import { fetchGlobalLeaderboard, getDeviceId, submitGlobalScore, type GlobalEntry } from '../lib/leaderboard';
 import { colors, fonts, radius, spacing } from '../lib/theme';
+
+/** Vibração leve (ignora silenciosamente se o aparelho não suportar). */
+const buzz = (style: Haptics.ImpactFeedbackStyle) => { Haptics.impactAsync(style).catch(() => {}); };
 
 const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
 const GAME = 'embaixadinhas';
@@ -259,9 +264,10 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
         setTouches(touchesRef.current);
         const ms = milestoneFor(touchesRef.current);
         const isRecord = touchesRef.current === record + 1 && record > 0;
-        if (isRecord && ms) showFlash(`Novo recorde! ${ms}`, 1600);
-        else if (isRecord) showFlash('Novo recorde! 🎉', 1600);
-        else if (ms) showFlash(ms, touchesRef.current >= 100 ? 1600 : 900);
+        if (isRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); }
+        else if (isRecord) { showFlash('Novo recorde! 🎉', 1600); buzz(Haptics.ImpactFeedbackStyle.Heavy); }
+        else if (ms) { showFlash(ms, touchesRef.current >= 100 ? 1600 : 900); buzz(Haptics.ImpactFeedbackStyle.Medium); }
+        else buzz(Haptics.ImpactFeedbackStyle.Light); // toque comum: vibração leve
       }
     }
 

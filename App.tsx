@@ -16,6 +16,7 @@ import {
 
 import { StoreProvider, useStore } from './src/lib/store';
 import { configureNotificationHandler, ensureAndroidChannel } from './src/lib/notifications';
+import { initAds } from './src/lib/ads';
 import { Backdrop } from './src/components/Backdrop';
 import { TeamsScreen } from './src/screens/TeamsScreen';
 import { ScheduleScreen } from './src/screens/ScheduleScreen';
@@ -135,6 +136,7 @@ export default function App() {
   useEffect(() => {
     configureNotificationHandler();
     ensureAndroidChannel();
+    initAds();
   }, []);
 
   // Não trava o app se a fonte falhar (ex.: ícone não baixou via OTA): segue

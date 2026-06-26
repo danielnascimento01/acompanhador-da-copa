@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { StandingsTable } from '../components/StandingsTable';
 import { QuickPredictRow } from '../components/QuickPredictRow';
+import { AdBanner } from '../components/AdBanner';
 import { FadeInUp } from '../components/Motion';
 import { applyPredictions, computeStandings, countActivePredictions } from '../data/standings';
 import { Match, isPredictable, hasMatchInPlayWindow } from '../data/fixtures';
@@ -168,7 +169,10 @@ export function StandingsScreen() {
       )}
 
       {GROUPS.map((g, i) => (
-        <FadeInUp key={g} delay={i * 40}>
+        <React.Fragment key={g}>
+        {/* Um único banner discreto no meio da lista de grupos (nunca intersticial) */}
+        {i === 6 && <AdBanner />}
+        <FadeInUp delay={i * 40}>
           <View style={[styles.card, mode === 'predicted' && styles.cardPredicted]}>
             <View style={styles.groupHead}>
               <View style={[styles.groupTag, mode === 'predicted' && styles.groupTagPredicted]}>
@@ -194,6 +198,7 @@ export function StandingsScreen() {
             )}
           </View>
         </FadeInUp>
+        </React.Fragment>
       ))}
       </ScrollView>
 
