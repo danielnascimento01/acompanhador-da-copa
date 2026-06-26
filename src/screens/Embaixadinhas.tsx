@@ -37,7 +37,7 @@ const bounceAt = (touches: number) => Math.min(BOUNCE_MAX, BOUNCE_BASE + touches
 
 // ── Novidades pra animar o jogo (tudo OTA-safe, placar = toques continua justo) ──
 const WIND_MAX = 240;   // px/s² da rajada de vento lateral
-const PERFECT = 6;      // cabeçada PERFEITA (centro da testa) → conta combo
+const PERFECT = 14;     // cabeçada PERFEITA (centro da testa) → conta combo (janela mais generosa)
 const PICK_R = 22;      // raio de coleta do item que cai
 const PICK_VY = 250;    // velocidade de queda do item
 const SPEED_F = 1.7;    // ⚡ acelera o tempo do jogo
@@ -55,10 +55,10 @@ type Phase = 'menu' | 'playing' | 'over';
 type Skin = { id: string; name: string; threshold: number; jersey: string; trim: string; shorts: string; num: string; numColor: string };
 const SKINS: Skin[] = [
   { id: 'brasil', name: 'Canarinho', threshold: 0, jersey: '#FFD200', trim: '#0A7B3E', shorts: '#1B3FAE', num: '10', numColor: '#0A7B3E' },
-  { id: 'celeste', name: 'Celeste', threshold: 80, jersey: '#6CACE4', trim: '#FFFFFF', shorts: '#0B1B33', num: '10', numColor: '#0B3A6B' },
-  { id: 'tricolor', name: 'Azulão', threshold: 180, jersey: '#1B3FAE', trim: '#FFFFFF', shorts: '#FFFFFF', num: '7', numColor: '#FFFFFF' },
-  { id: 'roxa', name: 'Fantasma', threshold: 320, jersey: '#7C3AED', trim: '#E9D5FF', shorts: '#2A1B5E', num: '9', numColor: '#FFFFFF' },
-  { id: 'lenda', name: 'Lenda', threshold: 550, jersey: '#FFD700', trim: '#111111', shorts: '#111111', num: '7', numColor: '#111111' },
+  { id: 'celeste', name: 'Celeste', threshold: 50, jersey: '#6CACE4', trim: '#FFFFFF', shorts: '#0B1B33', num: '10', numColor: '#0B3A6B' },
+  { id: 'tricolor', name: 'Azulão', threshold: 120, jersey: '#1B3FAE', trim: '#FFFFFF', shorts: '#FFFFFF', num: '7', numColor: '#FFFFFF' },
+  { id: 'roxa', name: 'Fantasma', threshold: 200, jersey: '#7C3AED', trim: '#E9D5FF', shorts: '#2A1B5E', num: '9', numColor: '#FFFFFF' },
+  { id: 'lenda', name: 'Lenda', threshold: 320, jersey: '#FFD700', trim: '#111111', shorts: '#111111', num: '7', numColor: '#111111' },
 ];
 const skinById = (id: string): Skin => SKINS.find((s) => s.id === id) ?? SKINS[0];
 
