@@ -7,7 +7,7 @@
  * Custo: ~1 chamada ESPN por jogo finalizado; aceitável durante a Copa.
  */
 
-import { fetchScoreboard, fetchPlays, ESPNPlay } from './espn';
+import { fetchScoreboard, fetchGoalScorers } from './espn';
 
 export type LiveScorer = {
   player: string;
@@ -18,12 +18,6 @@ export type LiveScorer = {
 
 /** Gols de Messi em Copas anteriores a 2026 (2006+2010+2014+2018+2022). */
 const MESSI_PRE_2026 = 13;
-
-function isGoal(play: ESPNPlay): boolean {
-  const t = play.type?.text?.toLowerCase() ?? '';
-  // Exclui gol contra (own goal) da contagem individual — ajustar se ESPN mudar
-  return t === 'goal' || t === 'penalty goal';
-}
 
 /**
  * Busca e agrega artilheiros de todos os jogos encerrados hoje e nas últimas
@@ -47,16 +41,10 @@ export async function aggregateScorers(kv: KVNamespace): Promise<void> {
     const relevant = events.filter((e) => e.status.type.state !== 'pre');
 
     for (const event of relevant) {
-      const plays = await fetchPlays(event.id);
-      for (const play of plays) {
-        if (!isGoal(play)) continue;
-        const playerName = play.athletesInvolved?.[0]?.displayName;
-        if (!playerName) continue;
-        const teamName = play.athletesInvolved?.[0]?.team?.displayName
-          ?? play.team?.displayName
-          ?? '';
-        const current = totals.get(playerName) ?? { teamName, goals: 0 };
-        totals.set(playerName, { teamName: current.teamName || teamName, goals: current.goals + 1 });
+      const goals = await fetchGoalScorers(event.id);
+      for (const g of goals) {
+        const current = totals.get(g.player) ?? { teamName: g.teamName, goals: 0 };
+        totals.set(g.player, { teamName: current.teamName || g.teamName, goals: current.goals + 1 });
       }
     }
   }

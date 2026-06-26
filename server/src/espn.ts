@@ -88,6 +88,36 @@ export async function fetchPlays(eventId: string): Promise<ESPNPlay[]> {
   }
 }
 
+/**
+ * Autores dos gols de um jogo, via `keyEvents` do summary (o campo `plays` NÃO
+ * existe nesta liga). O nome do artilheiro fica em `participants[0].athlete`
+ * (não em `athletesInvolved`, que vem vazio aqui). Gol contra é excluído da
+ * artilharia individual.
+ */
+export async function fetchGoalScorers(eventId: string): Promise<{ player: string; teamName: string }[]> {
+  try {
+    const res = await fetch(`${SUMMARY}?event=${eventId}`, {
+      headers: { 'User-Agent': 'Copa2026App/1.0', 'Cache-Control': 'no-cache' },
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { keyEvents?: Array<Record<string, unknown>> };
+    const out: { player: string; teamName: string }[] = [];
+    for (const k of json.keyEvents ?? []) {
+      if (!(k as { scoringPlay?: boolean }).scoringPlay) continue; // só lances de gol
+      const txt = String((k as { text?: string }).text ?? '');
+      if (/own goal/i.test(txt)) continue; // gol contra não conta pro artilheiro
+      const participants = (k as { participants?: Array<{ athlete?: { displayName?: string } }> }).participants;
+      const player = participants?.[0]?.athlete?.displayName;
+      if (!player) continue;
+      const teamName = (k as { team?: { displayName?: string } }).team?.displayName ?? '';
+      out.push({ player, teamName });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 /** Extrai placar atual (home, away) de um evento. */
 export function extractScore(event: ESPNEvent): { home: number; away: number; homeTeam: string; awayTeam: string } {
   const comp = event.competitions[0];
