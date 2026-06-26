@@ -12,6 +12,7 @@ import { ScorersSheet } from './ScorersSheet';
 import { HistorySheet } from './HistorySheet';
 import { VenuesSheet } from './VenuesSheet';
 import { BracketSheet } from './BracketSheet';
+import { ChancesSheet } from './ChancesSheet';
 import { useStore } from '../lib/store';
 import { isStale } from '../lib/freshness';
 import { colors, fonts, radius, spacing } from '../lib/theme';
@@ -26,6 +27,7 @@ export function StandingsScreen() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [venuesOpen, setVenuesOpen] = useState(false);
   const [bracketOpen, setBracketOpen] = useState(false);
+  const [chancesOpen, setChancesOpen] = useState(false);
 
   const activePredictions = useMemo(
     () => countActivePredictions(matches, predictions),
@@ -96,6 +98,18 @@ export function StandingsScreen() {
           <Text style={styles.moreText}>Mata-mata</Text>
         </Pressable>
       </View>
+
+      {/* Destaque: chance de classificação (%) — simulação honesta */}
+      <Pressable
+        style={styles.chancesBtn}
+        onPress={() => setChancesOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Ver a chance de classificação de cada seleção"
+      >
+        <Ionicons name="stats-chart" size={20} color={colors.accent} />
+        <Text style={styles.chancesText}>Chance de classificação</Text>
+        <Text style={styles.chancesPct}>%</Text>
+      </Pressable>
 
       {/* Alternância Oficial / Meus palpites */}
       <View style={styles.toggleRow}>
@@ -187,6 +201,7 @@ export function StandingsScreen() {
       <HistorySheet visible={historyOpen} onClose={() => setHistoryOpen(false)} />
       <VenuesSheet visible={venuesOpen} onClose={() => setVenuesOpen(false)} />
       <BracketSheet visible={bracketOpen} onClose={() => setBracketOpen(false)} />
+      <ChancesSheet visible={chancesOpen} onClose={() => setChancesOpen(false)} />
     </>
   );
 }
@@ -219,6 +234,20 @@ const styles = StyleSheet.create({
   },
   moreEmoji: { fontSize: 20 },
   moreText: { color: colors.text, fontFamily: fonts.bold, fontSize: 13 },
+  chancesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing(2),
+    backgroundColor: 'rgba(20,224,138,0.07)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(20,224,138,0.30)',
+    paddingVertical: spacing(3),
+    paddingHorizontal: spacing(4),
+    marginBottom: spacing(3),
+  },
+  chancesText: { flex: 1, color: colors.text, fontFamily: fonts.bold, fontSize: 14 },
+  chancesPct: { color: colors.accent, fontFamily: fonts.display, fontSize: 18 },
   toggleRow: {
     flexDirection: 'row',
     backgroundColor: colors.surface,

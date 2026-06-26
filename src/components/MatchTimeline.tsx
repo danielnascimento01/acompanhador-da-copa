@@ -11,9 +11,19 @@ import { colors, fonts, radius, spacing, state } from '../lib/theme';
  * cartões, via API pública da ESPN. Só aparece em jogos que já começaram; some
  * de forma silenciosa se a ESPN não tiver dados daquele jogo.
  */
-export function MatchTimeline({ match }: { match: Match }) {
+/** Info do relógio ao vivo, repassada ao pai (ex.: cabeçalho do Detalhe). */
+export type LiveClock = { clock: string | null; halftime: boolean; live: boolean };
+
+export function MatchTimeline({ match, onClock }: { match: Match; onClock?: (c: LiveClock) => void }) {
   const [timeline, setTimeline] = useState<LiveTimeline | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Repassa o estado do relógio pro pai (sem fetch duplicado — reusa este).
+  useEffect(() => {
+    if (!onClock) return;
+    if (timeline?.state === 'in') onClock({ clock: timeline.clock, halftime: timeline.halftime, live: true });
+    else onClock({ clock: null, halftime: false, live: false });
+  }, [timeline, onClock]);
 
   useEffect(() => {
     if (!hasStarted(match)) {

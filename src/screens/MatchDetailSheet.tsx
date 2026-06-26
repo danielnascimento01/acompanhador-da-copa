@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -10,7 +10,7 @@ import { getTeam, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { teamOutlook } from '../data/scenarios';
 import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
-import { MatchTimeline } from '../components/MatchTimeline';
+import { MatchTimeline, type LiveClock } from '../components/MatchTimeline';
 import { MatchStats } from '../components/MatchStats';
 import { formatDayLong, formatTime } from '../lib/format';
 import { openUrl } from '../lib/links';
@@ -40,6 +40,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
   const { predictions, setPrediction, clearPrediction, settings, updateSettings, toggleFollowMatch, isFollowingMatch } = useStore();
   const ko = kickoff(match);
   const following = isFollowingMatch(match.id);
+  const [clock, setClock] = useState<LiveClock | null>(null);
 
   // Seguir os gols deste jogo. Se o push de gol estiver desligado, ligar no modo
   // "minhas seleções" (senão o 🔔 não teria efeito — evita confusão).
@@ -106,7 +107,11 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           style={styles.scoreCard}
         >
           <Text style={styles.headLabel}>
-            {live ? 'AO VIVO' : finished ? 'ENCERRADO' : `RODADA ${match.round}`}
+            {live
+              ? clock?.halftime
+                ? 'INTERVALO'
+                : `AO VIVO${clock?.clock ? ` · ${clock.clock}` : ''}`
+              : finished ? 'ENCERRADO' : `RODADA ${match.round}`}
           </Text>
           <View style={styles.scoreRow}>
             <View style={styles.teamCol}>
@@ -134,7 +139,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
         </LinearGradient>
 
         {/* Lance a lance ao vivo (ESPN) — minuto, gols, cartões. Só p/ jogos iniciados. */}
-        <MatchTimeline match={match} />
+        <MatchTimeline match={match} onClock={setClock} />
 
         {/* Escalações + estatísticas (ESPN summary). Só p/ jogos iniciados. */}
         <MatchStats match={match} />

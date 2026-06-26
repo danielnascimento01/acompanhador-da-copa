@@ -13,8 +13,9 @@
     "test-bracket": "npx tsx scripts/bracket.test.ts",
     "test-thirds": "npx tsx scripts/best-thirds.test.ts",
     "test-h2h": "npx tsx scripts/standings-h2h.test.ts",
+    "test-chances": "npx tsx scripts/chances.test.ts",
     "test-integrity": "npx tsx scripts/data-integrity.test.ts",
-    "preflight": "tsc --noEmit && npx tsx scripts/scenarios.test.ts && npx tsx scripts/bracket.test.ts && npx tsx scripts/best-thirds.test.ts && npx tsx scripts/standings-h2h.test.ts && npx tsx scripts/data-integrity.test.ts && node scripts/validate-data.mjs",
+    "preflight": "tsc --noEmit && npx tsx scripts/scenarios.test.ts && npx tsx scripts/bracket.test.ts && npx tsx scripts/best-thirds.test.ts && npx tsx scripts/standings-h2h.test.ts && npx tsx scripts/chances.test.ts && npx tsx scripts/data-integrity.test.ts && node scripts/validate-data.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {
