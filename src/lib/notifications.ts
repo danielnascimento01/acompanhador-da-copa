@@ -3,10 +3,9 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
-import { filterByTeams, isFinished, kickoff, Match } from '../data/fixtures';
-import { teamName, teamFlag } from '../data/teams';
+import { Match } from '../data/fixtures';
 import { Settings } from './storage';
-import { formatTime, localDayKey } from './format';
+import { planAll } from './notificationPlan';
 
 // iOS limita o número de notificações locais pendentes a 64. Deixamos folga.
 const MAX_PENDING = 60;
@@ -64,78 +63,6 @@ export async function getPermissionGranted(): Promise<boolean> {
   return status === 'granted';
 }
 
-type PlannedNotification = {
-  date: Date;
-  title: string;
-  body: string;
-  data: Record<string, unknown>;
-};
-
-function matchLabel(m: Match): string {
-  return `${teamFlag(m.home)} ${teamName(m.home)} x ${teamName(m.away)} ${teamFlag(m.away)}`;
-}
-
-/** Monta (sem agendar) os avisos de "jogo começando". */
-function planMatchStartNotifications(matches: Match[], settings: Settings, now: Date): PlannedNotification[] {
-  if (!settings.matchStart) return [];
-  const out: PlannedNotification[] = [];
-  for (const m of matches) {
-    const ko = kickoff(m);
-    const fireAt = new Date(ko.getTime() - settings.matchStartLeadMinutes * 60_000);
-    if (fireAt <= now) continue;
-    const mins = settings.matchStartLeadMinutes;
-    out.push({
-      date: fireAt,
-      title: '⚽ Vai começar!',
-      body: `${matchLabel(m)} começa às ${formatTime(ko)} (em ${mins} min).`,
-      data: { type: 'match-start', matchId: m.id },
-    });
-  }
-  return out;
-}
-
-/** Monta (sem agendar) o resumo diário com os jogos do dia. */
-function planDailyDigests(matches: Match[], settings: Settings, now: Date): PlannedNotification[] {
-  if (!settings.dailyDigest) return [];
-
-  // Agrupa por dia local.
-  const byDay = new Map<string, Match[]>();
-  for (const m of matches) {
-    const key = localDayKey(kickoff(m));
-    const arr = byDay.get(key) ?? [];
-    arr.push(m);
-    byDay.set(key, arr);
-  }
-
-  const out: PlannedNotification[] = [];
-  for (const [, dayMatches] of byDay) {
-    const first = kickoff(dayMatches[0]);
-    const fireAt = new Date(first.getFullYear(), first.getMonth(), first.getDate(), settings.dailyDigestHour, 0, 0, 0);
-    if (fireAt <= now) continue;
-
-    // Só lista jogos que ainda não começaram no horário do resumo (evita
-    // "tem jogo hoje" para uma partida que já rolou de madrugada).
-    const upcoming = dayMatches
-      .filter((m) => kickoff(m) >= fireAt)
-      .sort((a, b) => a.utc.localeCompare(b.utc));
-    if (upcoming.length === 0) continue;
-
-    const lines = upcoming.map((m) => `${formatTime(kickoff(m))}  ${matchLabel(m)}`);
-    const count = upcoming.length;
-    out.push({
-      date: fireAt,
-      title: count === 1 ? '📅 Tem jogo hoje!' : `📅 ${count} jogos hoje!`,
-      body: lines.join('\n'),
-      data: { type: 'daily-digest' },
-    });
-  }
-  return out;
-}
-
-function byDateAsc(a: PlannedNotification, b: PlannedNotification) {
-  return a.date.getTime() - b.date.getTime();
-}
-
 /**
  * Reagenda TODAS as notificações a partir da lista de jogos ATUAL (já com os
  * horários ao vivo), filtrando pelas seleções marcadas e ignorando jogos
@@ -162,15 +89,7 @@ export async function rescheduleAll(
   if (my !== scheduleSeq) return -1; // superada por uma chamada mais nova
 
   const now = new Date();
-  const matches = filterByTeams(allMatches, teamIds).filter((m) => !isFinished(m));
-
-  const digests = planDailyDigests(matches, settings, now).sort(byDateAsc).slice(0, MAX_DIGESTS);
-  const remaining = Math.max(0, MAX_PENDING - digests.length);
-  const matchStarts = planMatchStartNotifications(matches, settings, now)
-    .sort(byDateAsc)
-    .slice(0, remaining);
-
-  const planned = [...digests, ...matchStarts].sort(byDateAsc);
+  const planned = planAll(allMatches, teamIds, settings, now, MAX_DIGESTS, MAX_PENDING);
 
   for (const p of planned) {
     if (my !== scheduleSeq) return -1; // outra chamada assumiu — para aqui
