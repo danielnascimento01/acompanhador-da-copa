@@ -5,7 +5,7 @@
  * Cobre: integridade dos dados, determinismo por seed, cálculo de força e
  * balanceamento (time forte vence muito mais que time fraco).
  */
-import { SQUADS, FORMATIONS, TACTICS, slotsFor, rollSquad, squadKey } from '../src/data/draft/data';
+import { getSquads, FORMATIONS, TACTICS, slotsFor, rollSquad, squadKey } from '../src/data/draft/data';
 import { calcForces, simulateCampaign } from '../src/data/draft/engine';
 import { POSITIONS, type Player, type Forces } from '../src/data/draft/types';
 
@@ -13,6 +13,8 @@ let pass = 0, fail = 0;
 function check(label: string, cond: boolean) {
   if (cond) { pass++; console.log(`✅ ${label}`); } else { fail++; console.log(`❌ ${label}`); }
 }
+
+const SQUADS = getSquads();
 
 // ── 1. Integridade dos dados ──────────────────────────────────────────────────
 console.log('— Integridade dos dados —');

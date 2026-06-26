@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { QuizGame } from './QuizGame';
 import { Embaixadinhas } from './Embaixadinhas';
+import { DadoDeCraque } from './DadoDeCraque';
 import { colors, fonts, radius, spacing } from '../lib/theme';
 
 /**
@@ -12,6 +13,7 @@ import { colors, fonts, radius, spacing } from '../lib/theme';
 export function FunScreen() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [gameOpen, setGameOpen] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(false);
 
   return (
     <View style={styles.container}>
@@ -33,16 +35,26 @@ export function FunScreen() {
           <Text style={styles.cardEmoji}>⚽</Text>
           <View style={styles.flex1}>
             <Text style={styles.cardTitle}>Embaixadinhas</Text>
-            <Text style={styles.cardDesc}>Arraste o dedo, cabeceie a bola e bata seu recorde. Entra pro ranking deste aparelho!</Text>
+            <Text style={styles.cardDesc}>Arraste o dedo, cabeceie a bola e bata seu recorde. Entra pro ranking mundial!</Text>
           </View>
           <Text style={styles.chevron}>›</Text>
         </Pressable>
 
-        <Text style={styles.note}>Tudo offline e de graça — pra passar o tempo entre um jogo e outro. 🇧🇷</Text>
+        <Pressable style={styles.card} onPress={() => setDraftOpen(true)} accessibilityRole="button" accessibilityLabel="Abrir o Dado de Craque">
+          <Text style={styles.cardEmoji}>🎲</Text>
+          <View style={styles.flex1}>
+            <Text style={styles.cardTitle}>Dado de Craque</Text>
+            <Text style={styles.cardDesc}>Role o dado, escale craques de todas as Copas e veja se seu time faz o 7 a 0.</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+
+        <Text style={styles.note}>De graça, pra passar o tempo entre um jogo e outro. 🇧🇷</Text>
       </ScrollView>
 
       <QuizGame visible={quizOpen} onClose={() => setQuizOpen(false)} />
       <Embaixadinhas visible={gameOpen} onClose={() => setGameOpen(false)} />
+      <DadoDeCraque visible={draftOpen} onClose={() => setDraftOpen(false)} />
     </View>
   );
 }
