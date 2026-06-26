@@ -10,6 +10,7 @@
 import type { Match } from '../src/data/fixtures';
 import { TEAMS, GROUPS } from '../src/data/teams';
 import { simulateChances } from '../src/data/chances';
+import { teamElo } from '../src/data/teamStrength';
 
 let _id = 0;
 function gm(home: string, away: string, hs: number | null, as: number | null): Match {
@@ -41,7 +42,13 @@ function check(label: string, cond: boolean) {
   const sum = all.reduce((s, t) => s + t.pct, 0);
   check('1. soma das chances = 3200% (exatamente 32 avançam por cenário)', Math.abs(sum - 3200) < 0.001);
   check('1. toda chance em [0,100]', all.every((t) => t.pct >= 0 && t.pct <= 100));
-  check('1. nada decidido ainda → ninguém em 0% nem 100%', all.every((t) => t.pct > 0 && t.pct < 100));
+  check('1. há incerteza (vários times entre 0% e 100%)', all.filter((t) => t.pct > 1 && t.pct < 99).length > 20);
+  // Modelo de FORÇA: as 12 mais fortes têm chance média bem maior que as 12 mais fracas.
+  const byElo = [...all].sort((a, b) => teamElo(b.teamId) - teamElo(a.teamId));
+  const avg = (arr: typeof all) => arr.reduce((s, t) => s + t.pct, 0) / arr.length;
+  const strongAvg = avg(byElo.slice(0, 12));
+  const weakAvg = avg(byElo.slice(-12));
+  check(`1. fortes avançam mais que fracos (${strongAvg.toFixed(0)}% vs ${weakAvg.toFixed(0)}%)`, strongAvg > weakAvg + 15);
 }
 
 // ── Cenário 2: TODOS os grupos encerrados (determinístico) ───────────────────

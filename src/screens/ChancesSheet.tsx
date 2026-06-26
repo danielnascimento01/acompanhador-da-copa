@@ -60,9 +60,10 @@ export function ChancesSheet({ visible, onClose }: { visible: boolean; onClose: 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
               <View style={styles.banner}>
                 <Text style={styles.bannerText}>
-                  Simulação <Text style={styles.bannerBold}>neutra</Text>: cada jogo restante tem chances iguais (não é
-                  palpite de quem é melhor). Conta em quantos cenários cada seleção passa — 1º/2º do grupo ou entre os 8
-                  melhores terceiros. Quanto mais jogos faltam, mais incerto.
+                  <Text style={styles.bannerBold}>Estimativa</Text> por milhares de simulações: cada jogo restante é
+                  sorteado pela <Text style={styles.bannerBold}>força das seleções</Text> (o favorito vence mais, como
+                  na vida real). Conta em quantos cenários cada time passa — 1º/2º do grupo ou entre os 8 melhores
+                  terceiros. Não é garantia; quanto mais jogos faltam, mais incerto.
                 </Text>
               </View>
 
