@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, LayoutChangeEvent, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,7 +41,7 @@ const TABS: { key: TabKey; label: string; icon: IconName }[] = [
   { key: 'settings', label: 'Avisos', icon: 'notifications-outline' },
 ];
 
-function Shell() {
+function Shell({ bottomInset = 0 }: { bottomInset?: number }) {
   const { ready, onboarded, completeOnboarding } = useStore();
   const [tab, setTab] = useState<TabKey>('schedule');
   const styles = useThemedStyles(makeStyles);
@@ -82,7 +82,7 @@ function Shell() {
         {tab === 'settings' && <SettingsScreen />}
       </View>
 
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { paddingBottom: spacing(2) + bottomInset }]}>
         {TABS.map((t) => {
           const active = tab === t.key;
           return (
@@ -126,6 +126,16 @@ function Root() {
   const [supportOpen, setSupportOpen] = useState(false);
   const styles = useThemedStyles(makeStyles);
   const { c, scheme } = useTheme();
+  // Insets da área segura medidos por LAYOUT (sem react-native-safe-area-context,
+  // que é nativo e não está no binário 1.3.0 → não viria por OTA). Um SafeAreaView
+  // invisível revela, pelo onLayout do filho, o recuo do notch (top) e do indicador
+  // (bottom). Aplicamos top no cabeçalho e bottom na barra de abas (que aí cola na borda).
+  const [insets, setInsets] = useState({ top: 0, bottom: 0 });
+  const onMeasure = (e: LayoutChangeEvent) => {
+    const { y, height } = e.nativeEvent.layout;
+    const screenH = Dimensions.get('window').height;
+    setInsets({ top: Math.max(0, Math.round(y)), bottom: Math.max(0, Math.round(screenH - y - height)) });
+  };
   const [fontsLoaded, fontError] = useFonts({
     SairaCondensed_800ExtraBold,
     SairaSemiCondensed_400Regular,
@@ -161,29 +171,33 @@ function Root() {
     // chega às bordas (sem as "bandas" chapadas de c.bg no topo e na base).
     <View style={styles.root}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-      <Backdrop>
-        <SafeAreaView style={styles.safe}>
-          <View style={styles.brandBar}>
-            <Text style={styles.brandMark}>⚽</Text>
-            <Text style={styles.brand}>ACOMPANHADOR DA COPA</Text>
-            <View style={styles.brandYearWrap}>
-              <Text style={styles.brandYear}>26</Text>
-            </View>
-            <View style={styles.brandSpacer} />
-            <Pressable
-              style={styles.supportBtn}
-              onPress={() => setSupportOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Ajuda e sugestões"
-              hitSlop={8}
-            >
-              <Text style={styles.supportBtnText}>💬</Text>
-            </Pressable>
-          </View>
-          <StoreProvider>
-            <Shell />
-          </StoreProvider>
+      {/* Medidor invisível da área segura (OTA-safe, sem módulo nativo). */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <SafeAreaView style={styles.flex1}>
+          <View style={styles.flex1} onLayout={onMeasure} />
         </SafeAreaView>
+      </View>
+      <Backdrop>
+        <View style={[styles.brandBar, { paddingTop: insets.top + spacing(2) }]}>
+          <Text style={styles.brandMark}>⚽</Text>
+          <Text style={styles.brand}>ACOMPANHADOR DA COPA</Text>
+          <View style={styles.brandYearWrap}>
+            <Text style={styles.brandYear}>26</Text>
+          </View>
+          <View style={styles.brandSpacer} />
+          <Pressable
+            style={styles.supportBtn}
+            onPress={() => setSupportOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Ajuda e sugestões"
+            hitSlop={8}
+          >
+            <Text style={styles.supportBtnText}>💬</Text>
+          </Pressable>
+        </View>
+        <StoreProvider>
+          <Shell bottomInset={insets.bottom} />
+        </StoreProvider>
         <SupportSheet visible={supportOpen} onClose={() => setSupportOpen(false)} />
       </Backdrop>
     </View>
@@ -200,7 +214,7 @@ export default function App() {
 
 const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   root: { flex: 1, backgroundColor: c.bg },
-  safe: { flex: 1, backgroundColor: 'transparent' },
+  flex1: { flex: 1 },
   bootRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg, gap: spacing(4) },
   bootLogo: { fontSize: 60 },
   brandBar: {
