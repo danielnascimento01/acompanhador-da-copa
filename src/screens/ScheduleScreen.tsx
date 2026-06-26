@@ -6,6 +6,7 @@ import { NextMatchHero } from '../components/NextMatchHero';
 import { TeamStatusBanner } from '../components/TeamStatusBanner';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
+import { PastMatchesSheet } from './PastMatchesSheet';
 import { FadeInUp } from '../components/Motion';
 import { hasStarted, hasMatchInPlayWindow, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
 import { openSuggestion } from '../lib/links';
@@ -19,7 +20,6 @@ type DaySection = {
   title: string;
   data: Match[];
   kind?: 'upcoming' | 'past';
-  toggle?: boolean;
 };
 
 function updatedLabel(updatedAt: number | null): string {
@@ -53,8 +53,8 @@ function groupByDay(list: Match[], kind: 'upcoming' | 'past'): DaySection[] {
 export function ScheduleScreen() {
   const { selected, matches, settings, refresh, refreshing, updatedAt, online, predictions } = useStore();
   const [detail, setDetail] = useState<Match | null>(null);
-  const [showPast, setShowPast] = useState(false);
   const [dayOpen, setDayOpen] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
 
   // Ao abrir a aba (mount), reatualiza se o cache estiver VELHO (por idade, não só
   // se estiver vazio) — cobre a troca de aba com dados defasados. Independe de
@@ -121,30 +121,19 @@ export function ScheduleScreen() {
     if (m) setDetail(m);
   };
 
-  // Reparte os jogos: "próximos" (ao vivo/futuro, fora o hero) vão na lista;
-  // "passados" (encerrados ou já iniciados que não estão ao vivo) ficam escondidos
-  // atrás do botão "Ver jogos passados".
-  const { upcomingSections, pastSections } = useMemo(() => {
+  // A lista mostra só os "próximos" (ao vivo/futuro). Os "passados" (encerrados ou
+  // já iniciados que não estão ao vivo) ficam na sheet "Jogos passados", aberta
+  // pelo botão no topo — mantém a grade enxuta e o histórico a um toque.
+  const { sections, hasPast } = useMemo(() => {
     const now = new Date();
     const upcoming: Match[] = [];
-    const past: Match[] = [];
+    let pastCount = 0;
     for (const m of matches) {
-      if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) past.push(m);
+      if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) pastCount++;
       else upcoming.push(m);
     }
-    return {
-      upcomingSections: groupByDay(upcoming, 'upcoming'),
-      pastSections: groupByDay(past, 'past'),
-    };
-  }, [matches, hero]);
-
-  const sections = useMemo<DaySection[]>(() => {
-    if (pastSections.length === 0) return upcomingSections;
-    const toggle: DaySection = { key: '__toggle__', title: '', data: [], toggle: true };
-    return showPast
-      ? [...upcomingSections, toggle, ...pastSections]
-      : [...upcomingSections, toggle];
-  }, [upcomingSections, pastSections, showPast]);
+    return { sections: groupByDay(upcoming, 'upcoming'), hasPast: pastCount > 0 };
+  }, [matches]);
 
   return (
     <View style={styles.container}>
@@ -164,6 +153,16 @@ export function ScheduleScreen() {
               style={({ pressed }) => [styles.headerBtn, pressed && styles.shareTodayPressed]}
             >
               <Text style={styles.shareTodayText}>📅 Jogos de hoje</Text>
+            </Pressable>
+          )}
+          {hasPast && (
+            <Pressable
+              onPress={() => setPastOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Ver jogos passados"
+              style={({ pressed }) => [styles.headerBtn, styles.pastHeaderBtn, pressed && styles.shareTodayPressed]}
+            >
+              <Text style={styles.pastHeaderText}>🏁 Jogos passados</Text>
             </Pressable>
           )}
           <Pressable
@@ -204,23 +203,11 @@ export function ScheduleScreen() {
             ) : null}
           </>
         }
-        renderSectionHeader={({ section }) =>
-          (section as DaySection).toggle ? (
-            <Pressable
-              onPress={() => setShowPast((v) => !v)}
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.pastBtn, pressed && styles.pastBtnPressed]}
-            >
-              <Text style={styles.pastBtnText}>
-                {showPast ? 'Ocultar jogos passados  ↑' : 'Ver jogos passados  ↓'}
-              </Text>
-            </Pressable>
-          ) : (
-            <Text style={[styles.day, (section as DaySection).kind === 'past' && styles.dayPast]}>
-              {section.title}
-            </Text>
-          )
-        }
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.day, (section as DaySection).kind === 'past' && styles.dayPast]}>
+            {section.title}
+          </Text>
+        )}
         renderItem={({ item }) => (
           <MatchCard
             match={item}
@@ -248,6 +235,17 @@ export function ScheduleScreen() {
           setDetail(m);
         }}
       />
+      <PastMatchesSheet
+        visible={pastOpen}
+        matches={matches}
+        selected={selected}
+        primaryTeam={settings.primaryTeam}
+        onClose={() => setPastOpen(false)}
+        onSelectMatch={(m) => {
+          setPastOpen(false);
+          setDetail(m);
+        }}
+      />
     </View>
   );
 }
@@ -268,9 +266,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,224,138,0.08)',
   },
   suggestionBtn: { borderColor: colors.border, backgroundColor: 'transparent' },
+  pastHeaderBtn: { borderColor: colors.border, backgroundColor: colors.surface },
   shareTodayPressed: { opacity: 0.6 },
   shareTodayText: { color: colors.accent, fontFamily: fonts.bold, fontSize: 12.5 },
   suggestionText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
+  pastHeaderText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 12.5 },
   day: {
     color: colors.accent,
     fontFamily: fonts.extrabold,
@@ -281,18 +281,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   dayPast: { color: colors.textFaint },
-  pastBtn: {
-    marginTop: spacing(5),
-    marginBottom: spacing(1),
-    paddingVertical: spacing(3),
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-  },
-  pastBtnPressed: { opacity: 0.6 },
-  pastBtnText: { color: colors.textDim, fontFamily: fonts.bold, fontSize: 13, letterSpacing: 0.3 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing(8) },
   emptyEmoji: { fontSize: 52, marginBottom: spacing(4) },
   emptyTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 21, marginBottom: spacing(2), textAlign: 'center' },
