@@ -14,7 +14,7 @@ import { Platform } from 'react-native';
 // ⚠️ LIGAR (true) SÓ no build nativo 1.3.1 (junto com a versão 1.3.1 no app.json).
 // Em OTA no binário 1.3.0 fica false → o módulo nativo do AdMob NUNCA é carregado,
 // garantindo que a OTA não quebra o app antigo. (Banner/premiado só aparecem com o build.)
-export const ADS_ENABLED = false;
+export const ADS_ENABLED = true;
 
 const REAL_BANNER = { ios: 'ca-app-pub-3514963763580625/9773109893', android: 'ca-app-pub-3514963763580625/3736360755' };
 const REAL_REWARDED = { ios: 'ca-app-pub-3514963763580625/1459084142', android: 'ca-app-pub-3514963763580625/5929233655' };
