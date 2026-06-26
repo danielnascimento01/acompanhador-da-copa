@@ -35,6 +35,17 @@ const BOUNCE_STEP = 4.5;   // sobe a cada toque → a velocidade da bola aumenta
 const SWEET = 12; // tolerância (px) do "no alvo" — cabeçada bem no centro
 const bounceAt = (touches: number) => Math.min(BOUNCE_MAX, BOUNCE_BASE + touches * BOUNCE_STEP);
 
+// ── Novidades pra animar o jogo (tudo OTA-safe, placar = toques continua justo) ──
+const WIND_MAX = 240;   // px/s² da rajada de vento lateral
+const PERFECT = 6;      // cabeçada PERFEITA (centro da testa) → conta combo
+const PICK_R = 22;      // raio de coleta do item que cai
+const PICK_VY = 250;    // velocidade de queda do item
+const SPEED_F = 1.7;    // ⚡ acelera o tempo do jogo
+const SLOW_F = 0.5;     // ⏱️ câmera lenta
+const FX_SPEED_DUR = 4;   // segundos do ⚡
+const FX_SLOW_DUR = 2.4;  // segundos do ⏱️
+type Fx = 'speed' | 'slow';
+
 type Phase = 'menu' | 'playing' | 'over';
 
 /** Camisas (skins) — só cores, destravam por recorde. Nº sempre curto (≤2 dígitos). */
@@ -145,6 +156,29 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const charTX = useRef(new Animated.Value(0)).current;
   // Tremor do campo (juice) — anima só o CONTÊINER, nunca os 60 pontos da torcida.
   const shakeX = useRef(new Animated.Value(0)).current;
+
+  // Relógio da partida em segundos (real, não escalado) — base p/ rajadas/itens/efeitos.
+  const clockRef = useRef(0);
+  // 🌬️ Vento: aceleração lateral que liga/desliga em rajadas.
+  const windRef = useRef(0);
+  const windClock = useRef(0);
+  const [wind, setWind] = useState(0); // só p/ mostrar a seta (muda no liga/desliga)
+  // ⚡/⏱️ Item caindo + efeito ativo (escala o "tempo" do jogo).
+  const pickupRef = useRef<{ x: number; y: number; type: Fx } | null>(null);
+  const pickClock = useRef(0);
+  const pickTX = useRef(new Animated.Value(0)).current;
+  const pickTY = useRef(new Animated.Value(0)).current;
+  const [pickType, setPickType] = useState<Fx | null>(null);
+  const fxRef = useRef<{ type: Fx; until: number } | null>(null);
+  const [fx, setFx] = useState<Fx | null>(null);
+  // 🎯 Combo de cabeçadas perfeitas (meta visual, não mexe no placar).
+  const comboRef = useRef(0);
+  const maxComboRef = useRef(0);
+  const [combo, setCombo] = useState(0);
+  const comboScale = useRef(new Animated.Value(1)).current;
+  // 🔥 Bola em chamas (cosmético) — em combos altos / ao pegar o ⚡.
+  const [onFire, setOnFire] = useState(false);
+  const fireUntil = useRef(0);
 
   const record = scores.length ? scores[0].score : 0;
   const skin = skinById(skinId);
@@ -268,6 +302,13 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     startedRef.current = false;
     playingRef.current = true;
     setWaiting(true);
+    // zera o estado das novidades (vento, item, efeito, combo, fogo)
+    clockRef.current = 0;
+    windRef.current = 0; windClock.current = 4 + Math.random() * 3; setWind(0);
+    pickupRef.current = null; pickClock.current = 7 + Math.random() * 4; setPickType(null);
+    fxRef.current = null; setFx(null);
+    comboRef.current = 0; maxComboRef.current = 0; setCombo(0);
+    fireUntil.current = 0; setOnFire(false);
     charX.current = w / 2;
     charTX.setValue(w / 2 - CW / 2);
     ball.current = { x: w / 2, y: R + 8, vx: 0, vy: 0 };
@@ -297,31 +338,102 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     const dt = Math.min(0.032, (t - last.current) / 1000);
     last.current = t;
 
+    clockRef.current += dt; // relógio REAL da partida (base de rajadas/itens/efeitos)
+
+    // 🌬️ VENTO — rajada lateral por ~2s, descansa ~3-6s (afeta todos igual → justo).
+    windClock.current -= dt;
+    if (windClock.current <= 0) {
+      if (windRef.current === 0) {
+        const dir = Math.random() < 0.5 ? -1 : 1;
+        windRef.current = dir * WIND_MAX * (0.6 + Math.random() * 0.4);
+        setWind(windRef.current);
+        windClock.current = 1.6 + Math.random();
+        buzz('Light');
+      } else {
+        windRef.current = 0; setWind(0);
+        windClock.current = 3 + Math.random() * 3;
+      }
+    }
+
+    // ⚡/⏱️ EFEITO ATIVO — escala o "tempo" do jogo (o placar = toques continua igual).
+    let scale = 1;
+    if (fxRef.current) {
+      if (clockRef.current >= fxRef.current.until) { fxRef.current = null; setFx(null); }
+      else scale = fxRef.current.type === 'speed' ? SPEED_F : SLOW_F;
+    }
+    const pdt = dt * scale; // dt físico (acelera/desacelera o jogo inteiro)
+
+    if (onFire && clockRef.current >= fireUntil.current) setOnFire(false); // 🔥 apaga
+
     const b = ball.current;
     const prevY = b.y; // posição no início do frame (p/ colisão por cruzamento)
-    b.vy += GRAVITY * dt; // gravidade constante
-    b.y += b.vy * dt;
-    b.x += b.vx * dt;
+    b.vy += GRAVITY * pdt; // gravidade (tempo escalado pelo efeito)
+    b.vx += windRef.current * pdt; // empurrão do vento
+    b.y += b.vy * pdt;
+    b.x += b.vx * pdt;
+    b.vx *= 0.992; // fricção leve — o vento não acumula pra sempre
 
     // paredes
     if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); }
     if (b.x > w - R) { b.x = w - R; b.vx = -Math.abs(b.vx); }
 
-    // cabeça do boneco (topo do boneco fica em h - CH). Colisão por CRUZAMENTO do
-    // plano headY (swept): elimina tunneling em qualquer velocidade/dt, sem depender
-    // da largura da banda. Só conta se a bola desce (vy>0) e cruzou o plano vindo de cima.
+    // ⚡/⏱️ ITEM QUE CAI — surge a cada ~9-14s; pega encostando a bola nele.
+    pickClock.current -= dt;
+    if (!pickupRef.current && pickClock.current <= 0 && touchesRef.current >= 4) {
+      const type: Fx = Math.random() < 0.5 ? 'speed' : 'slow';
+      const px = R + Math.random() * Math.max(1, w - 2 * R);
+      pickupRef.current = { x: px, y: -PICK_R, type };
+      setPickType(type);
+      pickTX.setValue(px - PICK_R);
+      pickTY.setValue(-PICK_R);
+      pickClock.current = 9 + Math.random() * 5;
+    }
+    if (pickupRef.current) {
+      const p = pickupRef.current;
+      p.y += PICK_VY * dt;
+      pickTX.setValue(p.x - PICK_R);
+      pickTY.setValue(p.y - PICK_R);
+      const ddx = b.x - p.x, ddy = b.y - p.y;
+      if (ddx * ddx + ddy * ddy < (R + PICK_R) * (R + PICK_R)) {
+        const dur = p.type === 'speed' ? FX_SPEED_DUR : FX_SLOW_DUR;
+        fxRef.current = { type: p.type, until: clockRef.current + dur };
+        setFx(p.type);
+        if (p.type === 'speed') { setOnFire(true); fireUntil.current = clockRef.current + dur; }
+        pickupRef.current = null; setPickType(null);
+        showFlash(p.type === 'speed' ? '⚡ RÁPIDO!' : '⏱️ CÂMERA LENTA', 1000);
+        buzz('Heavy'); doShake(6);
+      } else if (p.y - PICK_R > h) {
+        pickupRef.current = null; setPickType(null); // saiu pela base
+      }
+    }
+
+    // cabeça do boneco — colisão por CRUZAMENTO do plano headY (swept, anti-tunneling).
     const headY = h - CH + 16;
     if (b.vy > 0 && prevY + R < headY && b.y + R >= headY) {
       const cx = charX.current;
       const off = b.x - cx;
       if (Math.abs(off) < CW / 2 + R * 0.6) {
         b.y = headY - R;
-        b.vy = -bounceAt(touchesRef.current); // impulso sobe a cada toque → mais rápido
+        b.vy = -bounceAt(touchesRef.current); // impulso sobe a cada toque
         b.vx += off * 4.5; // desvia conforme onde bate → habilidade
-        b.vx = Math.max(-300, Math.min(300, b.vx));
+        b.vx = Math.max(-320, Math.min(320, b.vx));
         touchesRef.current += 1;
         setTouches(touchesRef.current);
-        const perfect = Math.abs(off) < SWEET; // cabeçada bem no centro da testa
+
+        // 🎯 COMBO de cabeçadas perfeitas (centro da testa) — meta visual, não muda placar.
+        const perfect = Math.abs(off) < PERFECT;
+        if (perfect) {
+          comboRef.current += 1;
+          if (comboRef.current > maxComboRef.current) maxComboRef.current = comboRef.current;
+          setCombo(comboRef.current);
+          comboScale.setValue(1.5);
+          Animated.timing(comboScale, { toValue: 1, duration: 160, useNativeDriver: true }).start();
+          if (comboRef.current === 5 && !onFire) { setOnFire(true); fireUntil.current = clockRef.current + 5; }
+        } else {
+          if (comboRef.current >= 3) showFlash('Combo perdido!', 650);
+          if (comboRef.current !== 0) { comboRef.current = 0; setCombo(0); }
+        }
+
         const ms = milestoneFor(touchesRef.current);
         const isRecord = touchesRef.current === record + 1 && record > 0;
         if (isRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz('Heavy'); doShake(7); }
@@ -465,8 +577,19 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
               </View>
               <Animated.View style={[styles.field, { transform: [{ translateX: shakeX }] }]} onLayout={onLayout} {...pan.panHandlers}>
                 <FieldBg />
+                {wind !== 0 && <Text style={styles.windIndic}>{wind < 0 ? '🌬️ ⬅️' : '➡️ 🌬️'}</Text>}
+                {fx && <Text style={styles.fxLabel}>{fx === 'speed' ? '⚡ RÁPIDO' : '⏱️ LENTO'}</Text>}
+                {combo >= 2 && (
+                  <Animated.Text style={[styles.comboBadge, { transform: [{ scale: comboScale }] }]}>🔥 x{combo}</Animated.Text>
+                )}
                 {flash && <Text style={styles.flash}>{flash}</Text>}
+                {pickType && (
+                  <Animated.View style={[styles.pickup, { transform: [{ translateX: pickTX }, { translateY: pickTY }] }]} pointerEvents="none">
+                    <Text style={styles.pickupEmoji}>{pickType === 'speed' ? '⚡' : '⏱️'}</Text>
+                  </Animated.View>
+                )}
                 <Animated.View style={[styles.ball, { transform: [{ translateX: ballTX }, { translateY: ballTY }] }]} pointerEvents="none">
+                  {onFire && <View style={styles.ballFire} />}
                   <Text style={styles.ballEmoji} allowFontScaling={false}>⚽</Text>
                 </Animated.View>
                 <Animated.View style={[styles.char, { transform: [{ translateX: charTX }] }]} pointerEvents="none">
@@ -479,7 +602,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                   </View>
                 )}
               </Animated.View>
-              <Text style={styles.hint}>Arraste o dedo na tela pra mover ⬅️➡️</Text>
+              <Text style={styles.hint}>Arraste pra mover · pega ⚡/⏱️ · cuidado com o vento 🌬️</Text>
             </View>
           )}
 
@@ -489,6 +612,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
               <Text style={styles.overScore}>{touches}</Text>
               <Text style={styles.overLabel}>toques</Text>
               {newRecord ? <Text style={styles.overRecord}>Novo recorde! 🏆</Text> : <Text style={styles.overMsg}>Recorde: {record} · fica embaixo da bola pra não deixar cair!</Text>}
+              {maxComboRef.current >= 2 && <Text style={styles.overCombo}>🎯 Maior combo: {maxComboRef.current} perfeitas seguidas</Text>}
               <Pressable style={styles.replayBtn} onPress={startGame} accessibilityRole="button" accessibilityLabel="Jogar de novo">
                 <Text style={styles.replayText}>🔄 Jogar de novo</Text>
               </Pressable>
@@ -552,6 +676,13 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   flash: { position: 'absolute', alignSelf: 'center', top: '32%', color: c.amber, fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6, zIndex: 4 },
   ball: { position: 'absolute', left: 0, top: 0, width: R * 2, height: R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   ballEmoji: { fontSize: R * 2 - 12, lineHeight: R * 2, width: R * 2, textAlign: 'center', includeFontPadding: false },
+  ballFire: { position: 'absolute', top: -8, left: -8, width: R * 2 + 16, height: R * 2 + 16, borderRadius: R + 8, backgroundColor: 'rgba(255,120,0,0.5)' },
+  windIndic: { position: 'absolute', top: 8, alignSelf: 'center', fontSize: 22, zIndex: 4 },
+  fxLabel: { position: 'absolute', top: '22%', alignSelf: 'center', color: '#fff', fontFamily: fonts.display, fontSize: 24, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, zIndex: 5 },
+  comboBadge: { position: 'absolute', top: '13%', alignSelf: 'center', color: '#FFD200', fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, zIndex: 5 },
+  pickup: { position: 'absolute', left: 0, top: 0, width: PICK_R * 2, height: PICK_R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
+  pickupEmoji: { fontSize: PICK_R * 2 - 6, lineHeight: PICK_R * 2, textAlign: 'center', includeFontPadding: false },
+  overCombo: { color: c.amber, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(1) },
   char: { position: 'absolute', left: 0, bottom: 0, width: CW, height: CH, alignItems: 'center', justifyContent: 'flex-end', zIndex: 2 },
   hint: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
   over: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: spacing(6) },
