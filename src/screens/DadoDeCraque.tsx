@@ -132,7 +132,10 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
     }).catch(() => {});
   };
 
-  const reset = () => { setPhase('setup'); setResult(null); setCurrent(null); setRolling(false); setSelected(null); };
+  const reset = () => {
+    setPhase('setup'); setResult(null); setCurrent(null); setRolling(false); setSelected(null);
+    setPicks([]); setSlots([]); setReveal(0); usedRef.current = new Set(); attemptRef.current = 0;
+  };
 
   const currentPickable = current ? current.players.filter(pickable) : [];
   const noneFits = !!current && !rolling && currentPickable.length === 0 && filled < slots.length;

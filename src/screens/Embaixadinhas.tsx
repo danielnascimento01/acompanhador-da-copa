@@ -25,7 +25,6 @@ const CW = 80;   // largura do boneco (maior)
 const CH = 104;  // altura do boneco (maior)
 const R = 32;    // raio da bola (maior)
 const BOUNCE = 560;    // velocidade pra cima ao cabecear (FIXA — não subir junto da gravidade)
-const HEAD_BAND = 34;  // tolerância vertical do toque na cabeça
 // Rampa de dificuldade: a gravidade começa leve e SOBE a cada toque (o jogo aperta
 // sozinho, sem "ponto morto" eterno). BOUNCE fica fixo de propósito.
 const GRAVITY_BASE = 780;
@@ -116,7 +115,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const [globalScores, setGlobalScores] = useState<GlobalEntry[] | null>(null);
   const [loadingGlobal, setLoadingGlobal] = useState(false);
   const [skinId, setSkinId] = useState('brasil');
-  const myId = useRef<string>('');
+  const [myId, setMyId] = useState(''); // state (não ref) p/ re-renderizar o destaque "(você)"
 
   // Dimensões da área de jogo.
   const dims = useRef({ w: 0, h: 0 });
@@ -166,7 +165,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
   useEffect(() => {
     if (visible) {
-      getDeviceId().then((id) => { myId.current = id; });
+      getDeviceId().then(setMyId);
       loadSkin().then(setSkinId);
       // Carrega apelido + recorde local e SINCRONIZA com o ranking mundial:
       // envia o melhor recorde local (pode ser anterior ao ranking). Como o
@@ -177,7 +176,12 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
         setScores(sc);
         const best = sc.length ? sc[0].score : 0;
         if (best > 0) {
-          submitGlobalScore(GAME, n, best).then((g) => { if (g) setGlobalScores(g); else refreshGlobal(); });
+          // Sincroniza recorde local → mundial. Marca "carregando" pra NÃO piscar
+          // "sem internet" enquanto o POST está no ar (globalScores ainda é null).
+          setLoadingGlobal(true);
+          submitGlobalScore(GAME, n, best)
+            .then((g) => { if (g) setGlobalScores(g); else return fetchGlobalLeaderboard(GAME).then(setGlobalScores); })
+            .finally(() => setLoadingGlobal(false));
         } else {
           refreshGlobal();
         }
@@ -293,6 +297,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     last.current = t;
 
     const b = ball.current;
+    const prevY = b.y; // posição no início do frame (p/ colisão por cruzamento)
     b.vy += gravityRef.current * dt; // gravidade da rampa (sobe com os toques)
     b.y += b.vy * dt;
     b.x += b.vx * dt;
@@ -301,9 +306,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); }
     if (b.x > w - R) { b.x = w - R; b.vx = -Math.abs(b.vx); }
 
-    // cabeça do boneco (topo do boneco fica em h - CH)
+    // cabeça do boneco (topo do boneco fica em h - CH). Colisão por CRUZAMENTO do
+    // plano headY (swept): elimina tunneling em qualquer velocidade/dt, sem depender
+    // da largura da banda. Só conta se a bola desce (vy>0) e cruzou o plano vindo de cima.
     const headY = h - CH + 16;
-    if (b.vy > 0 && b.y + R >= headY && b.y + R <= headY + HEAD_BAND) {
+    if (b.vy > 0 && prevY + R < headY && b.y + R >= headY) {
       const cx = charX.current;
       const off = b.x - cx;
       if (Math.abs(off) < CW / 2 + R * 0.6) {
@@ -434,7 +441,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                   <Text style={styles.rankNote}>Ninguém no ranking ainda. Jogue e seja o primeiro! 🥇</Text>
                 ) : (
                   globalScores.map((s, i) => {
-                    const mine = s.id === myId.current;
+                    const mine = s.id === myId;
                     return (
                       <View key={s.id} style={[styles.rankRow, mine && styles.rankRowMine]}>
                         <Text style={styles.rankPos}>{i + 1}º</Text>

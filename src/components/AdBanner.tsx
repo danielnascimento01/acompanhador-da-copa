@@ -15,11 +15,13 @@ export function AdBanner() {
   const cmp = bannerComponent();
   if (!unitId || !cmp) return null;
   const { BannerAd, BannerAdSize } = cmp;
+  // LARGE_ANCHORED_* é o recomendado na v16; ANCHORED_* (deprecado) e BANNER como fallback.
+  const size = BannerAdSize.LARGE_ANCHORED_ADAPTIVE_BANNER ?? BannerAdSize.ANCHORED_ADAPTIVE_BANNER ?? BannerAdSize.BANNER;
   return (
     <View style={styles.wrap}>
       <BannerAd
         unitId={unitId}
-        size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+        size={size}
         requestOptions={{ requestNonPersonalizedAdsOnly: requestNonPersonalizedAdsOnly() }}
       />
     </View>

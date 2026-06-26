@@ -108,7 +108,9 @@ export async function showRewarded(): Promise<'earned' | 'dismissed' | 'unavaila
       resolve(r);
     };
     const timeout = setTimeout(() => finish('unavailable'), 12000);
-    subs.push(ad.addAdEventListener(m.RewardedAdEventType.LOADED, () => { ad.show().catch(() => finish('unavailable')); }));
+    subs.push(ad.addAdEventListener(m.RewardedAdEventType.LOADED, () => {
+      try { ad.show().catch(() => finish('unavailable')); } catch { finish('unavailable'); } // show() pode lançar síncrono
+    }));
     subs.push(ad.addAdEventListener(m.RewardedAdEventType.EARNED_REWARD, () => { earned = true; }));
     subs.push(ad.addAdEventListener(m.AdEventType.CLOSED, () => finish(earned ? 'earned' : 'dismissed')));
     subs.push(ad.addAdEventListener(m.AdEventType.ERROR, () => finish('unavailable')));
