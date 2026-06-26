@@ -44,6 +44,9 @@ const SPEED_F = 1.7;    // ⚡ acelera o tempo do jogo
 const SLOW_F = 0.5;     // ⏱️ câmera lenta
 const FX_SPEED_DUR = 4;   // segundos do ⚡
 const FX_SLOW_DUR = 2.4;  // segundos do ⏱️
+const COMBO_TARGET = 5;   // perfeitas seguidas p/ ativar o multiplicador 2x
+const MAX_MULT = 2;       // multiplicador máximo
+const MILESTONES = [10, 25, 50, 75, 100];
 type Fx = 'speed' | 'slow';
 
 type Phase = 'menu' | 'playing' | 'over';
@@ -174,11 +177,12 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   // 🎯 Combo de cabeçadas perfeitas (meta visual, não mexe no placar).
   const comboRef = useRef(0);
   const maxComboRef = useRef(0);
+  const multiplierRef = useRef(1); // 1x normal; vira 2x após COMBO_TARGET perfeitas
   const [combo, setCombo] = useState(0);
   const comboScale = useRef(new Animated.Value(1)).current;
-  // 🔥 Bola em chamas (cosmético) — em combos altos / ao pegar o ⚡.
+  const beatRef = useRef(false);   // recorde já batido nesta partida? (saltos de +2)
+  // 🔥 Bola em chamas — aceso SÓ enquanto o multiplicador 2x está ativo.
   const [onFire, setOnFire] = useState(false);
-  const fireUntil = useRef(0);
 
   const record = scores.length ? scores[0].score : 0;
   const skin = skinById(skinId);
@@ -307,8 +311,8 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     windRef.current = 0; windClock.current = 4 + Math.random() * 3; setWind(0);
     pickupRef.current = null; pickClock.current = 7 + Math.random() * 4; setPickType(null);
     fxRef.current = null; setFx(null);
-    comboRef.current = 0; maxComboRef.current = 0; setCombo(0);
-    fireUntil.current = 0; setOnFire(false);
+    comboRef.current = 0; maxComboRef.current = 0; multiplierRef.current = 1; setCombo(0);
+    beatRef.current = false; setOnFire(false);
     charX.current = w / 2;
     charTX.setValue(w / 2 - CW / 2);
     ball.current = { x: w / 2, y: R + 8, vx: 0, vy: 0 };
@@ -363,8 +367,6 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     }
     const pdt = dt * scale; // dt físico (acelera/desacelera o jogo inteiro)
 
-    if (onFire && clockRef.current >= fireUntil.current) setOnFire(false); // 🔥 apaga
-
     const b = ball.current;
     const prevY = b.y; // posição no início do frame (p/ colisão por cruzamento)
     b.vy += GRAVITY * pdt; // gravidade (tempo escalado pelo efeito)
@@ -398,7 +400,6 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
         const dur = p.type === 'speed' ? FX_SPEED_DUR : FX_SLOW_DUR;
         fxRef.current = { type: p.type, until: clockRef.current + dur };
         setFx(p.type);
-        if (p.type === 'speed') { setOnFire(true); fireUntil.current = clockRef.current + dur; }
         pickupRef.current = null; setPickType(null);
         showFlash(p.type === 'speed' ? '⚡ RÁPIDO!' : '⏱️ CÂMERA LENTA', 1000);
         buzz('Heavy'); doShake(6);
@@ -417,27 +418,37 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
         b.vy = -bounceAt(touchesRef.current); // impulso sobe a cada toque
         b.vx += off * 4.5; // desvia conforme onde bate → habilidade
         b.vx = Math.max(-320, Math.min(320, b.vx));
-        touchesRef.current += 1;
-        setTouches(touchesRef.current);
-
-        // 🎯 COMBO de cabeçadas perfeitas (centro da testa) — meta visual, não muda placar.
+        // 🎯 COMBO: COMBO_TARGET cabeçadas PERFEITAS seguidas (centro da testa) ativam o
+        // multiplicador 2x — aí as PRÓXIMAS cabeçadas valem 2 toques (skill puro). Errar
+        // uma perfeita zera o combo e volta pra 1x. O fogo na bola acende só nesse 2x.
         const perfect = Math.abs(off) < PERFECT;
+        const inc = perfect ? multiplierRef.current : 1; // 2x só enquanto a sequência segue
         if (perfect) {
           comboRef.current += 1;
           if (comboRef.current > maxComboRef.current) maxComboRef.current = comboRef.current;
+          if (comboRef.current >= COMBO_TARGET) { multiplierRef.current = MAX_MULT; if (!onFire) setOnFire(true); }
           setCombo(comboRef.current);
           comboScale.setValue(1.5);
           Animated.timing(comboScale, { toValue: 1, duration: 160, useNativeDriver: true }).start();
-          if (comboRef.current === 5 && !onFire) { setOnFire(true); fireUntil.current = clockRef.current + 5; }
         } else {
           if (comboRef.current >= 3) showFlash('Combo perdido!', 650);
-          if (comboRef.current !== 0) { comboRef.current = 0; setCombo(0); }
+          comboRef.current = 0;
+          if (multiplierRef.current !== 1) multiplierRef.current = 1;
+          if (onFire) setOnFire(false);
+          if (combo !== 0) setCombo(0);
         }
 
-        const ms = milestoneFor(touchesRef.current);
-        const isRecord = touchesRef.current === record + 1 && record > 0;
-        if (isRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz('Heavy'); doShake(7); }
-        else if (isRecord) { showFlash('Novo recorde! 🎉', 1600); buzz('Heavy'); doShake(7); }
+        const prevT = touchesRef.current;
+        touchesRef.current += inc; // +1, ou +2 com o multiplicador
+        setTouches(touchesRef.current);
+
+        // Marcos/recorde por CRUZAMENTO (a pontuação pode pular de +2 com o 2x).
+        const cm = MILESTONES.find((m) => prevT < m && touchesRef.current >= m);
+        const ms = cm != null ? milestoneFor(cm) : null;
+        const justRecord = !beatRef.current && record > 0 && touchesRef.current > record;
+        if (justRecord) beatRef.current = true;
+        if (justRecord && ms) { showFlash(`Novo recorde! ${ms}`, 1600); buzz('Heavy'); doShake(7); }
+        else if (justRecord) { showFlash('Novo recorde! 🎉', 1600); buzz('Heavy'); doShake(7); }
         else if (ms) { showFlash(ms, touchesRef.current >= 100 ? 1600 : 900); buzz('Medium'); doShake(5); }
         else buzz(perfect ? 'Medium' : 'Light'); // centro vibra mais
       }
@@ -580,7 +591,9 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 {wind !== 0 && <Text style={styles.windIndic}>{wind < 0 ? '🌬️ ⬅️' : '➡️ 🌬️'}</Text>}
                 {fx && <Text style={styles.fxLabel}>{fx === 'speed' ? '⚡ RÁPIDO' : '⏱️ LENTO'}</Text>}
                 {combo >= 2 && (
-                  <Animated.Text style={[styles.comboBadge, { transform: [{ scale: comboScale }] }]}>🔥 x{combo}</Animated.Text>
+                  <Animated.Text style={[styles.comboBadge, { transform: [{ scale: comboScale }] }]}>
+                    {combo >= COMBO_TARGET ? '🔥 2x' : `🎯 ${combo}/${COMBO_TARGET}`}
+                  </Animated.Text>
                 )}
                 {flash && <Text style={styles.flash}>{flash}</Text>}
                 {pickType && (
@@ -677,7 +690,7 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   ball: { position: 'absolute', left: 0, top: 0, width: R * 2, height: R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   ballEmoji: { fontSize: R * 2 - 12, lineHeight: R * 2, width: R * 2, textAlign: 'center', includeFontPadding: false },
   ballFire: { position: 'absolute', top: -8, left: -8, width: R * 2 + 16, height: R * 2 + 16, borderRadius: R + 8, backgroundColor: 'rgba(255,120,0,0.5)' },
-  windIndic: { position: 'absolute', top: 8, alignSelf: 'center', fontSize: 22, zIndex: 4 },
+  windIndic: { position: 'absolute', top: '34%', alignSelf: 'center', fontSize: 22, zIndex: 4, backgroundColor: 'rgba(0,0,0,0.4)', color: '#fff', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 14, overflow: 'hidden' },
   fxLabel: { position: 'absolute', top: '22%', alignSelf: 'center', color: '#fff', fontFamily: fonts.display, fontSize: 24, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, zIndex: 5 },
   comboBadge: { position: 'absolute', top: '13%', alignSelf: 'center', color: '#FFD200', fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, zIndex: 5 },
   pickup: { position: 'absolute', left: 0, top: 0, width: PICK_R * 2, height: PICK_R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
