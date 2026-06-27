@@ -21,6 +21,11 @@ export interface Env {
   KV: KVNamespace;
   WORKER_URL: string;
   EXPO_ACCESS_TOKEN?: string;
+  // Segredo que protege o gatilho redundante POST /api/cron (cron-job.org).
+  CRON_SECRET?: string;
+  // URL de ping do healthchecks.io — batido a cada cron OK. Se os pings pararem,
+  // o healthchecks alerta o Daniel (o cron do Cloudflare já morreu 2x sozinho).
+  HEALTHCHECK_URL?: string;
 }
 
 // ── KV key helpers ─────────────────────────────────────────────────────────────
@@ -157,7 +162,14 @@ async function runCron(env: Env): Promise<void> {
       const currentScoreStr = `${home}-${away}`;
 
       // Marca que vimos este jogo AO VIVO — base p/ detectar o fim de jogo depois.
-      await env.KV.put(K.matchState(event.id), 'in', { expirationTtl: 7 * 24 * 60 * 60 });
+      // Só grava na TRANSIÇÃO (quando ainda não era 'in'), em vez de reescrever a
+      // mesma chave a cada minuto. O FIM DE JOGO continua garantido: basta que o
+      // estado seja 'in' quando o jogo virar 'post' — e este put garante isso na
+      // primeira vez que vemos o jogo ao vivo (TTL de 7 dias >> duração da partida).
+      const prevMatchState = await env.KV.get(K.matchState(event.id));
+      if (prevMatchState !== 'in') {
+        await env.KV.put(K.matchState(event.id), 'in', { expirationTtl: 7 * 24 * 60 * 60 });
+      }
 
       const storedScoreStr = await env.KV.get(K.lastScore(event.id));
 
@@ -314,8 +326,13 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
           fullTime: parseFullTime(body.fullTime),
         };
 
+  // Só persiste se algo mudou. O app chama /api/register a cada abertura; sem
+  // isto, cada abertura era 1 escrita no KV (a cota apertada) e escalaria com os
+  // downloads. Reabrir com as mesmas preferências agora é leitura pura (de graça).
+  const existing = subs[token];
+  const changed = !existing || JSON.stringify(existing) !== JSON.stringify(prefs);
   subs[token] = prefs;
-  await saveSubscribers(env, subs);
+  if (changed) await saveSubscribers(env, subs);
 
   return json({ ok: true, total: Object.keys(subs).length });
 }
@@ -345,6 +362,37 @@ async function handleLeaderboard(url: URL, env: Env): Promise<Response> {
   return json({ ok: true, top });
 }
 
+/**
+ * Heartbeat: avisa o healthchecks.io que o cron rodou. Chamado SÓ quando runCron
+ * conclui sem erro (se runCron lançar, o ping não acontece → o healthchecks alerta
+ * o Daniel). Best-effort: falha de rede aqui nunca pode quebrar o cron. Custo de KV
+ * = ZERO (é um fetch externo, não uma escrita) — preserva a otimização de escritas.
+ */
+async function pingHealthcheck(env: Env): Promise<void> {
+  if (!env.HEALTHCHECK_URL) return;
+  try {
+    await fetch(env.HEALTHCHECK_URL, { method: 'GET' });
+  } catch {
+    /* heartbeat é best-effort — ignora erro de rede */
+  }
+}
+
+/**
+ * Gatilho REDUNDANTE do cron (chamado pelo cron-job.org de 1 em 1 min). Existe
+ * porque o cron nativo do Cloudflare já parou sozinho 2x. Rodar junto com o cron
+ * nativo é seguro: o dedup por placar (`lastScore`) impede push duplicado — o 2º a
+ * rodar no minuto vê "nada mudou" e não envia nada. Protegido por segredo só para
+ * evitar acionamento por estranhos (o pior caso seria um runCron extra inofensivo).
+ */
+async function handleCron(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  const key = new URL(request.url).searchParams.get('key');
+  if (!env.CRON_SECRET || key !== env.CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+  // Responde 200 na hora e roda o cron em background (cron-job.org só quer o 200).
+  ctx.waitUntil(runCron(env).then(() => pingHealthcheck(env)));
+  return json({ ok: true });
+}
+
 async function handleHealth(env: Env): Promise<Response> {
   const subs = await loadSubscribers(env);
   const tokens = Object.keys(subs);
@@ -358,10 +406,12 @@ async function handleHealth(env: Env): Promise<Response> {
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(runCron(env));
+    // Ping do heartbeat só no caminho de sucesso: se runCron lançar, não pinga →
+    // healthchecks alerta. Cobre o cron NATIVO do Cloudflare.
+    ctx.waitUntil(runCron(env).then(() => pingHealthcheck(env)));
   },
 
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     // Preflight CORS (caso o app rode na web algum dia).
@@ -376,6 +426,7 @@ export default {
       });
     }
 
+    if (url.pathname === '/api/cron')        return handleCron(request, env, ctx);
     if (url.pathname === '/api/register')    return handleRegister(request, env);
     if (url.pathname === '/api/scorers')     return handleScorers(env);
     if (url.pathname === '/api/score')       return handleScoreSubmit(request, env);

@@ -56,10 +56,35 @@ export async function aggregateScorers(kv: KVNamespace): Promise<void> {
     .map(([player, { teamName, goals }]) => ({ player, teamName, goals, updatedAt: now.toISOString() }))
     .sort((a, b) => b.goals - a.goals);
 
+  // Só grava se a artilharia REALMENTE mudou (ignorando `updatedAt`, que muda a
+  // cada ciclo). Sem isto, o cron reescrevia esta chave 1.440x/dia à toa e
+  // estourava a cota de ESCRITA do KV. A leitura de comparação é barata (a cota
+  // de leitura é 100x maior). O app não perde nada: o conteúdo é idêntico.
+  const prevRaw = await kv.get('scorers');
+  if (prevRaw && sameScorers(safeParse(prevRaw), scorers)) return;
+
   await kv.put('scorers', JSON.stringify(scorers), {
     // Expira em 7 dias — bem além da Copa
     expirationTtl: 7 * 24 * 60 * 60,
   });
+}
+
+/** Parse tolerante (KV corrompido → trata como vazio, força a regravação). */
+function safeParse(raw: string): LiveScorer[] {
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? (v as LiveScorer[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Compara duas listas de artilheiros ignorando `updatedAt` (muda todo ciclo). */
+export function sameScorers(a: LiveScorer[], b: LiveScorer[]): boolean {
+  if (a.length !== b.length) return false;
+  const sig = (l: LiveScorer[]) =>
+    l.map((s) => JSON.stringify([s.player, s.teamName, s.goals])).sort().join('|');
+  return sig(a) === sig(b);
 }
 
 /** Retorna artilheiros do KV (fallback: array vazio). */
