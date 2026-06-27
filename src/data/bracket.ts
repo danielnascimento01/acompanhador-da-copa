@@ -139,6 +139,43 @@ export function slotLabel(slot: Slot): string {
   }
 }
 
+/** Número de "rodada" sintético por fase (>3, para distinguir da fase de grupos). */
+const STAGE_ROUND: Record<StageKey, number> = {
+  r32: 4, r16: 5, qf: 6, sf: 7, third: 8, final: 9,
+};
+
+/**
+ * Converte o BRACKET oficial em jogos no formato da grade (Match), para que o
+ * mata-mata apareça na lista principal DEPOIS da fase de grupos — com data/hora,
+ * fase e o confronto. Quando os times já são conhecidos com certeza (1º/2º de
+ * grupo definidos), mostra a seleção real; senão mostra o rótulo da chave
+ * ("Vencedor Grupo A", "3º (A/B/C/D/F)", "Vencedor 16-avos J3"). Nunca inventa
+ * um time: terceiros e fases seguintes ficam como rótulo até a definição oficial.
+ */
+export function bracketAsMatches(matches: Match[]): Match[] {
+  const positions = groupPositions(matches);
+  return BRACKET.map((bm) => {
+    const homeId = resolveSlot(bm.a, positions);
+    const awayId = resolveSlot(bm.b, positions);
+    return {
+      id: bm.id,
+      utc: bm.utc,
+      round: STAGE_ROUND[bm.stage],
+      home: homeId ?? '',
+      away: awayId ?? '',
+      homeBadge: null,
+      awayBadge: null,
+      venue: null,
+      homeScore: null,
+      awayScore: null,
+      status: 'NS',
+      homeLabel: homeId ? undefined : slotLabel(bm.a),
+      awayLabel: awayId ? undefined : slotLabel(bm.b),
+      stageLabel: STAGE_META.find((s) => s.key === bm.stage)?.name ?? '',
+    };
+  });
+}
+
 /** Resolve um slot para um teamId, se já conhecido com certeza (senão null). */
 export function resolveSlot(
   slot: Slot,

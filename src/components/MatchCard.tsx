@@ -33,19 +33,23 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, primar
   const awayFav = selected.has(match.away);
   const homePrimary = !!primaryTeam && match.home === primaryTeam;
   const awayPrimary = !!primaryTeam && match.away === primaryTeam;
+  // Mata-mata sem time definido: mostra o rótulo da chave ("Vencedor Grupo A") no
+  // lugar do nome da seleção. Quando o time é conhecido, homeLabel é undefined.
+  const homeText = match.homeLabel ?? teamName(match.home);
+  const awayText = match.awayLabel ?? teamName(match.away);
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${teamName(match.home)} contra ${teamName(match.away)}, ver detalhes`}
+      accessibilityLabel={`${homeText} contra ${awayText}, ver detalhes`}
       style={({ pressed }) => [styles.card, live && styles.cardLive, pressed && styles.cardPressed]}
     >
       {/* Mandante */}
       <View style={styles.side}>
         <Flag teamId={match.home} size={40} />
-        <Text style={[styles.team, homeFav && styles.teamFav]} numberOfLines={1}>
-          {teamName(match.home)}
+        <Text style={[styles.team, homeFav && styles.teamFav, !!match.homeLabel && styles.teamTbd]} numberOfLines={1}>
+          {homeText}
         </Text>
         {homePrimary && <Text style={styles.star}>★</Text>}
       </View>
@@ -73,6 +77,8 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, primar
           <View style={styles.predChip}>
             <Text style={styles.predText}>🔮 {prediction.home}–{prediction.away}</Text>
           </View>
+        ) : match.stageLabel ? (
+          <Text style={styles.statusDim} numberOfLines={1}>{match.stageLabel}</Text>
         ) : lateNight ? (
           <Text style={styles.lateNight}>🌙 madrugada</Text>
         ) : (
@@ -83,8 +89,8 @@ export const MatchCard = React.memo(function MatchCard({ match, selected, primar
       {/* Visitante */}
       <View style={[styles.side, styles.sideRight]}>
         {awayPrimary && <Text style={styles.star}>★</Text>}
-        <Text style={[styles.team, styles.teamRight, awayFav && styles.teamFav]} numberOfLines={1}>
-          {teamName(match.away)}
+        <Text style={[styles.team, styles.teamRight, awayFav && styles.teamFav, !!match.awayLabel && styles.teamTbd]} numberOfLines={1}>
+          {awayText}
         </Text>
         <Flag teamId={match.away} size={40} />
       </View>
@@ -112,6 +118,7 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   team: { color: c.text, fontFamily: fonts.semibold, fontSize: 15, flexShrink: 1 },
   teamRight: { textAlign: 'right' },
   teamFav: { color: c.accent, fontFamily: fonts.bold },
+  teamTbd: { color: c.textDim, fontFamily: fonts.medium, fontSize: 13 },
   star: { color: c.amber, fontSize: 11 },
   center: { alignItems: 'center', minWidth: 78, paddingHorizontal: spacing(2) },
   time: { color: c.text, fontFamily: fonts.display, fontSize: 22, fontVariant: ['tabular-nums'] },

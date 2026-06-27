@@ -84,7 +84,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           >
             <Text style={styles.shareText}>↗ Compartilhar</Text>
           </Pressable>
-          {!finished && (
+          {!finished && !match.stageLabel && (
             <Pressable
               onPress={onToggleFollow}
               accessibilityRole="button"
@@ -115,13 +115,13 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
               ? clock?.halftime
                 ? 'INTERVALO'
                 : `AO VIVO${clock?.clock ? ` · ${clock.clock}` : ''}`
-              : finished ? 'ENCERRADO' : `RODADA ${match.round}`}
+              : finished ? 'ENCERRADO' : match.stageLabel ? match.stageLabel.toUpperCase() : `RODADA ${match.round}`}
           </Text>
           <View style={styles.scoreRow}>
             <View style={styles.teamCol}>
               <Flag teamId={match.home} size={58} radius={17} />
               <Text style={styles.teamName} numberOfLines={2}>
-                {teamName(match.home)}
+                {match.homeLabel ?? teamName(match.home)}
               </Text>
             </View>
             <View style={styles.middle}>
@@ -136,7 +136,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
             <View style={styles.teamCol}>
               <Flag teamId={match.away} size={58} radius={17} />
               <Text style={styles.teamName} numberOfLines={2}>
-                {teamName(match.away)}
+                {match.awayLabel ?? teamName(match.away)}
               </Text>
             </View>
           </View>

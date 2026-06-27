@@ -10,6 +10,7 @@ import { DayMatchesSheet } from './DayMatchesSheet';
 import { PastMatchesSheet } from './PastMatchesSheet';
 import { FadeInUp } from '../components/Motion';
 import { hasStarted, hasMatchInPlayWindow, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
+import { bracketAsMatches } from '../data/bracket';
 import { openSuggestion } from '../lib/links';
 import { isStale } from '../lib/freshness';
 import { useStore } from '../lib/store';
@@ -144,7 +145,17 @@ export function ScheduleScreen() {
       if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) pastCount++;
       else upcoming.push(m);
     }
-    return { sections: groupByDay(upcoming), hasPast: pastCount > 0 };
+    // Mata-mata: continua a grade DEPOIS da fase de grupos. Vem do BRACKET oficial
+    // já embutido no app (datas/horas em UTC; times reais entram conforme os grupos
+    // fecham, senão rótulo da chave). Só jogos futuros; e dedup por proximidade de
+    // horário (±90 min) para não duplicar quando a API trouxer o jogo real depois.
+    const ko = bracketAsMatches(matches).filter((k) => {
+      const kt = kickoff(k).getTime();
+      if (kt <= now.getTime()) return false;
+      return !matches.some((m) => Math.abs(kickoff(m).getTime() - kt) < 90 * 60 * 1000);
+    });
+    const all = [...upcoming, ...ko].sort((a, b) => a.utc.localeCompare(b.utc));
+    return { sections: groupByDay(all), hasPast: pastCount > 0 };
   }, [matches]);
 
   return (

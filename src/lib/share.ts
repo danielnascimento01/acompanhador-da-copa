@@ -17,10 +17,14 @@ const PLAY = 'https://play.google.com/store/apps/details?id=com.danielnascimento
 const APPSTORE = 'https://apps.apple.com/app/id6779020711';
 const SIG = `\n\n— ${APP}\n📲 Baixe grátis:\n🤖 Android: ${PLAY}\n🍏 iPhone: ${APPSTORE}`;
 
+/** Lado de um confronto: rótulo da chave (mata-mata sem time) ou bandeira+nome. */
+const sideHome = (m: Match): string => (m.homeLabel ? m.homeLabel : `${teamFlag(m.home)} ${teamName(m.home)}`);
+const sideAway = (m: Match): string => (m.awayLabel ? m.awayLabel : `${teamName(m.away)} ${teamFlag(m.away)}`);
+
 /** Texto de UM jogo: placar (se já tem) ou data/hora do confronto. */
 export function matchShareText(m: Match): string {
-  const home = `${teamFlag(m.home)} ${teamName(m.home)}`;
-  const away = `${teamName(m.away)} ${teamFlag(m.away)}`;
+  const home = sideHome(m);
+  const away = sideAway(m);
   // Só compartilha placar de estado CONFIRMADO (ao vivo/encerrado) — nunca de
   // status preso/dado velho (que cairia no ramo de data/hora, neutro).
   const confirmed = isLive(m) || isFinished(m);
@@ -39,7 +43,7 @@ export function matchesShareText(title: string, matches: Match[]): string {
     const confirmed = isLive(m) || isFinished(m);
     const hasScore = confirmed && m.homeScore != null && m.awayScore != null;
     const score = hasScore ? `${m.homeScore}–${m.awayScore}` : formatTime(kickoff(m));
-    return `${teamFlag(m.home)} ${teamName(m.home)} ${score} ${teamName(m.away)} ${teamFlag(m.away)}`;
+    return `${sideHome(m)} ${score} ${sideAway(m)}`;
   });
   return `${title}\n${lines.join('\n')}${SIG}`;
 }

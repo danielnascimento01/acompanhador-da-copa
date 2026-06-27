@@ -18,6 +18,15 @@ export type Match = {
   awayScore: number | null;
   /** Status vindo da API: "NS" (não começou), "1H", "HT", "2H", "FT", etc. */
   status: string;
+  /**
+   * Jogos do MATA-MATA ainda sem time definido: rótulo do confronto por posição
+   * de chave (ex.: "Vencedor Grupo A", "2º Grupo B"). Presente só quando `home`/
+   * `away` ainda não resolvem para uma seleção real. [[bracket.ts]]
+   */
+  homeLabel?: string;
+  awayLabel?: string;
+  /** Nome da fase do mata-mata (ex.: "16-avos de final"). Substitui "Rodada N". */
+  stageLabel?: string;
 };
 
 export const ALL_MATCHES: Match[] = (rawFixtures as Match[])
@@ -78,6 +87,7 @@ export function isPredictable(match: Match, now: Date = new Date()): boolean {
   return (
     match.homeScore == null &&
     match.awayScore == null &&
+    !match.stageLabel && // jogos de mata-mata (fase/chave) não entram em palpite
     !isLive(match, now) &&
     !isFinished(match) &&
     kickoff(match).getTime() > now.getTime()
