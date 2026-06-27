@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { FadeInUp } from '../components/Motion';
@@ -8,10 +8,14 @@ import { useStore } from '../lib/store';
 import { fonts, radius, spacing, elevation } from '../lib/theme';
 import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
 
+// ⚠️ Mantenha esta lista em dia: sempre que o app ganhar uma feature de destaque,
+// atualize aqui (e o ícone, se mudar) — é a 1ª tela de quem acabou de baixar.
 const FEATURES = [
-  { icon: '🔔', title: 'Avisos das suas seleções', text: 'Marque os times pra ser avisado dos jogos deles.' },
-  { icon: '📅', title: 'Resumo do dia', text: 'De manhã, os jogos das suas seleções naquele dia.' },
-  { icon: '⏰', title: 'Jogo começando', text: 'Um lembrete pouco antes de cada partida.' },
+  { icon: '⚽', title: 'Gol ao vivo', text: 'Aviso na hora do gol — mesmo com o app fechado.' },
+  { icon: '🏁', title: 'Fim de jogo', text: 'O placar final assim que a partida acaba.' },
+  { icon: '📅', title: 'Todos os jogos', text: 'A grade completa, da fase de grupos até a final.' },
+  { icon: '🔔', title: 'Suas seleções', text: 'Marque seus times: resumo do dia e lembrete antes de cada jogo.' },
+  { icon: '🎮', title: 'Diversão', text: 'Embaixadinhas, quiz e Dado de Craque pra passar o tempo.' },
 ];
 
 export function OnboardingScreen({ onStart }: { onStart: () => void }) {
@@ -33,20 +37,21 @@ export function OnboardingScreen({ onStart }: { onStart: () => void }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <FadeInUp offset={20}>
         <View style={styles.hero}>
-          <LinearGradient
-            colors={g.accent}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <Image
+            source={require('../../assets/icon.png')}
             style={[styles.badge, elevation(2)]}
-          >
-            <Text style={styles.badgeEmoji}>⚽</Text>
-          </LinearGradient>
+            accessibilityLabel="Ícone do Acompanhador da Copa"
+          />
           <Text style={styles.kicker}>EDIÇÃO 2026</Text>
           <Text style={styles.title}>ACOMPANHADOR{'\n'}DA COPA</Text>
-          <Text style={styles.subtitle}>Não perca nenhum jogo das suas seleções.</Text>
+          <Text style={styles.subtitle}>Gols ao vivo, resultados e a Copa inteira no seu bolso.</Text>
         </View>
       </FadeInUp>
 
@@ -87,22 +92,21 @@ export function OnboardingScreen({ onStart }: { onStart: () => void }) {
           App não oficial · sem vínculo com entidades ou competições oficiais. Dados de terceiros, sujeitos a alteração.
         </Text>
       </FadeInUp>
-    </View>
+    </ScrollView>
   );
 }
 
 const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.bg, padding: spacing(6), justifyContent: 'center' },
-  hero: { alignItems: 'center', marginBottom: spacing(9) },
+  container: { flex: 1, backgroundColor: c.bg },
+  content: { flexGrow: 1, padding: spacing(6), justifyContent: 'center', paddingVertical: spacing(8) },
+  hero: { alignItems: 'center', marginBottom: spacing(8) },
   badge: {
     width: 88,
     height: 88,
     borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: spacing(4),
+    overflow: 'hidden',
   },
-  badgeEmoji: { fontSize: 46 },
   kicker: { color: c.accent, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 3 },
   title: { color: c.text, fontFamily: fonts.display, fontSize: 40, lineHeight: 50, textAlign: 'center', marginTop: spacing(2), paddingTop: spacing(1) },
   subtitle: { color: c.textDim, fontFamily: fonts.medium, fontSize: 16, marginTop: spacing(3), textAlign: 'center' },
