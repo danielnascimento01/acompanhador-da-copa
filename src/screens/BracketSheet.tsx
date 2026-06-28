@@ -5,8 +5,10 @@ import { Flag } from '../components/Flag';
 import { teamName } from '../data/teams';
 import { BRACKET, STAGE_META, Slot, StageKey, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
 import { bestThirds, ThirdRow } from '../data/bestThirds';
+import { Match, hasStarted, isLive } from '../data/fixtures';
 import { formatDayShort, formatTime } from '../lib/format';
 import { useStore } from '../lib/store';
+import { MatchDetailSheet } from './MatchDetailSheet';
 
 /** Data + hora do jogo no fuso do aparelho (ex.: "dom., 28/06 · 16:00"). */
 function whenLabel(utc: string): string {
@@ -30,6 +32,11 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
   const { matches, selected } = useStore();
   const positions = useMemo(() => groupPositions(matches), [matches]);
   const thirds = useMemo(() => bestThirds(matches), [matches]);
+  // Os jogos do mata-mata já vêm em `matches` (com placar/status ao vivo da ESPN),
+  // indexados pelo MESMO id da chave (ex.: "r32-1"). Achamos o jogo "vivo" por id
+  // para abrir o detalhe completo (lance a lance, escalações, onde assistir…).
+  const liveById = useMemo(() => new Map(matches.map((m) => [m.id, m])), [matches]);
+  const [detail, setDetail] = useState<Match | null>(null);
 
   const resolved = useMemo(() => {
     let n = 0;
@@ -108,19 +115,40 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
               return (
                 <View key={stage.key} style={styles.stageBlock}>
                   <Text style={styles.stageName}>{stage.name}</Text>
-                  {BRACKET.filter((m) => m.stage === stage.key).map((m) => (
-                    <View key={m.id} style={[styles.match, stage.key === 'final' && styles.matchFinal]}>
-                      <View style={styles.matchHead}>
-                        <Text style={styles.matchN}>
-                          {stage.key === 'third' || stage.key === 'final' ? stage.name : `Jogo ${m.idx}`}
-                        </Text>
-                        <Text style={styles.matchDate}>{whenLabel(m.utc)}</Text>
-                      </View>
-                      <SlotView slot={m.a} positions={positions} selected={selected} />
-                      <Text style={styles.vs}>×</Text>
-                      <SlotView slot={m.b} positions={positions} selected={selected} />
-                    </View>
-                  ))}
+                  {BRACKET.filter((m) => m.stage === stage.key).map((m) => {
+                    const live = liveById.get(m.id);
+                    const started = live ? hasStarted(live) : false;
+                    const liveNow = live ? isLive(live) : false;
+                    return (
+                      <Pressable
+                        key={m.id}
+                        onPress={() => live && setDetail(live)}
+                        disabled={!live}
+                        accessibilityRole={live ? 'button' : undefined}
+                        accessibilityLabel={live ? 'Abrir detalhes do jogo' : undefined}
+                        style={({ pressed }) => [
+                          styles.match,
+                          stage.key === 'final' && styles.matchFinal,
+                          pressed && live && styles.matchPressed,
+                        ]}
+                      >
+                        <View style={styles.matchHead}>
+                          <Text style={styles.matchN}>
+                            {stage.key === 'third' || stage.key === 'final' ? stage.name : `Jogo ${m.idx}`}
+                          </Text>
+                          {liveNow ? (
+                            <Text style={styles.matchLive}>● AO VIVO</Text>
+                          ) : (
+                            <Text style={styles.matchDate}>{whenLabel(m.utc)}</Text>
+                          )}
+                        </View>
+                        <SlotView slot={m.a} positions={positions} selected={selected} score={started ? live?.homeScore : null} />
+                        <Text style={styles.vs}>×</Text>
+                        <SlotView slot={m.b} positions={positions} selected={selected} score={started ? live?.awayScore : null} />
+                        {live ? <Text style={styles.matchTap}>Toque para ver lance a lance, escalações e mais ›</Text> : null}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               );
             })}
@@ -132,6 +160,15 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
           </ScrollView>
         </View>
       </View>
+
+      {/* Detalhe completo do jogo do mata-mata (lance a lance, escalações, onde
+          assistir, anúncios…) — abre por cima da chave ao tocar num confronto. */}
+      <MatchDetailSheet
+        match={detail ? (liveById.get(detail.id) ?? detail) : null}
+        matches={matches}
+        selected={selected}
+        onClose={() => setDetail(null)}
+      />
     </Modal>
   );
 }
@@ -207,10 +244,12 @@ function SlotView({
   slot,
   positions,
   selected,
+  score,
 }: {
   slot: Slot;
   positions: Record<string, { first?: string; second?: string }>;
   selected: Set<string>;
+  score?: number | null;
 }) {
   const styles = useThemedStyles(makeStyles);
   const teamId = resolveSlot(slot, positions);
@@ -222,6 +261,7 @@ function SlotView({
         <Text style={[styles.slotTeam, fav && styles.slotTeamFav]} numberOfLines={1}>
           {teamName(teamId)}
         </Text>
+        {score != null ? <Text style={styles.slotScore}>{score}</Text> : null}
       </View>
     );
   }
@@ -292,9 +332,12 @@ const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
     marginBottom: spacing(2),
   },
   matchFinal: { borderColor: c.accent, backgroundColor: 'rgba(20,224,138,0.06)' },
+  matchPressed: { opacity: 0.6 },
   matchHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing(2) },
   matchN: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.3 },
   matchDate: { color: c.textFaint, fontFamily: fonts.semibold, fontSize: 11 },
+  matchLive: { color: c.accent, fontFamily: fonts.extrabold, fontSize: 11, letterSpacing: 0.3 },
+  matchTap: { color: c.accent, fontFamily: fonts.semibold, fontSize: 11, marginTop: spacing(2), textAlign: 'center' },
   slot: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -310,6 +353,7 @@ const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   slotFlag: { fontSize: 20 },
   slotTeam: { color: c.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
   slotTeamFav: { color: c.accent },
+  slotScore: { color: c.text, fontFamily: fonts.display, fontSize: 18, fontVariant: ['tabular-nums'], minWidth: 20, textAlign: 'right' },
   slotLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, flex: 1 },
   vs: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, textAlign: 'center', paddingVertical: 3 },
   footer: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },

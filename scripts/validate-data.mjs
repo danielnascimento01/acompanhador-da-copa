@@ -126,10 +126,17 @@ async function main() {
     }
   }
 
-  // 3. eventos da ESPN na janela que não casam com nenhum fixture (alias faltando)
+  // 3. alias faltando: evento da ESPN cujo nome de time não bate com NENHUMA
+  //    seleção conhecida. Os jogos do mata-mata NÃO estão em fixtures.json (vêm
+  //    da chave oficial, bracket.ts), então não exigimos casar com um fixture —
+  //    só que ambos os times sejam reconhecidos (senão o reconcile falha silencioso).
+  const allTeamIds = Object.keys(groupOf);
+  const knownTeam = (espnName) => allTeamIds.some((id) => teamMatches(espnName, id));
   for (const e of espn) {
-    if (!fixtures.some((f) => pairMatches(e, f))) {
-      issues.push(`NOME NÃO CASA: ESPN "${e.home} x ${e.away}" não bateu com nenhum fixture (alias?)`);
+    if (fixtures.some((f) => pairMatches(e, f))) continue;
+    const unknown = [e.home, e.away].filter((n) => !knownTeam(n));
+    if (unknown.length) {
+      issues.push(`ALIAS FALTANDO: ESPN "${unknown.join(' / ')}" não bate com nenhuma seleção (${e.home} x ${e.away})`);
     }
   }
 

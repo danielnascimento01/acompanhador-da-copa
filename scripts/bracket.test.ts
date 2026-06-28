@@ -51,17 +51,20 @@ console.log('— Estrutura do bracket —');
   const r32 = BRACKET.filter((m) => m.stage === 'r32');
   const winners: Record<string, number> = {};
   const runners: Record<string, number> = {};
-  let thirds = 0;
+  // Os 8 melhores 3ºs já estão CONFIRMADOS oficialmente (Copa em andamento) → os
+  // slots viraram 'fixed' (time real) em vez de 'third' (rótulo de candidatos).
+  // Antes da definição oficial seriam 'third'; aqui contamos os dois como "vaga de 3º".
+  let thirdSlots = 0;
   for (const m of r32)
     for (const s of [m.a, m.b]) {
       if (s.kind === 'winner') winners[s.group] = (winners[s.group] ?? 0) + 1;
       if (s.kind === 'runner') runners[s.group] = (runners[s.group] ?? 0) + 1;
-      if (s.kind === 'third') thirds++;
+      if (s.kind === 'third' || s.kind === 'fixed') thirdSlots++;
     }
   const groups = 'ABCDEFGHIJKL'.split('');
   check('cada grupo aparece 1x como vencedor', groups.every((g) => winners[g] === 1), true);
   check('cada grupo aparece 1x como 2º', groups.every((g) => runners[g] === 1), true);
-  check('8 slots de melhor 3º', thirds, 8);
+  check('8 vagas de melhor 3º (third|fixed)', thirdSlots, 8);
 }
 
 const MEX = 'Mexico';

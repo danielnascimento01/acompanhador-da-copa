@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 
 import { ALL_MATCHES, Match, isStartedStatus } from '../data/fixtures';
+import { bracketAsMatches } from '../data/bracket';
 import { fetchEspnDay, teamMatches, espnDatesFor, type EspnMatch } from './liveEvents';
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
@@ -155,7 +156,7 @@ export type FetchResult = {
 export async function fetchLatestMatches(): Promise<FetchResult> {
   const byId = new Map<string, Match>(ALL_MATCHES.map((m) => [m.id, m]));
   const rounds = await Promise.all(ROUNDS.map((r) => fetchRound(r)));
-  let ok = rounds.some((r) => r !== null); // TheSportsDB respondeu
+  const ok = rounds.some((r) => r !== null); // TheSportsDB respondeu
   for (const events of rounds) {
     for (const e of events ?? []) {
       const m = normalize(e);
@@ -163,8 +164,35 @@ export async function fetchLatestMatches(): Promise<FetchResult> {
     }
   }
   const merged = [...byId.values()].sort((a, b) => a.utc.localeCompare(b.utc));
-  const { matches, ok: espnOk } = await reconcileWithEspn(merged);
-  return { matches: sanitizeFutureScores(matches), ok: ok || espnOk };
+
+  // 1) Reconcilia a fase de grupos com a ESPN (placar/status final e ao vivo).
+  //    Isso fixa as classificações que definem quem entra no mata-mata.
+  const { matches: groups, ok: espnGroups } = await reconcileWithEspn(merged);
+
+  // 2) Mata-mata: a grade embutida só tem os 72 jogos de grupos e o TheSportsDB
+  //    NÃO devolve os jogos do mata-mata (round 4-8 vêm vazios). A chave OFICIAL
+  //    (bracket.ts) é a fonte: gera os jogos já resolvendo os times conforme os
+  //    grupos terminam (1º/2º com certeza + 8 melhores 3ºs fixados). Entram no
+  //    MESMO pipeline → ganham placar/status ao vivo da ESPN (casa por nome).
+  const knockout = bracketAsMatches(groups).filter((k) => {
+    const kt = new Date(k.utc).getTime();
+    // dedup defensivo: se um dia a fonte secundária trouxer o jogo (mesmos times,
+    // horário próximo), não duplica — mantém o que já veio em `groups`.
+    return !groups.some(
+      (m) =>
+        m.home === k.home &&
+        m.away === k.away &&
+        Math.abs(new Date(m.utc).getTime() - kt) < 90 * 60 * 1000,
+    );
+  });
+
+  // 3) Reconcilia os jogos do mata-mata (placar/status ao vivo da ESPN). Jogos
+  //    ainda sem time real (rótulo "Vencedor Grupo X") não casam e ficam como
+  //    estão — aparecem como confronto a definir, nunca com placar inventado.
+  const { matches: ko, ok: espnKo } = await reconcileWithEspn(knockout);
+
+  const all = [...groups, ...ko].sort((a, b) => a.utc.localeCompare(b.utc));
+  return { matches: sanitizeFutureScores(all), ok: ok || espnGroups || espnKo };
 }
 
 /**

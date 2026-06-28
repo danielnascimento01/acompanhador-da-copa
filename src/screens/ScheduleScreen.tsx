@@ -10,7 +10,6 @@ import { DayMatchesSheet } from './DayMatchesSheet';
 import { PastMatchesSheet } from './PastMatchesSheet';
 import { FadeInUp } from '../components/Motion';
 import { hasStarted, hasMatchInPlayWindow, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
-import { bracketAsMatches } from '../data/bracket';
 import { openSuggestion } from '../lib/links';
 import { isStale } from '../lib/freshness';
 import { useStore } from '../lib/store';
@@ -90,20 +89,10 @@ export function ScheduleScreen() {
   // Janela de relógio: liga o poll perto do horário dos jogos mesmo que o status
   // no cache ainda não diga "ao vivo" — é a rede que confirma ao vivo/encerrado.
   const hasMatchInWindow = useMemo(() => hasMatchInPlayWindow(matches), [matches]);
-  // Jogos de knockout do dia (bracket) que a ESPN ainda não alimentou
-  const todayKo = useMemo(() => {
-    const key = localDayKey(new Date());
-    return bracketAsMatches(matches).filter(
-      (k) =>
-        localDayKey(kickoff(k)) === key &&
-        !matches.some((m) => Math.abs(kickoff(m).getTime() - kickoff(k).getTime()) < 90 * 60 * 1000),
-    );
-  }, [matches]);
-
   const anyToday = useMemo(() => {
     const key = localDayKey(new Date());
-    return matches.some((m) => localDayKey(kickoff(m)) === key) || todayKo.length > 0;
-  }, [matches, todayKo]);
+    return matches.some((m) => localDayKey(kickoff(m)) === key);
+  }, [matches]);
 
   // Atualização automática enquanto há jogo AO VIVO: faz polling com backoff
   // (30s → 120s) só com o app em primeiro plano e fora do modo economia. Pausa
@@ -155,16 +144,11 @@ export function ScheduleScreen() {
       if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) pastCount++;
       else upcoming.push(m);
     }
-    // Mata-mata: continua a grade DEPOIS da fase de grupos. Vem do BRACKET oficial
-    // já embutido no app (datas/horas em UTC; times reais entram conforme os grupos
-    // fecham, senão rótulo da chave). Só jogos futuros; e dedup por proximidade de
-    // horário (±90 min) para não duplicar quando a API trouxer o jogo real depois.
-    const ko = bracketAsMatches(matches).filter((k) => {
-      const kt = kickoff(k).getTime();
-      if (kt <= now.getTime()) return false;
-      return !matches.some((m) => Math.abs(kickoff(m).getTime() - kt) < 90 * 60 * 1000);
-    });
-    const all = [...upcoming, ...ko].sort((a, b) => a.utc.localeCompare(b.utc));
+    // O mata-mata já vem em `matches` (injetado em fetchLatestMatches a partir da
+    // chave oficial, com placar/status ao vivo da ESPN) — então a grade trata os
+    // jogos de grupos e de mata-mata do mesmo jeito (ao vivo/futuro aqui, passados
+    // na sheet). Nada de overlay separado.
+    const all = upcoming.sort((a, b) => a.utc.localeCompare(b.utc));
     return { sections: groupByDay(all), hasPast: pastCount > 0 };
   }, [matches]);
 
@@ -268,7 +252,7 @@ export function ScheduleScreen() {
       />
       <DayMatchesSheet
         visible={dayOpen}
-        matches={[...matches, ...todayKo]}
+        matches={matches}
         selected={selected}
         primaryTeam={settings.primaryTeam}
         onClose={() => setDayOpen(false)}
