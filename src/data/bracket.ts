@@ -148,31 +148,77 @@ const STAGE_ROUND: Record<StageKey, number> = {
   r32: 4, r16: 5, qf: 6, sf: 7, third: 8, final: 9,
 };
 
+/** Vencedor/perdedor confirmados de cada confronto da chave (por id do BRACKET). */
+export type KnockoutResults = Record<string, { winner: string; loser: string }>;
+
+/**
+ * Qual lado AVANÇOU num jogo de mata-mata — com CERTEZA. Usa o vencedor oficial
+ * da fonte (`advance`, que cobre pênaltis); na ausência dele, só decide se o
+ * placar do tempo normal/prorrogação já separou. Empate sem vencedor confirmado
+ * = INDEFINIDO (null) → nunca chutamos quem passou.
+ */
+export function winnerSideOf(m: Match): 'home' | 'away' | null {
+  if (!isFinished(m)) return null;
+  if (m.advance === 'home' || m.advance === 'away') return m.advance;
+  if (m.homeScore != null && m.awayScore != null && m.homeScore !== m.awayScore) {
+    return m.homeScore > m.awayScore ? 'home' : 'away';
+  }
+  return null;
+}
+
+/**
+ * Percorre a chave EM ORDEM (16-avos → final) acumulando vencedores/perdedores
+ * confirmados. Cada fase desbloqueia a seguinte: o vencedor de um confronto vira
+ * o time de um slot `winnerOf` da próxima fase (e o perdedor, de `loserOf`, p/ a
+ * disputa de 3º). Só registra quando o confronto tem times REAIS e vencedor certo.
+ */
+export function knockoutResults(matches: Match[]): KnockoutResults {
+  const positions = groupPositions(matches);
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  const results: KnockoutResults = {};
+  for (const bm of BRACKET) {
+    const homeId = resolveSlot(bm.a, positions, results);
+    const awayId = resolveSlot(bm.b, positions, results);
+    if (!homeId || !awayId) continue;
+    const m = byId.get(bm.id);
+    if (!m) continue;
+    const side = winnerSideOf(m);
+    if (side === 'home') results[bm.id] = { winner: homeId, loser: awayId };
+    else if (side === 'away') results[bm.id] = { winner: awayId, loser: homeId };
+  }
+  return results;
+}
+
 /**
  * Converte o BRACKET oficial em jogos no formato da grade (Match), para que o
  * mata-mata apareça na lista principal DEPOIS da fase de grupos — com data/hora,
  * fase e o confronto. Quando os times já são conhecidos com certeza (1º/2º de
- * grupo definidos), mostra a seleção real; senão mostra o rótulo da chave
- * ("Vencedor Grupo A", "3º (A/B/C/D/F)", "Vencedor 16-avos J3"). Nunca inventa
- * um time: terceiros e fases seguintes ficam como rótulo até a definição oficial.
+ * grupo definidos, OU vencedor confirmado da fase anterior), mostra a seleção
+ * real; senão mostra o rótulo da chave ("Vencedor Grupo A", "Vencedor 16-avos
+ * J3"). Nunca inventa um time. Placar/status são CARREGADOS do jogo já em
+ * `matches` (mesmo id), preservando o ao vivo injetado pela camada de dados.
  */
 export function bracketAsMatches(matches: Match[]): Match[] {
   const positions = groupPositions(matches);
+  const results = knockoutResults(matches);
+  const byId = new Map(matches.map((m) => [m.id, m]));
   return BRACKET.map((bm) => {
-    const homeId = resolveSlot(bm.a, positions);
-    const awayId = resolveSlot(bm.b, positions);
+    const homeId = resolveSlot(bm.a, positions, results);
+    const awayId = resolveSlot(bm.b, positions, results);
+    const prev = byId.get(bm.id);
     return {
       id: bm.id,
       utc: bm.utc,
       round: STAGE_ROUND[bm.stage],
       home: homeId ?? '',
       away: awayId ?? '',
-      homeBadge: null,
-      awayBadge: null,
-      venue: null,
-      homeScore: null,
-      awayScore: null,
-      status: 'NS',
+      homeBadge: prev?.homeBadge ?? null,
+      awayBadge: prev?.awayBadge ?? null,
+      venue: prev?.venue ?? null,
+      homeScore: prev?.homeScore ?? null,
+      awayScore: prev?.awayScore ?? null,
+      status: prev?.status ?? 'NS',
+      advance: prev?.advance,
       homeLabel: homeId ? undefined : slotLabel(bm.a),
       awayLabel: awayId ? undefined : slotLabel(bm.b),
       stageLabel: STAGE_META.find((s) => s.key === bm.stage)?.name ?? '',
@@ -184,9 +230,12 @@ export function bracketAsMatches(matches: Match[]): Match[] {
 export function resolveSlot(
   slot: Slot,
   positions: Record<string, { first?: string; second?: string }>,
+  results: KnockoutResults = {},
 ): string | null {
   if (slot.kind === 'winner') return positions[slot.group]?.first ?? null;
   if (slot.kind === 'runner') return positions[slot.group]?.second ?? null;
   if (slot.kind === 'fixed') return slot.id;
-  return null; // fases seguintes vêm conforme os resultados chegam
+  if (slot.kind === 'winnerOf') return results[slot.ref]?.winner ?? null;
+  if (slot.kind === 'loserOf') return results[slot.ref]?.loser ?? null;
+  return null;
 }

@@ -92,37 +92,31 @@ function espnStatusCode(e: EspnMatch): string {
   return 'NS';
 }
 
-/**
- * ESPN como fonte PRIMÁRIA de status/placar: cruza os jogos com o scoreboard da
- * ESPN (mais completo e confiável que a fonte secundária) e faz o resultado da
- * ESPN prevalecer em todo jogo já iniciado dentro da janela do torneio. Faz UM
- * request por dia (não por jogo); jogos futuros distantes não são consultados.
- * Se a ESPN falhar, devolve os jogos como estavam (nada quebra).
- */
-async function reconcileWithEspn(matches: Match[]): Promise<{ matches: Match[]; ok: boolean }> {
+/** Datas (YYYYMMDD) da ESPN que vale consultar: jogos na janela do torneio (ao
+ *  vivo, prestes a começar, ou já iniciados no backfill). Inclui a data UTC + a
+ *  anterior (cobre o fuso ET da ESPN). UM request por dia, não por jogo. */
+function espnDatesToFetch(matches: Match[]): Set<string> {
   const now = Date.now();
-  // Só as DATAS dos jogos relevantes precisam de fetch (1 request por dia).
-  // espnDatesFor inclui a data UTC + a anterior (cobre o fuso ET da ESPN); o
-  // Set deduplica os dias que se repetem entre jogos.
   const dates = new Set<string>();
   for (const m of matches) {
     const delta = new Date(m.utc).getTime() - now; // >0 futuro, <0 passado
     const inLiveWindow = delta <= ESPN_FUTURE_MS && delta >= -ESPN_PAST_MS;
-    // ESPN é a fonte PRIMÁRIA: consultamos TODO jogo que já começou (dentro da
-    // janela do torneio), não só os sem placar — assim a ESPN também corrige um
-    // placar que a fonte secundária tenha trazido incompleto ou errado.
     const startedInWindow = delta < 0 && delta >= -ESPN_BACKFILL_MS;
-    if (inLiveWindow || startedInWindow) {
-      for (const d of espnDatesFor(m.utc)) dates.add(d);
-    }
+    if (inLiveWindow || startedInWindow) for (const d of espnDatesFor(m.utc)) dates.add(d);
   }
-  if (dates.size === 0) return { matches, ok: false };
+  return dates;
+}
 
-  const days = await Promise.all([...dates].map((d) => fetchEspnDay(d)));
-  const espn = days.flat();
-  if (espn.length === 0) return { matches, ok: false };
-
-  const reconciled = matches.map((m) => {
+/**
+ * Aplica os eventos da ESPN (placar/status/vencedor) sobre os jogos. PURO (sem
+ * rede) — a ESPN é a fonte primária e prevalece em todo jogo iniciado. Jogos sem
+ * time real (rótulo do mata-mata) não casam e ficam como estão. O flag `winner`
+ * da ESPN vira `advance` (lado que passou, cobre pênaltis) para alimentar a chave.
+ */
+function applyEspn(matches: Match[], espn: EspnMatch[]): Match[] {
+  if (espn.length === 0) return matches;
+  return matches.map((m) => {
+    if (!m.home || !m.away) return m; // confronto a definir — não tem o que casar
     const e = espn.find(
       (x) =>
         (teamMatches(x.homeName, m.home) && teamMatches(x.awayName, m.away)) ||
@@ -132,19 +126,21 @@ async function reconcileWithEspn(matches: Match[]): Promise<{ matches: Match[]; 
     const homeIsOurHome = teamMatches(e.homeName, m.home);
     const hs = homeIsOurHome ? e.homeScore : e.awayScore;
     const as = homeIsOurHome ? e.awayScore : e.homeScore;
-    // 'pre': sem placar.
-    // 'in': fallback no placar anterior se ESPN retornar null temporariamente.
-    // 'post': ESPN é autoritativa — se mandou null, melhor mostrar null do que dado errado.
+    // 'pre': sem placar. 'in': fallback no placar anterior se vier null momentâneo.
+    // 'post': ESPN é autoritativa — null vira null (melhor que dado errado).
     const itsIn = e.state === 'in';
     const itsPost = e.state === 'post';
+    // Vencedor oficial → lado que avança no NOSSO mando (cobre pênaltis).
+    const advance: 'home' | 'away' | undefined =
+      itsPost && e.winner ? ((e.winner === 'home') === homeIsOurHome ? 'home' : 'away') : undefined;
     return {
       ...m,
       status: espnStatusCode(e),
-      homeScore: itsIn ? (hs ?? m.homeScore) : (itsPost ? hs : null),
-      awayScore: itsIn ? (as ?? m.awayScore) : (itsPost ? as : null),
+      homeScore: itsIn ? (hs ?? m.homeScore) : itsPost ? hs : null,
+      awayScore: itsIn ? (as ?? m.awayScore) : itsPost ? as : null,
+      advance,
     };
   });
-  return { matches: reconciled, ok: true };
 }
 
 export type FetchResult = {
@@ -153,10 +149,13 @@ export type FetchResult = {
   ok: boolean;
 };
 
+// Nº de fases do mata-mata (16-avos→final) = teto de iterações da cascata.
+const BRACKET_ROUNDS = 6;
+
 export async function fetchLatestMatches(): Promise<FetchResult> {
   const byId = new Map<string, Match>(ALL_MATCHES.map((m) => [m.id, m]));
   const rounds = await Promise.all(ROUNDS.map((r) => fetchRound(r)));
-  const ok = rounds.some((r) => r !== null); // TheSportsDB respondeu
+  const tsdbOk = rounds.some((r) => r !== null); // TheSportsDB respondeu
   for (const events of rounds) {
     for (const e of events ?? []) {
       const m = normalize(e);
@@ -165,34 +164,45 @@ export async function fetchLatestMatches(): Promise<FetchResult> {
   }
   const merged = [...byId.values()].sort((a, b) => a.utc.localeCompare(b.utc));
 
-  // 1) Reconcilia a fase de grupos com a ESPN (placar/status final e ao vivo).
-  //    Isso fixa as classificações que definem quem entra no mata-mata.
-  const { matches: groups, ok: espnGroups } = await reconcileWithEspn(merged);
+  // UMA rodada de fetch da ESPN: cobre as datas dos jogos de grupo E de todo o
+  // mata-mata (datas fixas da chave), na janela do torneio. Depois resolvemos
+  // tudo em memória, sem novos requests.
+  const koFixtures = bracketAsMatches(merged);
+  const dates = new Set<string>([...espnDatesToFetch(merged), ...espnDatesToFetch(koFixtures)]);
+  const espn = dates.size ? (await Promise.all([...dates].map((d) => fetchEspnDay(d)))).flat() : [];
 
-  // 2) Mata-mata: a grade embutida só tem os 72 jogos de grupos e o TheSportsDB
-  //    NÃO devolve os jogos do mata-mata (round 4-8 vêm vazios). A chave OFICIAL
-  //    (bracket.ts) é a fonte: gera os jogos já resolvendo os times conforme os
-  //    grupos terminam (1º/2º com certeza + 8 melhores 3ºs fixados). Entram no
-  //    MESMO pipeline → ganham placar/status ao vivo da ESPN (casa por nome).
-  const knockout = bracketAsMatches(groups).filter((k) => {
-    const kt = new Date(k.utc).getTime();
-    // dedup defensivo: se um dia a fonte secundária trouxer o jogo (mesmos times,
-    // horário próximo), não duplica — mantém o que já veio em `groups`.
-    return !groups.some(
-      (m) =>
-        m.home === k.home &&
-        m.away === k.away &&
-        Math.abs(new Date(m.utc).getTime() - kt) < 90 * 60 * 1000,
+  // Grupos: aplica ESPN → fixa as classificações que definem o mata-mata.
+  const groups = applyEspn(merged, espn);
+
+  // Mata-mata em CASCATA: o vencedor de uma fase (flag oficial da ESPN) preenche
+  // o slot da próxima. bracketAsMatches resolve do que já se sabe e CARREGA o
+  // placar de `known`; applyEspn fixa placar/status/vencedor de cada confronto
+  // já com times reais. Itera até estabilizar — cada passe pode desbloquear a
+  // fase seguinte. `espn` já está em mãos, então as iterações não fazem rede.
+  let known: Match[] = groups;
+  let sig = '';
+  for (let i = 0; i < BRACKET_ROUNDS; i++) {
+    const ko = applyEspn(bracketAsMatches(known), espn).filter(
+      (k) =>
+        // dedup defensivo contra a fonte secundária (hoje vazia p/ mata-mata).
+        !groups.some(
+          (m) =>
+            m.home === k.home &&
+            m.away === k.away &&
+            k.home !== '' &&
+            Math.abs(new Date(m.utc).getTime() - new Date(k.utc).getTime()) < 90 * 60 * 1000,
+        ),
     );
-  });
+    known = [...groups, ...ko];
+    const next = ko
+      .map((m) => `${m.id}:${m.home}>${m.away}:${m.homeScore}-${m.awayScore}:${m.status}`)
+      .join('|');
+    if (next === sig) break; // estabilizou (nada novo resolveu)
+    sig = next;
+  }
 
-  // 3) Reconcilia os jogos do mata-mata (placar/status ao vivo da ESPN). Jogos
-  //    ainda sem time real (rótulo "Vencedor Grupo X") não casam e ficam como
-  //    estão — aparecem como confronto a definir, nunca com placar inventado.
-  const { matches: ko, ok: espnKo } = await reconcileWithEspn(knockout);
-
-  const all = [...groups, ...ko].sort((a, b) => a.utc.localeCompare(b.utc));
-  return { matches: sanitizeFutureScores(all), ok: ok || espnGroups || espnKo };
+  const all = known.sort((a, b) => a.utc.localeCompare(b.utc));
+  return { matches: sanitizeFutureScores(all), ok: tsdbOk || espn.length > 0 };
 }
 
 /**

@@ -27,6 +27,13 @@ export type Match = {
   awayLabel?: string;
   /** Nome da fase do mata-mata (ex.: "16-avos de final"). Substitui "Rodada N". */
   stageLabel?: string;
+  /**
+   * Mata-mata: qual lado AVANÇOU (vencedor oficial pela ESPN — cobre pênaltis,
+   * onde o placar fica empatado). Só preenchido em jogo ENCERRADO com vencedor
+   * confirmado pela fonte. Usado para preencher a próxima fase da chave sem
+   * chutar (empate sem este flag = vencedor INDEFINIDO). [[bracket.ts]]
+   */
+  advance?: 'home' | 'away';
 };
 
 export const ALL_MATCHES: Match[] = (rawFixtures as Match[])

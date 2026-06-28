@@ -121,6 +121,8 @@ export type EspnMatch = {
   halftime: boolean;
   homeScore: number | null;
   awayScore: number | null;
+  /** Lado que a ESPN marcou como vencedor (cobre pênaltis). null se indefinido. */
+  winner: 'home' | 'away' | null;
 };
 
 /**
@@ -139,6 +141,16 @@ export async function fetchEspnDay(date: string, timeoutMs = 8000): Promise<Espn
     const awayName = awayC?.team?.displayName;
     if (!homeName || !awayName) continue;
     const { state, halftime } = readStatus(ev);
+    // Vencedor oficial da ESPN (flag por competidor) — autoritativo, cobre
+    // pênaltis (placar empatado mas há um vencedor). Só confiamos com state=post.
+    const winner: 'home' | 'away' | null =
+      state === 'post'
+        ? homeC?.winner === true
+          ? 'home'
+          : awayC?.winner === true
+            ? 'away'
+            : null
+        : null;
     out.push({
       homeName,
       awayName,
@@ -146,6 +158,7 @@ export async function fetchEspnDay(date: string, timeoutMs = 8000): Promise<Espn
       halftime,
       homeScore: toNum(homeC?.score),
       awayScore: toNum(awayC?.score),
+      winner,
     });
   }
   return out;

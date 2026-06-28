@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { Flag } from '../components/Flag';
 import { teamName } from '../data/teams';
-import { BRACKET, STAGE_META, Slot, StageKey, groupPositions, resolveSlot, slotLabel } from '../data/bracket';
+import { BRACKET, STAGE_META, Slot, StageKey, groupPositions, knockoutResults, resolveSlot, slotLabel, type KnockoutResults } from '../data/bracket';
 import { bestThirds, ThirdRow } from '../data/bestThirds';
 import { Match, hasStarted, isLive } from '../data/fixtures';
 import { formatDayShort, formatTime } from '../lib/format';
@@ -31,6 +31,9 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
   const styles = useThemedStyles(makeStyles);
   const { matches, selected } = useStore();
   const positions = useMemo(() => groupPositions(matches), [matches]);
+  // Vencedores/perdedores confirmados de cada confronto (cascata 16-avos→final)
+  // — preenche os slots "Vencedor 16-avos J3" com o time real assim que decide.
+  const results = useMemo(() => knockoutResults(matches), [matches]);
   const thirds = useMemo(() => bestThirds(matches), [matches]);
   // Os jogos do mata-mata já vêm em `matches` (com placar/status ao vivo da ESPN),
   // indexados pelo MESMO id da chave (ex.: "r32-1"). Achamos o jogo "vivo" por id
@@ -41,11 +44,11 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
   const resolved = useMemo(() => {
     let n = 0;
     for (const m of BRACKET) {
-      if (resolveSlot(m.a, positions)) n++;
-      if (resolveSlot(m.b, positions)) n++;
+      if (resolveSlot(m.a, positions, results)) n++;
+      if (resolveSlot(m.b, positions, results)) n++;
     }
     return n;
-  }, [positions]);
+  }, [positions, results]);
 
   // Aba de rodada ativa — o mata-mata vira navegável por fase (toque no botão).
   const [activeStage, setActiveStage] = useState<StageKey>('r32');
@@ -142,9 +145,9 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
                             <Text style={styles.matchDate}>{whenLabel(m.utc)}</Text>
                           )}
                         </View>
-                        <SlotView slot={m.a} positions={positions} selected={selected} score={started ? live?.homeScore : null} />
+                        <SlotView slot={m.a} positions={positions} results={results} selected={selected} score={started ? live?.homeScore : null} />
                         <Text style={styles.vs}>×</Text>
-                        <SlotView slot={m.b} positions={positions} selected={selected} score={started ? live?.awayScore : null} />
+                        <SlotView slot={m.b} positions={positions} results={results} selected={selected} score={started ? live?.awayScore : null} />
                         {live ? <Text style={styles.matchTap}>Toque para ver lance a lance, escalações e mais ›</Text> : null}
                       </Pressable>
                     );
@@ -243,16 +246,18 @@ function ThirdRowView({ row, selected }: { row: ThirdRow; selected: Set<string> 
 function SlotView({
   slot,
   positions,
+  results,
   selected,
   score,
 }: {
   slot: Slot;
   positions: Record<string, { first?: string; second?: string }>;
+  results: KnockoutResults;
   selected: Set<string>;
   score?: number | null;
 }) {
   const styles = useThemedStyles(makeStyles);
-  const teamId = resolveSlot(slot, positions);
+  const teamId = resolveSlot(slot, positions, results);
   if (teamId) {
     const fav = selected.has(teamId);
     return (
