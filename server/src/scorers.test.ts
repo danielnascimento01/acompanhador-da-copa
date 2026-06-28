@@ -7,7 +7,8 @@
  *  - listas iguais (mesmo só com `updatedAt` diferente) → true  (pula escrita)
  *  - QUALQUER mudança real (gol novo, jogador novo, gol a menos) → false (grava)
  */
-import { sameScorers, type LiveScorer } from './scorers';
+import { sameScorers, scorersFromEvent, type LiveScorer } from './scorers';
+import type { ESPNEvent } from './espn';
 
 let pass = 0;
 let fail = 0;
@@ -50,6 +51,29 @@ check('7. mudou o time do artilheiro → regrava',
 
 // 8. lista vazia vs vazia → true
 check('8. vazia vs vazia → true', sameScorers([], []));
+
+// ── scorersFromEvent: extrai autores do SCOREBOARD details (base da soma da Copa) ──
+const ev: ESPNEvent = {
+  id: 'e1', name: 'BRA x ARG',
+  status: { type: { state: 'post', name: 'FT' }, displayClock: "90'", period: 2 },
+  competitions: [{
+    competitors: [
+      { homeAway: 'home', score: '2', team: { id: 'H', displayName: 'Brasil', abbreviation: 'BRA' } },
+      { homeAway: 'away', score: '1', team: { id: 'A', displayName: 'Argentina', abbreviation: 'ARG' } },
+    ],
+    details: [
+      { type: { text: 'Goal' }, scoringPlay: true, athletesInvolved: [{ displayName: 'Vini', team: { id: 'H' } }], team: { id: 'H' } },
+      { type: { text: 'Yellow Card' }, scoringPlay: false, athletesInvolved: [{ displayName: 'Fulano', team: { id: 'A' } }] },
+      { type: { text: 'Own Goal' }, scoringPlay: true, ownGoal: true, athletesInvolved: [{ displayName: 'Zagueiro', team: { id: 'A' } }], team: { id: 'H' } },
+      { type: { text: 'Goal' }, scoringPlay: true, athletesInvolved: [{ displayName: 'Messi', team: { id: 'A' } }], team: { id: 'A' } },
+    ],
+  }],
+};
+const got = scorersFromEvent(ev);
+check('9. extrai só os 2 gols reais (ignora cartão e gol contra)', got.length === 2);
+check('10. autor + time certos (Vini/Brasil)', got.some((g) => g.player === 'Vini' && g.teamName === 'Brasil'));
+check('11. autor + time certos (Messi/Argentina)', got.some((g) => g.player === 'Messi' && g.teamName === 'Argentina'));
+check('12. gol contra NÃO conta pra artilharia', !got.some((g) => g.player === 'Zagueiro'));
 
 console.log(`\n${pass} passaram, ${fail} falharam`);
 if (fail > 0) throw new Error(`${fail} teste(s) de sameScorers falharam`);

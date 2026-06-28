@@ -1,13 +1,18 @@
 /**
- * Agrega artilheiros da Copa 2026 a partir dos lances (plays) de TODOS os jogos
- * encerrados. Roda no cron e escreve o resultado no KV para o app consumir.
+ * Agrega os artilheiros da Copa 2026 (Chuteira de Ouro DESTA Copa) somando os
+ * gols de TODOS os jogos do torneio, do dia da abertura até hoje. Roda no cron e
+ * grava o resultado no KV para o app consumir.
  *
- * Estratégia: idempotente — processa todos os jogos terminados a cada chamada
- * e recomputa os totais do zero. Evita bugs de estado acumulado no KV.
- * Custo: ~1 chamada ESPN por jogo finalizado; aceitável durante a Copa.
+ * Fonte: o próprio SCOREBOARD da ESPN já traz os autores dos gols em
+ * `competitions[0].details` (scoringPlay + athletesInvolved) — então 1 request
+ * POR DIA resolve, sem precisar do summary de cada jogo (que estouraria o limite
+ * de subrequests do Worker).
+ *
+ * Custo controlado por CACHE POR DIA: um dia 100% encerrado (e com 2+ dias de
+ * idade) vira "final" e NÃO é re-buscado — em regime, o cron busca só hoje/ontem.
  */
 
-import { fetchScoreboard, fetchGoalScorers } from './espn';
+import { fetchScoreboard, yyyymmdd, type ESPNEvent } from './espn';
 
 export type LiveScorer = {
   player: string;
@@ -16,63 +21,116 @@ export type LiveScorer = {
   updatedAt: string; // ISO 8601
 };
 
+/** Abertura da Copa 2026 (a soma começa daqui). */
+const TOURNEY_START = '20260611';
+
+type DayGoals = { player: string; teamName: string }[];
+type DateCache = Record<string, { final: boolean; scorers: DayGoals }>;
+
+/** Todas as datas YYYYMMDD da abertura até hoje+1 (o +1 cobre o fuso ET/UTC). */
+function tournamentDates(now: Date): string[] {
+  const start = Date.parse(`${TOURNEY_START.slice(0, 4)}-${TOURNEY_START.slice(4, 6)}-${TOURNEY_START.slice(6, 8)}T00:00:00Z`);
+  const end = now.getTime() + 86_400_000;
+  const out: string[] = [];
+  for (let t = start; t <= end; t += 86_400_000) out.push(yyyymmdd(new Date(t)));
+  return out;
+}
+
 /**
- * Busca e agrega artilheiros de todos os jogos encerrados hoje e nas últimas
- * 48h (janela conservadora para cobrir dados chegando atrasados).
+ * Extrai os autores dos gols de UM jogo a partir dos `details` do scoreboard.
+ * Ignora gol contra (não conta pra artilharia individual). O nome do time vem do
+ * competidor dono do gol (casado por id).
  */
+export function scorersFromEvent(event: ESPNEvent): DayGoals {
+  const comp = event.competitions[0];
+  if (!comp) return [];
+  const out: DayGoals = [];
+  for (const det of comp.details ?? []) {
+    if (!det.scoringPlay || det.ownGoal) continue;
+    const ath = det.athletesInvolved?.[0];
+    const player = ath?.displayName;
+    if (!player) continue;
+    const teamId = ath?.team?.id ?? det.team?.id;
+    const teamName = comp.competitors.find((c) => c.team.id === teamId)?.team.displayName ?? '';
+    out.push({ player, teamName });
+  }
+  return out;
+}
+
 export async function aggregateScorers(kv: KVNamespace): Promise<void> {
   const now = new Date();
-  // Busca os últimos 2 dias de jogos para garantir que jogos recém-encerrados
-  // são incluídos (ESPN às vezes tarda a atualizar status para 'post').
-  const dates = [-1, 0, 1].map((offset) => {
-    const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() + offset);
-    return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
-  });
+  const todayStr = yyyymmdd(now);
+  const yestStr = yyyymmdd(new Date(now.getTime() - 86_400_000));
 
-  const totals = new Map<string, { teamName: string; goals: number }>();
+  // Cache por dia: dias antigos e 100% encerrados não são re-buscados.
+  const cacheRaw = await kv.get('scorers_dates');
+  const cache: DateCache = safeParseDates(cacheRaw);
+  let cacheDirty = false;
 
-  for (const date of dates) {
+  for (const date of tournamentDates(now)) {
+    const cached = cache[date];
+    // Re-busca hoje e ontem SEMPRE (correções tardias da ESPN); dias "final" ficam no cache.
+    const mustFetch = !cached || !cached.final || date === todayStr || date === yestStr;
+    if (!mustFetch) continue;
+
     const events = await fetchScoreboard(date);
-    // Processa encerrados + ao vivo (para artilharia ficar em tempo real)
     const relevant = events.filter((e) => e.status.type.state !== 'pre');
+    if (relevant.length === 0) continue; // dia sem jogos (ex.: hoje+1 vazio) — não cacheia
 
-    for (const event of relevant) {
-      const goals = await fetchGoalScorers(event.id);
-      for (const g of goals) {
-        const current = totals.get(g.player) ?? { teamName: g.teamName, goals: 0 };
-        totals.set(g.player, { teamName: current.teamName || g.teamName, goals: current.goals + 1 });
-      }
+    const scorers = relevant.flatMap(scorersFromEvent);
+    const allPost = relevant.every((e) => e.status.type.state === 'post');
+    // "final" só se tudo encerrado E já não é hoje/ontem (deixa 48h p/ correção tardia).
+    const final = allPost && date !== todayStr && date !== yestStr;
+    const entry = { final, scorers };
+    if (!cached || JSON.stringify(cached) !== JSON.stringify(entry)) {
+      cache[date] = entry;
+      cacheDirty = true; // só marca sujo quando MUDA → não reescreve o KV à toa
     }
   }
 
-  if (totals.size === 0) return; // Nenhum jogo ainda — não sobrescreve KV
+  // Soma todos os dias cacheados → total por jogador.
+  const totals = new Map<string, { teamName: string; goals: number }>();
+  for (const date of Object.keys(cache)) {
+    for (const g of cache[date].scorers) {
+      const cur = totals.get(g.player) ?? { teamName: g.teamName, goals: 0 };
+      totals.set(g.player, { teamName: cur.teamName || g.teamName, goals: cur.goals + 1 });
+    }
+  }
+  if (totals.size === 0) return; // nada ainda — não sobrescreve
 
-  // Ordena por gols desc
   const scorers: LiveScorer[] = Array.from(totals.entries())
     .map(([player, { teamName, goals }]) => ({ player, teamName, goals, updatedAt: now.toISOString() }))
-    .sort((a, b) => b.goals - a.goals);
+    .sort((a, b) => b.goals - a.goals || a.player.localeCompare(b.player));
 
-  // Só grava se a artilharia REALMENTE mudou (ignorando `updatedAt`, que muda a
-  // cada ciclo). Sem isto, o cron reescrevia esta chave 1.440x/dia à toa e
-  // estourava a cota de ESCRITA do KV. A leitura de comparação é barata (a cota
-  // de leitura é 100x maior). O app não perde nada: o conteúdo é idêntico.
+  // Só grava `scorers` se a artilharia REALMENTE mudou (ignora `updatedAt`).
   const prevRaw = await kv.get('scorers');
-  if (prevRaw && sameScorers(safeParse(prevRaw), scorers)) return;
-
-  await kv.put('scorers', JSON.stringify(scorers), {
-    // Expira em 7 dias — bem além da Copa
-    expirationTtl: 7 * 24 * 60 * 60,
-  });
+  if (!prevRaw || !sameScorers(safeParse(prevRaw), scorers)) {
+    await kv.put('scorers', JSON.stringify(scorers), { expirationTtl: 7 * 24 * 60 * 60 });
+  }
+  // Persiste o cache de dias só quando mudou (dias encerrados não geram escrita).
+  if (cacheDirty) {
+    await kv.put('scorers_dates', JSON.stringify(cache), { expirationTtl: 60 * 24 * 60 * 60 });
+  }
 }
 
-/** Parse tolerante (KV corrompido → trata como vazio, força a regravação). */
+/** Parse tolerante da lista de artilheiros (KV corrompido → vazio). */
 function safeParse(raw: string): LiveScorer[] {
   try {
     const v = JSON.parse(raw);
     return Array.isArray(v) ? (v as LiveScorer[]) : [];
   } catch {
     return [];
+  }
+}
+
+/** Parse tolerante do cache de dias. */
+function safeParseDates(raw: string | null): DateCache {
+  if (!raw) return {};
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as DateCache) : {};
+  } catch {
+    return {};
   }
 }
 
@@ -84,15 +142,12 @@ export function sameScorers(a: LiveScorer[], b: LiveScorer[]): boolean {
   return sig(a) === sig(b);
 }
 
-/** Retorna artilheiros do KV (fallback: array vazio). */
+/** Retorna artilheiros do KV (fallback: array vazio). Só gols DESTA Copa, ordenados. */
 export async function getScorers(kv: KVNamespace): Promise<LiveScorer[]> {
   try {
     const raw = await kv.get('scorers');
     if (!raw) return [];
     const list = JSON.parse(raw) as LiveScorer[];
-    // Chuteira de Ouro DE 2026: só os gols DESTA Copa, na ordem em que foram
-    // gravados (já ordenada por gols desc). Sem bônus histórico — somar gols de
-    // Copas passadas inflava o número e quebrava a ordenação (Messi 14 no rodapé).
     return Array.isArray(list) ? list : [];
   } catch {
     return [];
