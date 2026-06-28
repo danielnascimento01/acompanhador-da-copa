@@ -5,8 +5,9 @@ import { QUESTIONS_PER_ROUND, QUIZ_MODES, drawQuestions, shuffle, type QuizMode,
 import { loadQuizBest, saveQuizBest } from '../lib/funStorage';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
+import { DOWNLOAD_LINKS } from '../lib/share';
 
-const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
+// Links de download centralizados em DOWNLOAD_LINKS (../lib/share) — Android + iPhone.
 
 /** Embaralha as opções de uma pergunta e recalcula o índice da correta. */
 function prepare(qs: Question[]): Question[] {
@@ -78,7 +79,7 @@ export function QuizGame({ visible, onClose }: { visible: boolean; onClose: () =
 
   const shareResult = () => {
     Share.share({
-      message: `🧠 Fiz ${score}/${questions.length} no Quiz ${modeMeta.label} da Copa! Consegue mais? Baixa o Acompanhador da Copa 2026 e me desafia:\n${APP_LINK}`,
+      message: `🧠 Fiz ${score}/${questions.length} no Quiz ${modeMeta.label} da Copa! Consegue mais? Baixa o Acompanhador da Copa 2026 e me desafia:\n\n${DOWNLOAD_LINKS}`,
     }).catch(() => {});
   };
 

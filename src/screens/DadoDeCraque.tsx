@@ -7,8 +7,9 @@ import type { CampaignResult, FormationKey, Goal, Mode, Player, Slot, Squad, Tac
 import { rewardedAvailable, showRewarded } from '../lib/ads';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
+import { DOWNLOAD_LINKS } from '../lib/share';
 
-const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
+// Links de download centralizados em DOWNLOAD_LINKS (../lib/share) — Android + iPhone.
 const TACTIC_LABEL: Record<Tactic, string> = { defensivo: 'Defensivo', equilibrado: 'Equilibrado', ofensivo: 'Ofensivo' };
 const CHIP = 56;
 
@@ -153,7 +154,7 @@ export function DadoDeCraque({ visible, onClose }: { visible: boolean; onClose: 
     if (!result) return;
     const tag = result.perfect ? ' — 7 A 0! 🏆' : result.champion ? ' — CAMPEÃO! 🏆' : '';
     Share.share({
-      message: `🎲 No Dado de Craque, montei meu time e fechei a Copa em ${result.record}${tag}! Monta o seu e tenta superar — Acompanhador da Copa 2026:\n${APP_LINK}`,
+      message: `🎲 No Dado de Craque, montei meu time e fechei a Copa em ${result.record}${tag}! Monta o seu e tenta superar — Acompanhador da Copa 2026:\n\n${DOWNLOAD_LINKS}`,
     }).catch(() => {});
   };
 

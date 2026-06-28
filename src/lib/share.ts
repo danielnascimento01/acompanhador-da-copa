@@ -17,6 +17,13 @@ const PLAY = 'https://play.google.com/store/apps/details?id=com.danielnascimento
 const APPSTORE = 'https://apps.apple.com/app/id6779020711';
 const SIG = `\n\n— ${APP}\n📲 Baixe grátis:\n🤖 Android: ${PLAY}\n🍏 iPhone: ${APPSTORE}`;
 
+/**
+ * Bloco de download com as DUAS lojas (Android + iPhone). Use em QUALQUER
+ * compartilhamento de "baixe o app" — ex.: placar dos mini-games — pra que quem
+ * recebe num iPhone também consiga baixar. Fonte única dos links (não duplicar).
+ */
+export const DOWNLOAD_LINKS = `📲 Baixe grátis:\n🤖 Android: ${PLAY}\n🍏 iPhone: ${APPSTORE}`;
+
 /** Lado de um confronto: rótulo da chave (mata-mata sem time) ou bandeira+nome. */
 const sideHome = (m: Match): string => (m.homeLabel ? m.homeLabel : `${teamFlag(m.home)} ${teamName(m.home)}`);
 const sideAway = (m: Match): string => (m.awayLabel ? m.awayLabel : `${teamName(m.away)} ${teamFlag(m.away)}`);
