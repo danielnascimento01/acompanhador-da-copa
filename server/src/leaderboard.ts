@@ -26,18 +26,33 @@ type KVLike = {
   put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
 };
 
-/** Aplica uma nova pontuação à lista: dedup por aparelho (maior score), ordena. */
-export function upsertScore(list: LBEntry[], e: LBEntry, cap = MAX_KEEP): LBEntry[] {
+/**
+ * Identidade no ranking: pelo APELIDO (normalizado) quando o jogador escolheu um
+ * nome — assim REINSTALAR (que zera o id do aparelho no AsyncStorage) não duplica a
+ * pessoa no ranking. Apelido vazio/"Anônimo" cai no id do aparelho (anônimos contam
+ * soltos, pois não têm identidade). Tradeoff: 2 pessoas com o MESMO nome se fundem
+ * (aceitável num placar de "desafie seus amigos").
+ */
+const keyOf = (e: LBEntry): string => {
+  const n = e.nick.trim().toLowerCase();
+  return n && n !== 'anônimo' ? `n:${n}` : `i:${e.id}`;
+};
+
+/** Colapsa a lista por identidade, mantendo o MAIOR placar; ordena desc. */
+function dedupe(list: LBEntry[], cap = MAX_KEEP): LBEntry[] {
   const map = new Map<string, LBEntry>();
   for (const x of list) {
-    const cur = map.get(x.id);
-    if (!cur || x.score > cur.score) map.set(x.id, x);
+    const cur = map.get(keyOf(x));
+    if (!cur || x.score > cur.score) map.set(keyOf(x), x);
   }
-  const cur = map.get(e.id);
-  if (!cur || e.score >= cur.score) map.set(e.id, e); // >= mantém o nick mais novo
   return [...map.values()]
     .sort((a, b) => b.score - a.score || a.ts - b.ts) // empate: quem chegou antes
     .slice(0, cap);
+}
+
+/** Aplica uma nova pontuação à lista (dedup por apelido — sobrevive à reinstalação). */
+export function upsertScore(list: LBEntry[], e: LBEntry, cap = MAX_KEEP): LBEntry[] {
+  return dedupe([...list, e], cap);
 }
 
 /** Sanitiza o apelido para o placar global. */
@@ -90,9 +105,10 @@ export async function submitScore(
   return { ok: true, top: updated.slice(0, RETURN) };
 }
 
-/** Top do placar para exibição. */
+/** Top do placar para exibição (colapsa por apelido na leitura → corrige duplicatas
+ * já gravadas mesmo antes de uma nova submissão). */
 export async function topScores(kv: KVLike, game: string): Promise<LBEntry[]> {
   if (!LB_GAMES.has(game)) return [];
   const list = await getBoard(kv, game);
-  return list.slice(0, RETURN);
+  return dedupe(list).slice(0, RETURN);
 }

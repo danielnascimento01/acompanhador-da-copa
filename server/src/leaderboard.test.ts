@@ -9,17 +9,34 @@ function check(label: string, cond: boolean) {
   if (cond) { pass++; console.log(`✅ ${label}`); } else { fail++; console.log(`❌ ${label}`); }
 }
 
-// ── upsertScore: dedup por aparelho, mantém o maior, ordena desc ──
+// ── upsertScore: dedup por APELIDO, mantém o maior, ordena desc ──
 {
   let list: LBEntry[] = [];
   list = upsertScore(list, { id: 'a', nick: 'Ana', score: 10, ts: 1 });
   list = upsertScore(list, { id: 'b', nick: 'Bia', score: 30, ts: 2 });
-  list = upsertScore(list, { id: 'a', nick: 'Ana', score: 25, ts: 3 }); // mesmo aparelho, sobe
+  list = upsertScore(list, { id: 'a', nick: 'Ana', score: 25, ts: 3 }); // sobe
   list = upsertScore(list, { id: 'a', nick: 'Ana', score: 5, ts: 4 });  // menor, ignora
 
   check('dedup: 2 jogadores únicos', list.length === 2);
-  check('mantém o MAIOR de "a" (25)', list.find((e) => e.id === 'a')?.score === 25);
-  check('ordenado desc (Bia 30 no topo)', list[0].id === 'b' && list[1].id === 'a');
+  check('mantém o MAIOR de "Ana" (25)', list.find((e) => e.nick === 'Ana')?.score === 25);
+  check('ordenado desc (Bia 30 no topo)', list[0].nick === 'Bia' && list[1].nick === 'Ana');
+}
+
+// ── REINSTALAÇÃO: mesmo apelido, ids DIFERENTES → colapsa em 1 (corrige o dup do print) ──
+{
+  let list: LBEntry[] = [];
+  list = upsertScore(list, { id: 'old', nick: 'Daniel N', score: 326, ts: 1 });
+  list = upsertScore(list, { id: 'new', nick: 'daniel n', score: 157, ts: 2 }); // reinstalou (case-insensitive)
+  check('reinstalação: 1 entrada só por apelido', list.length === 1);
+  check('reinstalação: mantém o MAIOR (326)', list[0].score === 326);
+}
+
+// ── Anônimos NÃO colapsam por apelido (cada aparelho conta separado) ──
+{
+  let list: LBEntry[] = [];
+  list = upsertScore(list, { id: 'p1', nick: 'Anônimo', score: 40, ts: 1 });
+  list = upsertScore(list, { id: 'p2', nick: 'Anônimo', score: 60, ts: 2 });
+  check('anônimos contam por aparelho (2 entradas)', list.length === 2);
 }
 
 // ── empate: quem chegou antes (ts menor) fica na frente ──

@@ -623,7 +623,9 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                   <Text style={styles.rankNote}>Ninguém no ranking ainda. Jogue e seja o primeiro! 🥇</Text>
                 ) : (
                   globalScores.map((s, i) => {
-                    const mine = s.id === myId;
+                    // Destaca "(você)" pelo aparelho OU pelo apelido — após reinstalar, o
+                    // id muda mas o ranking colapsa pelo apelido, então casa pelo nick também.
+                    const mine = s.id === myId || (nick.trim() !== '' && s.nick.trim().toLowerCase() === nick.trim().toLowerCase());
                     return (
                       <View key={s.id} style={[styles.rankRow, mine && styles.rankRowMine]}>
                         <Text style={styles.rankPos}>{i + 1}º</Text>
