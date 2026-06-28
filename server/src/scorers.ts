@@ -16,9 +16,6 @@ export type LiveScorer = {
   updatedAt: string; // ISO 8601
 };
 
-/** Gols de Messi em Copas anteriores a 2026 (2006+2010+2014+2018+2022). */
-const MESSI_PRE_2026 = 13;
-
 /**
  * Busca e agrega artilheiros de todos os jogos encerrados hoje e nas últimas
  * 48h (janela conservadora para cobrir dados chegando atrasados).
@@ -93,12 +90,10 @@ export async function getScorers(kv: KVNamespace): Promise<LiveScorer[]> {
     const raw = await kv.get('scorers');
     if (!raw) return [];
     const list = JSON.parse(raw) as LiveScorer[];
-    // Adiciona gols históricos do Messi
-    return list.map((s) =>
-      s.player === 'Lionel Messi'
-        ? { ...s, goals: s.goals + MESSI_PRE_2026 }
-        : s,
-    );
+    // Chuteira de Ouro DE 2026: só os gols DESTA Copa, na ordem em que foram
+    // gravados (já ordenada por gols desc). Sem bônus histórico — somar gols de
+    // Copas passadas inflava o número e quebrava a ordenação (Messi 14 no rodapé).
+    return Array.isArray(list) ? list : [];
   } catch {
     return [];
   }
