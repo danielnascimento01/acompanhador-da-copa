@@ -12,6 +12,7 @@ import { teamOutlook } from '../data/scenarios';
 import { broadcastersFor, kindLabel, watchUrl } from '../data/broadcasters';
 import { MatchTimeline, type LiveClock } from '../components/MatchTimeline';
 import { MatchStats } from '../components/MatchStats';
+import { AdBanner } from '../components/AdBanner';
 import { formatDayLong, formatTime } from '../lib/format';
 import { openUrl } from '../lib/links';
 import { shareMatch } from '../lib/share';
@@ -198,6 +199,9 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
           })}
           <Text style={styles.watchNote}>A grade pode variar por jogo. Toque na CazéTV para abrir o jogo ao vivo no YouTube.</Text>
         </View>
+
+        {/* Anúncio entre "Onde assistir" e "Classificação" (jogos iniciados e não iniciados). */}
+        <AdBanner />
 
         {sameGroup && standings.length > 0 && (
           <View style={styles.tableCard}>
