@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Flag } from '../components/Flag';
-import { SCORERS_UPDATED } from '../data/scorers';
 import { fetchLiveScorers, type LiveScorer } from '../lib/liveScorers';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
@@ -21,9 +20,9 @@ export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: 
     fetchLiveScorers().then((data) => {
       if (cancelled) return;
       setScorers(data);
-      // Usa a data do servidor se disponível, senão a data do bundle
+      // Data SEMPRE do servidor (fonte real). Sem dado → sem data falsa.
       const serverDate = data[0]?.updatedAt;
-      setUpdatedAt(serverDate ? formatUpdatedAt(serverDate) : SCORERS_UPDATED);
+      setUpdatedAt(serverDate ? formatUpdatedAt(serverDate) : '');
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -77,7 +76,7 @@ export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: 
                   </View>
                 </View>
               ))}
-              <Text style={styles.updated}>Atualizado em {updatedAt}</Text>
+              {updatedAt ? <Text style={styles.updated}>Atualizado em {updatedAt}</Text> : null}
             </ScrollView>
           )}
         </View>

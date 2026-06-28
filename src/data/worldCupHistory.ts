@@ -1,11 +1,8 @@
 /**
  * História da Copa do Mundo (estático, sem dependência de rede) — curiosidades,
  * campeões de cada edição e recordes. Feature OTA-able da aba Grupos.
- *
- * O recorde de maior artilheiro de carreira é computado a partir de scorers.ts:
- * basta atualizar os gols do Messi lá e este arquivo acompanha automaticamente.
+ * Só FATOS HISTÓRICOS reais aqui — nada de dado ao vivo/inventado.
  */
-import { SCORERS, MESSI_GOALS_PRE_2026 } from './scorers';
 export type Edition = {
   year: number;
   host: string;
@@ -54,13 +51,10 @@ export const TITLES: { team: string; flag: string; titles: number; years: string
   { team: 'Espanha', flag: '🇪🇸', titles: 1, years: '2010' },
 ];
 
-/** Recordes e curiosidades. */
-const messiIn2026 = SCORERS.find((s) => s.player === 'Lionel Messi')?.goals ?? 0;
-const messiCareer = MESSI_GOALS_PRE_2026 + messiIn2026;
-
+/** Recordes e curiosidades (fatos históricos estáticos). */
 export const RECORDS: { emoji: string; label: string; value: string }[] = [
   { emoji: '🥇', label: 'Maior campeão', value: 'Brasil — 5 títulos' },
-  { emoji: '⚽', label: 'Maior artilheiro (carreira)', value: `Lionel Messi 🇦🇷 — ${messiCareer} gol${messiCareer === 1 ? '' : 's'}` },
+  { emoji: '⚽', label: 'Maior artilheiro (carreira)', value: 'Miroslav Klose 🇩🇪 — 16 gols' },
   { emoji: '🔥', label: 'Mais gols numa Copa', value: 'Just Fontaine 🇫🇷 — 13 (1958)' },
   { emoji: '🎯', label: 'Mais finais disputadas', value: 'Alemanha — 8' },
   { emoji: '🌎', label: 'Presença perfeita', value: 'Brasil — única em todas as Copas' },
