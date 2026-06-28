@@ -16,6 +16,7 @@ export type Slot =
   | { kind: 'winner'; group: string }
   | { kind: 'runner'; group: string }
   | { kind: 'third'; groups: string[] }
+  | { kind: 'fixed'; id: string }
   | { kind: 'winnerOf'; ref: string }
   | { kind: 'loserOf'; ref: string };
 
@@ -37,27 +38,28 @@ export const STAGE_META: { key: StageKey; name: string; abbrev: string }[] = [
 const W = (group: string): Slot => ({ kind: 'winner', group });
 const R = (group: string): Slot => ({ kind: 'runner', group });
 const T = (groups: string): Slot => ({ kind: 'third', groups: groups.split('') });
+const F = (id: string): Slot => ({ kind: 'fixed', id });
 const Wof = (ref: string): Slot => ({ kind: 'winnerOf', ref });
 const Lof = (ref: string): Slot => ({ kind: 'loserOf', ref });
 
 export const BRACKET: BracketMatch[] = [
   // 32 avos (ordem cronológica da ESPN)
-  { id: 'r32-1', stage: 'r32', idx: 1, utc: '2026-06-28T19:00:00Z', a: R('A'), b: R('B') },
-  { id: 'r32-2', stage: 'r32', idx: 2, utc: '2026-06-29T17:00:00Z', a: W('C'), b: R('F') },
-  { id: 'r32-3', stage: 'r32', idx: 3, utc: '2026-06-29T20:30:00Z', a: W('E'), b: T('ABCDF') },
-  { id: 'r32-4', stage: 'r32', idx: 4, utc: '2026-06-30T01:00:00Z', a: W('F'), b: R('C') },
-  { id: 'r32-5', stage: 'r32', idx: 5, utc: '2026-06-30T17:00:00Z', a: R('E'), b: R('I') },
-  { id: 'r32-6', stage: 'r32', idx: 6, utc: '2026-06-30T21:00:00Z', a: W('I'), b: T('CDFGH') },
-  { id: 'r32-7', stage: 'r32', idx: 7, utc: '2026-07-01T01:00:00Z', a: W('A'), b: T('CEFHI') },
-  { id: 'r32-8', stage: 'r32', idx: 8, utc: '2026-07-01T16:00:00Z', a: W('L'), b: T('EHIJK') },
-  { id: 'r32-9', stage: 'r32', idx: 9, utc: '2026-07-01T20:00:00Z', a: W('G'), b: T('AEHIJ') },
-  { id: 'r32-10', stage: 'r32', idx: 10, utc: '2026-07-02T00:00:00Z', a: W('D'), b: T('BEFIJ') },
-  { id: 'r32-11', stage: 'r32', idx: 11, utc: '2026-07-02T19:00:00Z', a: W('H'), b: R('J') },
-  { id: 'r32-12', stage: 'r32', idx: 12, utc: '2026-07-02T23:00:00Z', a: R('K'), b: R('L') },
-  { id: 'r32-13', stage: 'r32', idx: 13, utc: '2026-07-03T03:00:00Z', a: W('B'), b: T('EFGIJ') },
-  { id: 'r32-14', stage: 'r32', idx: 14, utc: '2026-07-03T18:00:00Z', a: R('D'), b: R('G') },
-  { id: 'r32-15', stage: 'r32', idx: 15, utc: '2026-07-03T22:00:00Z', a: W('J'), b: R('H') },
-  { id: 'r32-16', stage: 'r32', idx: 16, utc: '2026-07-04T01:30:00Z', a: W('K'), b: T('DEIJL') },
+  { id: 'r32-1',  stage: 'r32', idx: 1,  utc: '2026-06-28T19:00:00Z', a: R('A'),              b: R('B') },
+  { id: 'r32-2',  stage: 'r32', idx: 2,  utc: '2026-06-29T17:00:00Z', a: W('C'),              b: R('F') },
+  { id: 'r32-3',  stage: 'r32', idx: 3,  utc: '2026-06-29T20:30:00Z', a: W('E'),              b: F('Paraguay') },
+  { id: 'r32-4',  stage: 'r32', idx: 4,  utc: '2026-06-30T01:00:00Z', a: W('F'),              b: R('C') },
+  { id: 'r32-5',  stage: 'r32', idx: 5,  utc: '2026-06-30T17:00:00Z', a: R('E'),              b: R('I') },
+  { id: 'r32-6',  stage: 'r32', idx: 6,  utc: '2026-06-30T21:00:00Z', a: W('I'),              b: F('Sweden') },
+  { id: 'r32-7',  stage: 'r32', idx: 7,  utc: '2026-07-01T01:00:00Z', a: W('A'),              b: F('Ecuador') },
+  { id: 'r32-8',  stage: 'r32', idx: 8,  utc: '2026-07-01T16:00:00Z', a: W('L'),              b: F('DR Congo') },
+  { id: 'r32-9',  stage: 'r32', idx: 9,  utc: '2026-07-01T20:00:00Z', a: W('G'),              b: F('Senegal') },
+  { id: 'r32-10', stage: 'r32', idx: 10, utc: '2026-07-02T00:00:00Z', a: W('D'),              b: F('Bosnia-Herzegovina') },
+  { id: 'r32-11', stage: 'r32', idx: 11, utc: '2026-07-02T19:00:00Z', a: W('H'),              b: R('J') },
+  { id: 'r32-12', stage: 'r32', idx: 12, utc: '2026-07-02T23:00:00Z', a: R('K'),              b: R('L') },
+  { id: 'r32-13', stage: 'r32', idx: 13, utc: '2026-07-03T03:00:00Z', a: W('B'),              b: F('Algeria') },
+  { id: 'r32-14', stage: 'r32', idx: 14, utc: '2026-07-03T18:00:00Z', a: R('D'),              b: R('G') },
+  { id: 'r32-15', stage: 'r32', idx: 15, utc: '2026-07-03T22:00:00Z', a: W('J'),              b: R('H') },
+  { id: 'r32-16', stage: 'r32', idx: 16, utc: '2026-07-04T01:30:00Z', a: W('K'),              b: F('Ghana') },
   // Oitavas
   { id: 'r16-1', stage: 'r16', idx: 1, utc: '2026-07-04T17:00:00Z', a: Wof('r32-3'), b: Wof('r32-1') },
   { id: 'r16-2', stage: 'r16', idx: 2, utc: '2026-07-04T21:00:00Z', a: Wof('r32-5'), b: Wof('r32-2') },
@@ -132,6 +134,8 @@ export function slotLabel(slot: Slot): string {
       return `2º Grupo ${slot.group}`;
     case 'third':
       return `3º (${slot.groups.join('/')})`;
+    case 'fixed':
+      return slot.id;
     case 'winnerOf':
       return `Vencedor ${refTag(slot.ref)}`;
     case 'loserOf':
@@ -183,5 +187,6 @@ export function resolveSlot(
 ): string | null {
   if (slot.kind === 'winner') return positions[slot.group]?.first ?? null;
   if (slot.kind === 'runner') return positions[slot.group]?.second ?? null;
-  return null; // terceiros e fases seguintes vêm da fonte oficial depois
+  if (slot.kind === 'fixed') return slot.id;
+  return null; // fases seguintes vêm conforme os resultados chegam
 }

@@ -156,7 +156,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
             onChange={(p) => setPrediction(match.id, p)}
             onClear={() => clearPrediction(match.id)}
           />
-        ) : !hasScore && !live && !finished ? (
+        ) : !hasScore && !live && !finished && !match.stageLabel ? (
           <View style={styles.lockedNote}>
             <Text style={styles.lockedNoteText}>🔒 Palpites fecham no apito inicial.</Text>
           </View>
