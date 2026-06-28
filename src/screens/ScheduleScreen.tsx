@@ -90,10 +90,20 @@ export function ScheduleScreen() {
   // Janela de relógio: liga o poll perto do horário dos jogos mesmo que o status
   // no cache ainda não diga "ao vivo" — é a rede que confirma ao vivo/encerrado.
   const hasMatchInWindow = useMemo(() => hasMatchInPlayWindow(matches), [matches]);
+  // Jogos de knockout do dia (bracket) que a ESPN ainda não alimentou
+  const todayKo = useMemo(() => {
+    const key = localDayKey(new Date());
+    return bracketAsMatches(matches).filter(
+      (k) =>
+        localDayKey(kickoff(k)) === key &&
+        !matches.some((m) => Math.abs(kickoff(m).getTime() - kickoff(k).getTime()) < 90 * 60 * 1000),
+    );
+  }, [matches]);
+
   const anyToday = useMemo(() => {
     const key = localDayKey(new Date());
-    return matches.some((m) => localDayKey(kickoff(m)) === key);
-  }, [matches]);
+    return matches.some((m) => localDayKey(kickoff(m)) === key) || todayKo.length > 0;
+  }, [matches, todayKo]);
 
   // Atualização automática enquanto há jogo AO VIVO: faz polling com backoff
   // (30s → 120s) só com o app em primeiro plano e fora do modo economia. Pausa
@@ -258,7 +268,7 @@ export function ScheduleScreen() {
       />
       <DayMatchesSheet
         visible={dayOpen}
-        matches={matches}
+        matches={[...matches, ...todayKo]}
         selected={selected}
         primaryTeam={settings.primaryTeam}
         onClose={() => setDayOpen(false)}
