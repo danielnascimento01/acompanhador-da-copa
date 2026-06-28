@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Flag } from './Flag';
+import { AdBanner } from './AdBanner';
 import { Match, hasStarted, isLive } from '../data/fixtures';
 import { teamName } from '../data/teams';
 import { fetchMatchSummary, type MatchSummary, type TeamLineup, type TeamStat } from '../lib/liveEvents';
@@ -61,6 +62,9 @@ export function MatchStats({ match }: { match: Match }) {
           ))}
         </View>
       )}
+
+      {/* Anúncio entre as Estatísticas e as Escalações (só quando ambas aparecem). */}
+      {data.stats.length > 0 && (data.home || data.away) && <AdBanner />}
 
       {(data.home || data.away) && (
         <View style={styles.card}>

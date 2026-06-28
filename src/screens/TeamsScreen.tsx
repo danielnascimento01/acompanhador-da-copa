@@ -72,9 +72,11 @@ export function TeamsScreen() {
             onStar={() => setPrimary(item.id)}
           />
         )}
-        renderSectionFooter={({ section }) =>
-          sections.length > 0 && section.title === sections[0].title ? <AdBanner /> : null
-        }
+        renderSectionFooter={({ section }) => {
+          // Após o grupo A e depois a cada 3 grupos (índices 0, 3, 6, 9…).
+          const idx = sections.indexOf(section);
+          return idx >= 0 && idx % 3 === 0 ? <AdBanner /> : null;
+        }}
       />
     </View>
   );

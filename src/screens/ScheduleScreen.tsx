@@ -235,9 +235,11 @@ export function ScheduleScreen() {
           </>
         }
         renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
-        renderSectionFooter={({ section }) =>
-          sections.length > 0 && (section as DaySection).key === sections[0].key ? <AdBanner /> : null
-        }
+        renderSectionFooter={({ section }) => {
+          // Um banner a cada 3 dias de jogos (espaçado, nunca intersticial).
+          const idx = sections.indexOf(section as DaySection);
+          return idx >= 0 && idx % 3 === 0 ? <AdBanner /> : null;
+        }}
         renderItem={({ item }) => (
           <MatchCard
             match={item}

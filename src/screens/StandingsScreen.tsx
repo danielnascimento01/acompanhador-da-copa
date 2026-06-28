@@ -173,8 +173,8 @@ export function StandingsScreen() {
 
       {GROUPS.map((g, i) => (
         <React.Fragment key={g}>
-        {/* Um único banner discreto no meio da lista de grupos (nunca intersticial) */}
-        {i === 6 && <AdBanner />}
+        {/* Banner discreto a cada 3 grupos (nunca intersticial). */}
+        {i > 0 && i % 3 === 0 && <AdBanner />}
         <FadeInUp delay={i * 40}>
           <View style={[styles.card, mode === 'predicted' && styles.cardPredicted]}>
             <View style={styles.groupHead}>
