@@ -8,6 +8,7 @@ import { addGameScore, loadGameScores, loadNick, loadSkin, saveNick, saveSkin, t
 import { fetchGlobalLeaderboard, getDeviceId, submitGlobalScore, type GlobalEntry } from '../lib/leaderboard';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
+import { DOWNLOAD_LINKS } from '../lib/share';
 
 /** Vibração — carrega expo-haptics com proteção (no-op se o módulo não existir). */
 type FB = 'Light' | 'Medium' | 'Heavy';
@@ -18,7 +19,7 @@ const buzz = (k: FB) => {
   } catch { /* sem haptics neste binário */ }
 };
 
-const APP_LINK = 'https://play.google.com/store/apps/details?id=com.danielnascimento.copa2026';
+// Links de download centralizados em DOWNLOAD_LINKS (../lib/share) — Android + iPhone.
 const GAME = 'embaixadinhas';
 
 // Tamanhos (px) e física do mini-game.
@@ -48,6 +49,15 @@ const COMBO_TARGET = 5;   // perfeitas seguidas p/ ativar o multiplicador 2x
 const MAX_MULT = 2;       // multiplicador máximo
 const MILESTONES = [10, 25, 50, 75, 100];
 type Fx = 'speed' | 'slow';
+type Pick = Fx | 'star'; // o que pode CAIR como item bom (⚡/⏱️/⭐)
+
+// ── Desafio crescente a partir de 100 toques (ideia da Marina) ──
+const HARD_FROM = 100;      // dificuldade extra começa aqui
+const STAR_BONUS = 5;       // ⭐ bônus que cai → +5 toques (pega com a bola)
+const CARD_PENALTY = 5;     // 🟨 cartão amarelo → -5 toques (pós-100)
+const CARD_R = 18;          // hitbox do cartão MENOR que o item bom (PICK_R=22) → mais justo
+const CARD_VY = 230;        // velocidade base de queda do cartão
+const CARD_MIN_DX = 130;    // cartão NASCE a ≥ esta distância da bola → nunca um hit inevitável
 
 type Phase = 'menu' | 'playing' | 'over';
 
@@ -167,13 +177,19 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const windClock = useRef(0);
   const [wind, setWind] = useState(0); // só p/ mostrar a seta (muda no liga/desliga)
   // ⚡/⏱️ Item caindo + efeito ativo (escala o "tempo" do jogo).
-  const pickupRef = useRef<{ x: number; y: number; type: Fx } | null>(null);
+  const pickupRef = useRef<{ x: number; y: number; type: Pick } | null>(null);
   const pickClock = useRef(0);
   const pickTX = useRef(new Animated.Value(0)).current;
   const pickTY = useRef(new Animated.Value(0)).current;
-  const [pickType, setPickType] = useState<Fx | null>(null);
+  const [pickType, setPickType] = useState<Pick | null>(null);
   const fxRef = useRef<{ type: Fx; until: number } | null>(null);
   const [fx, setFx] = useState<Fx | null>(null);
+  // 🟨 Cartão amarelo (pós-100): cai LONGE da bola (dá pra desviar) — encostar a bola = -5.
+  const cardRef = useRef<{ x: number; y: number } | null>(null);
+  const cardClock = useRef(0);
+  const cardTX = useRef(new Animated.Value(0)).current;
+  const cardTY = useRef(new Animated.Value(0)).current;
+  const [cardOn, setCardOn] = useState(false);
   // 🎯 Combo de cabeçadas perfeitas (meta visual, não mexe no placar).
   const comboRef = useRef(0);
   const maxComboRef = useRef(0);
@@ -311,6 +327,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     windRef.current = 0; windClock.current = 4 + Math.random() * 3; setWind(0);
     pickupRef.current = null; pickClock.current = 7 + Math.random() * 4; setPickType(null);
     fxRef.current = null; setFx(null);
+    cardRef.current = null; cardClock.current = 6 + Math.random() * 4; setCardOn(false);
     comboRef.current = 0; maxComboRef.current = 0; multiplierRef.current = 1; setCombo(0);
     beatRef.current = false; setOnFire(false);
     charX.current = w / 2;
@@ -379,32 +396,74 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); }
     if (b.x > w - R) { b.x = w - R; b.vx = -Math.abs(b.vx); }
 
-    // ⚡/⏱️ ITEM QUE CAI — surge a cada ~9-14s; pega encostando a bola nele.
+    // Dificuldade extra PÓS-100 (Marina): itens caem mais rápido e mais frequentes, aos
+    // poucos e com teto. A física da cabeçada (= placar) NÃO muda — só a pressão de desvio.
+    const hard = touchesRef.current > HARD_FROM
+      ? 1 + Math.min(0.6, (touchesRef.current - HARD_FROM) / 250)
+      : 1;
+
+    // ⚡/⏱️/⭐ ITEM BOM QUE CAI — pega encostando a BOLA nele (não o boneco). ~20% é ⭐ (+5).
     pickClock.current -= dt;
     if (!pickupRef.current && pickClock.current <= 0 && touchesRef.current >= 4) {
-      const type: Fx = Math.random() < 0.5 ? 'speed' : 'slow';
+      const r = Math.random();
+      const type: Pick = r < 0.4 ? 'speed' : r < 0.8 ? 'slow' : 'star';
       const px = R + Math.random() * Math.max(1, w - 2 * R);
       pickupRef.current = { x: px, y: -PICK_R, type };
       setPickType(type);
       pickTX.setValue(px - PICK_R);
       pickTY.setValue(-PICK_R);
-      pickClock.current = 9 + Math.random() * 5;
+      pickClock.current = (9 + Math.random() * 5) / hard; // mais frequente pós-100
     }
     if (pickupRef.current) {
       const p = pickupRef.current;
-      p.y += PICK_VY * dt;
+      p.y += PICK_VY * hard * dt;
       pickTX.setValue(p.x - PICK_R);
       pickTY.setValue(p.y - PICK_R);
       const ddx = b.x - p.x, ddy = b.y - p.y;
       if (ddx * ddx + ddy * ddy < (R + PICK_R) * (R + PICK_R)) {
-        const dur = p.type === 'speed' ? FX_SPEED_DUR : FX_SLOW_DUR;
-        fxRef.current = { type: p.type, until: clockRef.current + dur };
-        setFx(p.type);
+        if (p.type === 'star') {
+          touchesRef.current += STAR_BONUS;
+          setTouches(touchesRef.current);
+          showFlash('⭐ +5!', 900); buzz('Heavy'); doShake(5);
+        } else {
+          const dur = p.type === 'speed' ? FX_SPEED_DUR : FX_SLOW_DUR;
+          fxRef.current = { type: p.type, until: clockRef.current + dur };
+          setFx(p.type);
+          showFlash(p.type === 'speed' ? '⚡ RÁPIDO!' : '⏱️ CÂMERA LENTA', 1000);
+          buzz('Heavy'); doShake(6);
+        }
         pickupRef.current = null; setPickType(null);
-        showFlash(p.type === 'speed' ? '⚡ RÁPIDO!' : '⏱️ CÂMERA LENTA', 1000);
-        buzz('Heavy'); doShake(6);
       } else if (p.y - PICK_R > h) {
         pickupRef.current = null; setPickType(null); // saiu pela base
+      }
+    }
+
+    // 🟨 CARTÃO AMARELO (só a partir de 100) — NASCE longe da bola, então sempre dá pra
+    // desviar (nunca a "moeda jogada pro alto"). Encostar a BOLA nele tira 5 toques.
+    if (touchesRef.current >= HARD_FROM) {
+      cardClock.current -= dt;
+      if (!cardRef.current && cardClock.current <= 0) {
+        let cx = R + Math.random() * Math.max(1, w - 2 * R);
+        if (Math.abs(cx - b.x) < CARD_MIN_DX) cx = b.x + (b.x > w / 2 ? -CARD_MIN_DX : CARD_MIN_DX);
+        cx = Math.max(R, Math.min(w - R, cx));
+        cardRef.current = { x: cx, y: -CARD_R };
+        setCardOn(true);
+        cardTX.setValue(cx - CARD_R); cardTY.setValue(-CARD_R);
+        cardClock.current = (7 + Math.random() * 5) / hard; // mais frequente conforme sobe
+      }
+    }
+    if (cardRef.current) {
+      const cd = cardRef.current;
+      cd.y += CARD_VY * hard * dt;
+      cardTX.setValue(cd.x - CARD_R); cardTY.setValue(cd.y - CARD_R);
+      const cdx = b.x - cd.x, cdy = b.y - cd.y;
+      if (cdx * cdx + cdy * cdy < (R + CARD_R) * (R + CARD_R)) {
+        touchesRef.current = Math.max(0, touchesRef.current - CARD_PENALTY);
+        setTouches(touchesRef.current);
+        showFlash('🟨 -5!', 1000); buzz('Heavy'); doShake(7);
+        cardRef.current = null; setCardOn(false);
+      } else if (cd.y - CARD_R > h) {
+        cardRef.current = null; setCardOn(false); // saiu pela base
       }
     }
 
@@ -488,7 +547,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
 
   const shareScore = () => {
     Share.share({
-      message: `⚽ Fiz ${touchesRef.current} embaixadinhas no Acompanhador da Copa 2026! Tenta me superar:\n${APP_LINK}`,
+      message: `⚽ Fiz ${touchesRef.current} embaixadinhas no Acompanhador da Copa 2026! Tenta me superar:\n\n${DOWNLOAD_LINKS}`,
     }).catch(() => {});
   };
 
@@ -598,7 +657,12 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                 {flash && <Text style={styles.flash}>{flash}</Text>}
                 {pickType && (
                   <Animated.View style={[styles.pickup, { transform: [{ translateX: pickTX }, { translateY: pickTY }] }]} pointerEvents="none">
-                    <Text style={styles.pickupEmoji}>{pickType === 'speed' ? '⚡' : '⏱️'}</Text>
+                    <Text style={styles.pickupEmoji}>{pickType === 'speed' ? '⚡' : pickType === 'slow' ? '⏱️' : '⭐'}</Text>
+                  </Animated.View>
+                )}
+                {cardOn && (
+                  <Animated.View style={[styles.card, { transform: [{ translateX: cardTX }, { translateY: cardTY }] }]} pointerEvents="none">
+                    <Text style={styles.cardEmoji}>🟨</Text>
                   </Animated.View>
                 )}
                 <Animated.View style={[styles.ball, { transform: [{ translateX: ballTX }, { translateY: ballTY }] }]} pointerEvents="none">
@@ -615,7 +679,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
                   </View>
                 )}
               </Animated.View>
-              <Text style={styles.hint}>Arraste pra mover · pega ⚡/⏱️ · cuidado com o vento 🌬️</Text>
+              <Text style={styles.hint}>Arraste · pegue ⚡/⏱️/⭐ · evite 🟨 e o vento 🌬️</Text>
             </View>
           )}
 
@@ -695,6 +759,8 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   comboBadge: { position: 'absolute', top: '13%', alignSelf: 'center', color: '#FFD200', fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6, zIndex: 5 },
   pickup: { position: 'absolute', left: 0, top: 0, width: PICK_R * 2, height: PICK_R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   pickupEmoji: { fontSize: PICK_R * 2 - 6, lineHeight: PICK_R * 2, textAlign: 'center', includeFontPadding: false },
+  card: { position: 'absolute', left: 0, top: 0, width: CARD_R * 2, height: CARD_R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },
+  cardEmoji: { fontSize: CARD_R * 2 - 4, lineHeight: CARD_R * 2, textAlign: 'center', includeFontPadding: false },
   overCombo: { color: c.amber, fontFamily: fonts.bold, fontSize: 14, textAlign: 'center', marginTop: spacing(1) },
   char: { position: 'absolute', left: 0, bottom: 0, width: CW, height: CH, alignItems: 'center', justifyContent: 'flex-end', zIndex: 2 },
   hint: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, textAlign: 'center', marginTop: spacing(2) },
