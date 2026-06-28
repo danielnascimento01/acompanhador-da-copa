@@ -10,6 +10,7 @@ import { DayMatchesSheet } from './DayMatchesSheet';
 import { PastMatchesSheet } from './PastMatchesSheet';
 import { FadeInUp } from '../components/Motion';
 import { hasStarted, hasMatchInPlayWindow, isFinished, isLive, kickoff, nextRelevantMatchFor, Match } from '../data/fixtures';
+import { bracketAsMatches } from '../data/bracket';
 import { openSuggestion } from '../lib/links';
 import { isStale } from '../lib/freshness';
 import { useStore } from '../lib/store';
@@ -89,10 +90,6 @@ export function ScheduleScreen() {
   // Janela de relógio: liga o poll perto do horário dos jogos mesmo que o status
   // no cache ainda não diga "ao vivo" — é a rede que confirma ao vivo/encerrado.
   const hasMatchInWindow = useMemo(() => hasMatchInPlayWindow(matches), [matches]);
-  const anyToday = useMemo(() => {
-    const key = localDayKey(new Date());
-    return matches.some((m) => localDayKey(kickoff(m)) === key);
-  }, [matches]);
 
   // Atualização automática enquanto há jogo AO VIVO: faz polling com backoff
   // (30s → 120s) só com o app em primeiro plano e fora do modo economia. Pausa
@@ -136,7 +133,7 @@ export function ScheduleScreen() {
   // A lista mostra só os "próximos" (ao vivo/futuro). Os "passados" (encerrados ou
   // já iniciados que não estão ao vivo) ficam na sheet "Jogos passados", aberta
   // pelo botão no topo — mantém a grade enxuta e o histórico a um toque.
-  const { sections, hasPast } = useMemo(() => {
+  const { sections, hasPast, koToday } = useMemo(() => {
     const now = new Date();
     const upcoming: Match[] = [];
     let pastCount = 0;
@@ -144,13 +141,42 @@ export function ScheduleScreen() {
       if (isFinished(m) || (hasStarted(m, now) && !isLive(m, now))) pastCount++;
       else upcoming.push(m);
     }
-    // O mata-mata já vem em `matches` (injetado em fetchLatestMatches a partir da
-    // chave oficial, com placar/status ao vivo da ESPN) — então a grade trata os
-    // jogos de grupos e de mata-mata do mesmo jeito (ao vivo/futuro aqui, passados
-    // na sheet). Nada de overlay separado.
-    const all = upcoming.sort((a, b) => a.utc.localeCompare(b.utc));
-    return { sections: groupByDay(all), hasPast: pastCount > 0 };
+    // Overlay da chave oficial — RESILIÊNCIA. O mata-mata também é injetado em
+    // matches (com placar ao vivo) por fetchLatestMatches, mas isso só vale DEPOIS
+    // do fetch. No cold start / cache antigo (só grupos) / offline, a grade ficaria
+    // VAZIA (todos os 72 jogos de grupo já encerrados). Então geramos a chave a
+    // partir do que já temos, garantindo que o mata-mata sempre apareça.
+    // Dedup por ID e por times+horário: se o jogo já está em matches (versão ao
+    // vivo injetada), o overlay o ignora — nunca duplica.
+    const haveIds = new Set(matches.map((m) => m.id));
+    const todayKey = localDayKey(now);
+    const ko = bracketAsMatches(matches).filter((k) => {
+      if (haveIds.has(k.id)) return false;
+      if (localDayKey(kickoff(k)) < todayKey) return false; // só hoje em diante
+      if (
+        k.home &&
+        k.away &&
+        matches.some(
+          (m) =>
+            m.home === k.home &&
+            m.away === k.away &&
+            Math.abs(kickoff(m).getTime() - kickoff(k).getTime()) < 90 * 60 * 1000,
+        )
+      )
+        return false;
+      return true;
+    });
+    const koToday = ko.filter((k) => localDayKey(kickoff(k)) === todayKey);
+    const all = [...upcoming, ...ko].sort((a, b) => a.utc.localeCompare(b.utc));
+    return { sections: groupByDay(all), hasPast: pastCount > 0, koToday };
   }, [matches]);
+
+  // Tem jogo hoje? (de grupo já em matches OU do mata-mata via overlay) — controla
+  // o botão "Jogos de hoje". Depende de koToday → declarado após o useMemo acima.
+  const anyToday = useMemo(() => {
+    const key = localDayKey(new Date());
+    return matches.some((m) => localDayKey(kickoff(m)) === key) || koToday.length > 0;
+  }, [matches, koToday]);
 
   return (
     <View style={styles.container}>
@@ -252,7 +278,7 @@ export function ScheduleScreen() {
       />
       <DayMatchesSheet
         visible={dayOpen}
-        matches={matches}
+        matches={[...matches, ...koToday]}
         selected={selected}
         primaryTeam={settings.primaryTeam}
         onClose={() => setDayOpen(false)}
