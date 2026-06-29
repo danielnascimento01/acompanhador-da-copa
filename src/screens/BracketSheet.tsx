@@ -4,7 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Flag } from '../components/Flag';
 import { teamName } from '../data/teams';
 import { BRACKET, STAGE_META, Slot, StageKey, groupPositions, knockoutResults, resolveSlot, slotLabel, type KnockoutResults } from '../data/bracket';
-import { bestThirds, ThirdRow } from '../data/bestThirds';
+
 import { Match, hasStarted, isLive } from '../data/fixtures';
 import { formatDayShort, formatTime } from '../lib/format';
 import { useStore } from '../lib/store';
@@ -34,21 +34,11 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
   // Vencedores/perdedores confirmados de cada confronto (cascata 16-avos→final)
   // — preenche os slots "Vencedor 16-avos J3" com o time real assim que decide.
   const results = useMemo(() => knockoutResults(matches), [matches]);
-  const thirds = useMemo(() => bestThirds(matches), [matches]);
   // Os jogos do mata-mata já vêm em `matches` (com placar/status ao vivo da ESPN),
   // indexados pelo MESMO id da chave (ex.: "r32-1"). Achamos o jogo "vivo" por id
   // para abrir o detalhe completo (lance a lance, escalações, onde assistir…).
   const liveById = useMemo(() => new Map(matches.map((m) => [m.id, m])), [matches]);
   const [detail, setDetail] = useState<Match | null>(null);
-
-  const resolved = useMemo(() => {
-    let n = 0;
-    for (const m of BRACKET) {
-      if (resolveSlot(m.a, positions, results)) n++;
-      if (resolveSlot(m.b, positions, results)) n++;
-    }
-    return n;
-  }, [positions, results]);
 
   // Aba de rodada ativa — o mata-mata vira navegável por fase (toque no botão).
   const [activeStage, setActiveStage] = useState<StageKey>('r32');
@@ -102,17 +92,6 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
           </View>
 
           <ScrollView ref={contentRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing(8) }}>
-            <View style={styles.banner}>
-              <Text style={styles.bannerText}>
-                {resolved === 0
-                  ? 'As seleções aparecem aqui conforme se classificam. Os "melhores terceiros" e as fases seguintes preenchem com a definição oficial — nunca um confronto chutado.'
-                  : `${resolved} ${resolved === 1 ? 'vaga já definida' : 'vagas já definidas'}. O resto preenche conforme os grupos terminam.`}
-              </Text>
-            </View>
-
-            {/* Os melhores terceiros só fazem sentido na 1ª fase do mata-mata. */}
-            {activeStage === 'r32' && <BestThirdsBlock result={thirds} selected={selected} />}
-
             {stagesToShow.map((stageKey) => {
               const stage = STAGE_META.find((s) => s.key === stageKey)!;
               return (
@@ -173,73 +152,6 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
         onClose={() => setDetail(null)}
       />
     </Modal>
-  );
-}
-
-/**
- * Calculadora dos 8 melhores terceiros — a parte do formato de 48 que "ninguém
- * mostra direito". Ranqueia os 12 terceiros e marca quem avança, SEM nunca chutar:
- * empate na fronteira 8/9 vira "disputa"; grupos em andamento ficam provisórios.
- */
-function BestThirdsBlock({ result, selected }: { result: ReturnType<typeof bestThirds>; selected: Set<string> }) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.thirdsBlock}>
-      <Text style={styles.stageName}>Os 8 melhores terceiros</Text>
-      <Text style={styles.thirdsCriterio}>
-        Avançam os 8 melhores 3ºs entre os 12 grupos. Critério: 1) pontos · 2) saldo de gols · 3) gols
-        marcados · depois fair-play e sorteio.
-      </Text>
-      <View style={[styles.thirdsNote, result.definitive && styles.thirdsNoteOk]}>
-        <Text style={[styles.thirdsNoteText, result.definitive && styles.thirdsNoteTextOk]}>{result.note}</Text>
-      </View>
-
-      {result.rows.map((row, i) => (
-        <React.Fragment key={row.group}>
-          {i === 8 && <View style={styles.thirdsCut} />}
-          <ThirdRowView row={row} selected={selected} />
-        </React.Fragment>
-      ))}
-    </View>
-  );
-}
-
-function ThirdRowView({ row, selected }: { row: ThirdRow; selected: Set<string> }) {
-  const styles = useThemedStyles(makeStyles);
-  const fav = row.played > 0 && selected.has(row.teamId);
-  const status =
-    row.qualifies === 'in'
-      ? { label: 'avança', style: styles.pillIn, text: styles.pillInText }
-      : row.qualifies === 'tie'
-        ? { label: 'disputa', style: styles.pillTie, text: styles.pillTieText }
-        : { label: 'fora', style: styles.pillOut, text: styles.pillOutText };
-  const gd = row.gd > 0 ? `+${row.gd}` : `${row.gd}`;
-  return (
-    <View style={[styles.thirdRow, row.qualifies === 'in' && styles.thirdRowIn, fav && styles.thirdRowFav]}>
-      <Text style={[styles.thirdRank, row.qualifies === 'in' && styles.thirdRankIn]}>{row.rank}º</Text>
-      <View style={styles.thirdGroupTag}>
-        <Text style={styles.thirdGroupTagText}>{row.group}</Text>
-      </View>
-      {row.played > 0 ? (
-        <>
-          <Flag teamId={row.teamId} size={24} radius={7} />
-          <Text style={[styles.thirdName, fav && styles.thirdNameFav]} numberOfLines={1}>
-            {teamName(row.teamId)}
-            {!row.locked ? <Text style={styles.thirdProv}>  · parcial</Text> : null}
-          </Text>
-        </>
-      ) : (
-        <Text style={styles.thirdName} numberOfLines={1}>
-          3º do Grupo {row.group} <Text style={styles.thirdProv}>· a definir</Text>
-        </Text>
-      )}
-      <Text style={styles.thirdStats}>
-        {row.points} pt{row.points === 1 ? '' : 's'} · SG {gd} · G {row.gf}
-      </Text>
-      <View style={[styles.pill, status.style]}>
-        <Text style={[styles.pillText, status.text]}>{status.label}</Text>
-      </View>
-    </View>
   );
 }
 
@@ -310,15 +222,6 @@ const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   tabActive: { backgroundColor: c.accent, borderColor: c.accent },
   tabText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 13 },
   tabTextActive: { color: c.ink },
-  banner: {
-    backgroundColor: 'rgba(21,194,214,0.10)',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(21,194,214,0.30)',
-    padding: spacing(3),
-    marginBottom: spacing(4),
-  },
-  bannerText: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
   stageBlock: { marginBottom: spacing(4) },
   stageName: {
     color: c.accent,
@@ -362,67 +265,4 @@ const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   slotLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, flex: 1 },
   vs: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, textAlign: 'center', paddingVertical: 3 },
   footer: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, marginTop: spacing(2), textAlign: 'center' },
-
-  // Calculadora dos melhores terceiros
-  thirdsBlock: { marginBottom: spacing(5) },
-  thirdsCriterio: { color: c.textDim, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 18, marginBottom: spacing(2) },
-  thirdsNote: {
-    backgroundColor: 'rgba(255,194,51,0.10)',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,194,51,0.30)',
-    paddingVertical: spacing(2),
-    paddingHorizontal: spacing(3),
-    marginBottom: spacing(3),
-  },
-  thirdsNoteOk: { backgroundColor: 'rgba(20,224,138,0.10)', borderColor: 'rgba(20,224,138,0.30)' },
-  thirdsNoteText: { color: c.amber, fontFamily: fonts.semibold, fontSize: 12.5, lineHeight: 18 },
-  thirdsNoteTextOk: { color: c.accent },
-  thirdsCut: {
-    height: 1,
-    backgroundColor: c.accent,
-    opacity: 0.5,
-    marginVertical: spacing(2),
-  },
-  thirdRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing(2),
-    backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: radius.sm,
-    paddingVertical: spacing(2),
-    paddingHorizontal: spacing(2),
-    marginBottom: 6,
-    minHeight: 40,
-  },
-  thirdRowIn: { borderColor: 'rgba(20,224,138,0.35)', backgroundColor: 'rgba(20,224,138,0.05)' },
-  thirdRowFav: { borderColor: c.accent },
-  thirdRank: { color: c.textFaint, fontFamily: fonts.extrabold, fontSize: 12, width: 24, fontVariant: ['tabular-nums'] },
-  thirdRankIn: { color: c.accent },
-  thirdGroupTag: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    backgroundColor: c.surface2,
-    borderWidth: 1,
-    borderColor: c.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  thirdGroupTagText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 11 },
-  thirdFlag: { fontSize: 17 },
-  thirdName: { color: c.text, fontFamily: fonts.bold, fontSize: 13.5, flex: 1 },
-  thirdNameFav: { color: c.accent },
-  thirdProv: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 11 },
-  thirdStats: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 11.5, fontVariant: ['tabular-nums'] },
-  pill: { borderRadius: radius.pill, paddingVertical: 2, paddingHorizontal: spacing(2), minWidth: 56, alignItems: 'center' },
-  pillText: { fontFamily: fonts.bold, fontSize: 10.5, letterSpacing: 0.3, textTransform: 'uppercase' },
-  pillIn: { backgroundColor: c.accent },
-  pillInText: { color: c.ink },
-  pillTie: { backgroundColor: 'rgba(255,194,51,0.18)', borderWidth: 1, borderColor: c.amber },
-  pillTieText: { color: c.amber },
-  pillOut: { backgroundColor: c.surface2 },
-  pillOutText: { color: c.textFaint },
 });

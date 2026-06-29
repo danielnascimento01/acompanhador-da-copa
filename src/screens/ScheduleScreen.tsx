@@ -3,8 +3,8 @@ import { AppState, Pressable, RefreshControl, SectionList, StyleSheet, Text, Vie
 
 import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
-import { TeamStatusBanner } from '../components/TeamStatusBanner';
 import { AdBanner } from '../components/AdBanner';
+import { BracketSheet } from './BracketSheet';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
 import { PastMatchesSheet } from './PastMatchesSheet';
@@ -60,6 +60,7 @@ export function ScheduleScreen() {
   const [detail, setDetail] = useState<Match | null>(null);
   const [dayOpen, setDayOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
+  const [bracketOpen, setBracketOpen] = useState(false);
   const [showAntiBets, setShowAntiBets] = useState(!antiBetsDismissed);
 
   // Esconde o aviso anti-apostas após 15s — ou ao sair da aba (cleanup). Não reaparece.
@@ -120,15 +121,6 @@ export function ScheduleScreen() {
       sub.remove();
     };
   }, [autoOn, refresh]);
-
-  // Abre o detalhe do próximo jogo (ainda não encerrado) de uma seleção.
-  const openTeamNext = (teamId: string) => {
-    const now = Date.now();
-    const m = matches
-      .filter((x) => (x.home === teamId || x.away === teamId) && !isFinished(x) && kickoff(x).getTime() > now)
-      .sort((a, b) => a.utc.localeCompare(b.utc))[0];
-    if (m) setDetail(m);
-  };
 
   // A lista mostra só os "próximos" (ao vivo/futuro). Os "passados" (encerrados ou
   // já iniciados que não estão ao vivo) ficam na sheet "Jogos passados", aberta
@@ -241,12 +233,14 @@ export function ScheduleScreen() {
         }
         ListHeaderComponent={
           <>
-            <TeamStatusBanner
-              matches={matches}
-              selected={selected}
-              primaryTeam={settings.primaryTeam}
-              onPressTeam={openTeamNext}
-            />
+            <Pressable
+              style={({ pressed }) => [styles.bracketBtn, pressed && styles.bracketBtnPressed]}
+              onPress={() => setBracketOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Ver o Mata a Mata"
+            >
+              <Text style={styles.bracketBtnText}>🏆 Mata a Mata</Text>
+            </Pressable>
             {hero ? (
               <FadeInUp>
                 <NextMatchHero match={hero} onPress={() => setDetail(hero)} />
@@ -298,6 +292,7 @@ export function ScheduleScreen() {
           setDetail(m);
         }}
       />
+      <BracketSheet visible={bracketOpen} onClose={() => setBracketOpen(false)} />
     </View>
   );
 }
@@ -334,6 +329,16 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   },
   suggestionBtn: { borderColor: c.border, backgroundColor: 'transparent' },
   pastHeaderBtn: { borderColor: c.border, backgroundColor: c.surface },
+  bracketBtn: {
+    backgroundColor: c.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing(4),
+    marginBottom: spacing(3),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bracketBtnPressed: { opacity: 0.75 },
+  bracketBtnText: { color: c.ink, fontFamily: fonts.display, fontSize: 20, letterSpacing: 0.3 },
   shareTodayPressed: { opacity: 0.6 },
   shareTodayText: { color: c.accent, fontFamily: fonts.bold, fontSize: 12.5 },
   suggestionText: { color: c.textDim, fontFamily: fonts.bold, fontSize: 12.5 },

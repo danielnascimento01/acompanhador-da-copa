@@ -4,6 +4,7 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 
+import { showRewarded, rewardedAvailable } from '../lib/ads';
 import { addGameScore, loadGameScores, loadNick, loadSkin, saveNick, saveSkin, type ScoreEntry } from '../lib/funStorage';
 import { fetchGlobalLeaderboard, getDeviceId, submitGlobalScore, type GlobalEntry } from '../lib/leaderboard';
 import { fonts, radius, spacing } from '../lib/theme';
@@ -207,6 +208,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   // 🚀 Velocidade progressiva — tier muda a cada ~50 toques, mostra no HUD.
   const speedTierRef = useRef(0);
   const [speedTier, setSpeedTier] = useState(0);
+  // Offset subtrai dos toques no worldSpeedAt: na ressurreição recua para ~×1.2.
+  const speedOffsetRef = useRef(0);
+  // Estado do anúncio de ressurreição (1 por partida).
+  const [revived, setRevived] = useState(false);
+  const [reviving, setReviving] = useState(false);
 
   const record = scores.length ? scores[0].score : 0;
   const skin = skinById(skinId);
@@ -316,6 +322,8 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     setTouches(0);
     setNewRecord(false);
     setFlash(null);
+    setRevived(false);
+    speedOffsetRef.current = 0;
     wantStart.current = true;
     setPhase('playing');
     if (dims.current.w > 0 && dims.current.h > 0) beginPlay();
@@ -392,7 +400,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
       else scale = fxRef.current.type === 'speed' ? SPEED_F : SLOW_F;
     }
     // 🚀 Velocidade progressiva — mundo inteiro acelera com os toques.
-    const ws = worldSpeedAt(touchesRef.current);
+    const ws = worldSpeedAt(Math.max(0, touchesRef.current - speedOffsetRef.current));
     const pdt = dt * scale * ws; // dt físico (acelera/desacelera o jogo inteiro)
 
     const b = ball.current;
@@ -551,6 +559,43 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     setFlash(msg);
     if (flashTimer.current) clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setFlash(null), ms);
+  };
+
+  // Ressuscita após o anúncio: mantém placar, recua velocidade para ~×1.2 e recomeça.
+  const beginRevive = () => {
+    const { w, h } = dims.current;
+    if (!w || !h) return;
+    startedRef.current = false;
+    setWaiting(true);
+    setNewRecord(false);
+    setFlash(null);
+    windRef.current = 0; windClock.current = 4 + Math.random() * 3; setWind(0);
+    pickupRef.current = null; pickClock.current = 7 + Math.random() * 4; setPickType(null);
+    fxRef.current = null; setFx(null);
+    cardRef.current = null; cardClock.current = 6 + Math.random() * 4; setCardOn(false);
+    comboRef.current = 0; multiplierRef.current = 1; setCombo(0);
+    beatRef.current = false; setOnFire(false);
+    speedTierRef.current = 0; setSpeedTier(0);
+    ball.current = { x: w / 2, y: R + 8, vx: 0, vy: 0 };
+    ballTX.setValue(w / 2 - R); ballTY.setValue(8);
+    charX.current = w / 2; charTX.setValue(w / 2 - CW / 2);
+    last.current = 0; clockRef.current = 0;
+    stop();
+    playingRef.current = true;
+    setPhase('playing');
+    raf.current = requestAnimationFrame(loop);
+  };
+
+  const handleRevive = async () => {
+    if (reviving) return;
+    setReviving(true);
+    const result = await showRewarded();
+    setReviving(false);
+    if (result === 'dismissed') return;
+    setRevived(true);
+    // worldSpeedAt(100) = ×1.2 — recua o "mundo" para esse ponto.
+    speedOffsetRef.current = Math.max(0, touchesRef.current - 100);
+    beginRevive();
   };
 
   const end = async () => {
@@ -720,6 +765,17 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
               <Text style={styles.overLabel}>toques</Text>
               {newRecord ? <Text style={styles.overRecord}>Novo recorde! 🏆</Text> : <Text style={styles.overMsg}>Recorde: {record} · fica embaixo da bola pra não deixar cair!</Text>}
               {maxComboRef.current >= 2 && <Text style={styles.overCombo}>🎯 Maior combo: {maxComboRef.current} perfeitas seguidas</Text>}
+              {!revived && rewardedAvailable() && (
+                <Pressable
+                  style={[styles.reviveBtn, reviving && { opacity: 0.6 }]}
+                  onPress={handleRevive}
+                  disabled={reviving}
+                  accessibilityRole="button"
+                  accessibilityLabel="Assistir anúncio para continuar jogando"
+                >
+                  <Text style={styles.reviveBtnText}>{reviving ? 'Carregando…' : '📺 Continuar (anúncio)'}</Text>
+                </Pressable>
+              )}
               <Pressable style={styles.replayBtn} onPress={startGame} accessibilityRole="button" accessibilityLabel="Jogar de novo">
                 <Text style={styles.replayText}>🔄 Jogar de novo</Text>
               </Pressable>
@@ -801,6 +857,8 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   overLabel: { color: c.textDim, fontFamily: fonts.medium, fontSize: 16, marginTop: -8 },
   overRecord: { color: c.amber, fontFamily: fonts.display, fontSize: 20, marginTop: spacing(2), marginBottom: spacing(4) },
   overMsg: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, textAlign: 'center', marginTop: spacing(2), marginBottom: spacing(4), paddingHorizontal: spacing(4), lineHeight: 19 },
+  reviveBtn: { backgroundColor: c.amber, borderRadius: radius.md, paddingVertical: spacing(3), paddingHorizontal: spacing(5), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(2), marginBottom: spacing(1) },
+  reviveBtnText: { color: '#111', fontFamily: fonts.bold, fontSize: 15 },
   replayBtn: { backgroundColor: c.accent, borderRadius: radius.md, paddingVertical: spacing(4), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(2) },
   replayText: { color: c.ink, fontFamily: fonts.display, fontSize: 17, letterSpacing: 0.5 },
   shareBtn: { paddingVertical: spacing(3), alignItems: 'center', alignSelf: 'stretch', marginTop: spacing(1) },
