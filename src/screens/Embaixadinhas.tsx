@@ -37,9 +37,9 @@ const SWEET = 12; // tolerância (px) do "no alvo" — cabeçada bem no centro
 const bounceAt = (touches: number) => Math.min(BOUNCE_MAX, BOUNCE_BASE + touches * BOUNCE_STEP);
 
 // Velocidade progressiva: o mundo inteiro acelera a cada toque.
-// Começa no 20º toque, +0.6% por toque, teto em 2.0× — rampa suave.
+// Começa no 50º toque, +0.4% por toque, teto em 2.0×.
 const WORLD_SPEED_MAX = 2.0;
-const worldSpeedAt = (t: number) => Math.min(WORLD_SPEED_MAX, 1 + Math.max(0, t - 20) * 0.006);
+const worldSpeedAt = (t: number) => Math.min(WORLD_SPEED_MAX, 1 + Math.max(0, t - 50) * 0.004);
 
 // ── Novidades pra animar o jogo (tudo OTA-safe, placar = toques continua justo) ──
 const WIND_MAX = 240;   // px/s² da rajada de vento lateral
