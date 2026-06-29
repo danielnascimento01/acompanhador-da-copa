@@ -64,7 +64,7 @@ export const BRACKET: BracketMatch[] = [
   { id: 'r32-16', stage: 'r32', idx: 16, utc: '2026-07-04T01:30:00Z', a: W('K'),              b: F('Ghana') },
   // Oitavas
   { id: 'r16-1', stage: 'r16', idx: 1, utc: '2026-07-04T17:00:00Z', a: Wof('r32-3'), b: Wof('r32-1') },
-  { id: 'r16-2', stage: 'r16', idx: 2, utc: '2026-07-05T17:00:00Z', a: Wof('r32-5'), b: Wof('r32-2') },
+  { id: 'r16-2', stage: 'r16', idx: 2, utc: '2026-07-05T20:00:00Z', a: Wof('r32-5'), b: Wof('r32-2') },
   { id: 'r16-3', stage: 'r16', idx: 3, utc: '2026-07-05T20:00:00Z', a: Wof('r32-6'), b: Wof('r32-4') },
   { id: 'r16-4', stage: 'r16', idx: 4, utc: '2026-07-06T00:00:00Z', a: Wof('r32-8'), b: Wof('r32-7') },
   { id: 'r16-5', stage: 'r16', idx: 5, utc: '2026-07-06T19:00:00Z', a: Wof('r32-12'), b: Wof('r32-11') },

@@ -37,10 +37,9 @@ const SWEET = 12; // tolerância (px) do "no alvo" — cabeçada bem no centro
 const bounceAt = (touches: number) => Math.min(BOUNCE_MAX, BOUNCE_BASE + touches * BOUNCE_STEP);
 
 // Velocidade progressiva: o mundo inteiro acelera a cada toque.
-// Começa no 10º toque, sobe 1% por toque, teto em 2.5×.
-// bounce + gravidade + vento escalam juntos → bola sobe igual mas MUITO mais rápido.
-const WORLD_SPEED_MAX = 2.5;
-const worldSpeedAt = (t: number) => Math.min(WORLD_SPEED_MAX, 1 + Math.max(0, t - 10) * 0.01);
+// Começa no 20º toque, +0.6% por toque, teto em 2.0× — rampa suave.
+const WORLD_SPEED_MAX = 2.0;
+const worldSpeedAt = (t: number) => Math.min(WORLD_SPEED_MAX, 1 + Math.max(0, t - 20) * 0.006);
 
 // ── Novidades pra animar o jogo (tudo OTA-safe, placar = toques continua justo) ──
 const WIND_MAX = 240;   // px/s² da rajada de vento lateral
@@ -404,9 +403,10 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     b.x += b.vx * pdt;
     b.vx *= 0.992; // fricção leve — o vento não acumula pra sempre
 
-    // paredes
+    // paredes e teto — bola nunca sai da área visível
     if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); }
     if (b.x > w - R) { b.x = w - R; b.vx = -Math.abs(b.vx); }
+    if (b.y < R) { b.y = R; b.vy = Math.abs(b.vy); } // teto superior
 
     // Dificuldade extra PÓS-100 (Marina): itens caem mais rápido e mais frequentes, aos
     // poucos e com teto. A física da cabeçada (= placar) NÃO muda — só a pressão de desvio.
