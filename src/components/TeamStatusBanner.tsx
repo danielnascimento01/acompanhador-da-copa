@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Flag } from './Flag';
 import { Match } from '../data/fixtures';
 import { teamName } from '../data/teams';
-import { knockoutResults } from '../data/bracket';
+import { eliminatedTeams } from '../data/bracket';
 import { teamOutlook, TeamOutlook } from '../data/scenarios';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useTheme, useThemedStyles, type ThemeTokens } from '../lib/theme-context';
@@ -45,13 +45,9 @@ type Props = {
 export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }: Props) {
   const styles = useThemedStyles(makeStyles);
   const { c } = useTheme();
-  // Seleções que perderam algum jogo do mata-mata = eliminadas (mesmo tendo se
-  // classificado na fase de grupos). knockoutResults dá o perdedor de cada confronto.
-  const koEliminated = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of Object.values(knockoutResults(matches))) s.add(r.loser);
-    return s;
-  }, [matches]);
+  // Seleções eliminadas (mata-mata OU fase de grupos) — fonte única compartilhada
+  // com a aba Seleções, para o status bater em todo lugar.
+  const koEliminated = useMemo(() => eliminatedTeams(matches), [matches]);
 
   const rows = useMemo(
     () =>

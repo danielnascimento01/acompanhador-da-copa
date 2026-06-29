@@ -4,14 +4,18 @@ import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { Flag } from '../components/Flag';
 import { AdBanner } from '../components/AdBanner';
 import { GROUPS, TEAMS, Team } from '../data/teams';
+import { eliminatedTeams } from '../data/bracket';
 import { useStore } from '../lib/store';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
 export function TeamsScreen() {
   const styles = useThemedStyles(makeStyles);
-  const { selected, toggleTeam, settings, updateSettings } = useStore();
+  const { selected, toggleTeam, settings, updateSettings, matches } = useStore();
   const primaryTeam = settings.primaryTeam;
+
+  // Seleções já eliminadas (grupos ou mata-mata) — selo "Eliminada" na lista.
+  const eliminated = useMemo(() => eliminatedTeams(matches), [matches]);
 
   // Elege (ou desmarca) a seleção principal. Eleger garante que ela também esteja
   // marcada (para receber os avisos) — o foco do app passa a ser ela.
@@ -68,6 +72,7 @@ export function TeamsScreen() {
             team={item}
             active={selected.has(item.id)}
             primary={primaryTeam === item.id}
+            eliminated={eliminated.has(item.id)}
             onPress={() => toggleTeam(item.id)}
             onStar={() => setPrimary(item.id)}
           />
@@ -86,12 +91,14 @@ function TeamRow({
   team,
   active,
   primary,
+  eliminated,
   onPress,
   onStar,
 }: {
   team: Team;
   active: boolean;
   primary: boolean;
+  eliminated: boolean;
   onPress: () => void;
   onStar: () => void;
 }) {
@@ -101,14 +108,22 @@ function TeamRow({
       onPress={onPress}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: active }}
-      accessibilityLabel={team.name}
+      accessibilityLabel={eliminated ? `${team.name}, eliminada` : team.name}
       hitSlop={6}
       style={({ pressed }) => [styles.row, primary && styles.rowPrimary, pressed && styles.rowPressed]}
     >
       <Flag teamId={team.id} size={40} radius={20} />
-      <Text style={[styles.name, primary && styles.namePrimary]} numberOfLines={1}>
+      <Text
+        style={[styles.name, primary && styles.namePrimary, eliminated && styles.nameElim]}
+        numberOfLines={1}
+      >
         {team.name}
       </Text>
+      {eliminated && (
+        <View style={styles.elimBadge}>
+          <Text style={styles.elimBadgeText}>Eliminada</Text>
+        </View>
+      )}
       <Pressable
         onPress={onStar}
         hitSlop={10}
@@ -164,6 +179,16 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   starActive: { color: c.amber },
   name: { color: c.text, fontFamily: fonts.semibold, fontSize: 16, flex: 1 },
   namePrimary: { color: c.accent, fontFamily: fonts.bold },
+  nameElim: { color: c.textDim },
+  elimBadge: {
+    backgroundColor: 'rgba(255,59,48,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,59,48,0.35)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing(2),
+    paddingVertical: 2,
+  },
+  elimBadgeText: { color: c.live, fontFamily: fonts.bold, fontSize: 10.5, letterSpacing: 0.3, textTransform: 'uppercase' },
   check: {
     width: 28,
     height: 28,

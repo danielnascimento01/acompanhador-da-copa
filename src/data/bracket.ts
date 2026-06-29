@@ -11,6 +11,8 @@
  */
 import { Match, isFinished } from './fixtures';
 import { computeStandings } from './standings';
+import { teamOutlook } from './scenarios';
+import { TEAMS } from './teams';
 
 export type Slot =
   | { kind: 'winner'; group: string }
@@ -238,4 +240,36 @@ export function resolveSlot(
   if (slot.kind === 'winnerOf') return results[slot.ref]?.winner ?? null;
   if (slot.kind === 'loserOf') return results[slot.ref]?.loser ?? null;
   return null;
+}
+
+/**
+ * Seleções ELIMINADAS — com certeza, zero chute. Combina três sinais:
+ *  (1) perdedor de QUALQUER confronto do mata-mata (definitivo);
+ *  (2) eliminação matemática na fase de grupos (sem chance de top-2 NEM de 3º) —
+ *      vale também durante a fase de grupos;
+ *  (3) não-classificados quando o R32 já está 100% definido (todos os 32 com time
+ *      real): quem não está entre os 32 está fora — pega o 3º que não fez o corte.
+ * O gate de (3) (R32 completo) garante nunca marcar como eliminado quem passou.
+ */
+export function eliminatedTeams(matches: Match[]): Set<string> {
+  const elim = new Set<string>();
+  // (1) perdedores do mata-mata
+  for (const r of Object.values(knockoutResults(matches))) elim.add(r.loser);
+  // (2) eliminação matemática na fase de grupos
+  for (const t of TEAMS) {
+    const o = teamOutlook(matches, t.id);
+    if (o && o.eliminatedFromTop2 && !o.canFinishThird) elim.add(t.id);
+  }
+  // (3) não-classificados, só com o R32 inteiro resolvido
+  const r32 = bracketAsMatches(matches).filter((m) => m.round === STAGE_ROUND.r32);
+  const qualified = new Set<string>();
+  let complete = r32.length === 16;
+  for (const m of r32) {
+    if (m.home) qualified.add(m.home);
+    else complete = false;
+    if (m.away) qualified.add(m.away);
+    else complete = false;
+  }
+  if (complete) for (const t of TEAMS) if (!qualified.has(t.id)) elim.add(t.id);
+  return elim;
 }
