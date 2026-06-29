@@ -4,21 +4,28 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Flag } from './Flag';
 import { Match } from '../data/fixtures';
 import { teamName } from '../data/teams';
+import { knockoutResults } from '../data/bracket';
 import { teamOutlook, TeamOutlook } from '../data/scenarios';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useTheme, useThemedStyles, type ThemeTokens } from '../lib/theme-context';
 
-/** Cor pela situação (verde=classificado, vermelho=eliminado, âmbar=em disputa/3º). */
-function statusColor(o: TeamOutlook, c: ThemeTokens['c']): string {
+/** Cor pela situação (verde=classificada, vermelho=eliminada, âmbar=em disputa/3º). */
+function statusColor(o: TeamOutlook, c: ThemeTokens['c'], koEliminated: boolean): string {
+  if (koEliminated) return c.live;
   if (o.guaranteedTop2) return c.accent;
   if (o.eliminatedFromTop2 && !o.canFinishThird) return c.live;
   return c.amber;
 }
 
-/** Rótulo curto pro chip. */
-function shortLabel(o: TeamOutlook): string {
-  if (o.guaranteedTop2) return 'Classificado';
-  if (o.eliminatedFromTop2) return o.canFinishThird ? 'Via 3º' : 'Eliminado';
+/**
+ * Rótulo curto pro chip. `koEliminated` = perdeu um jogo do mata-mata (avançou da
+ * fase de grupos mas caiu depois) → sobrepõe o "Classificada" da fase de grupos.
+ * Texto no feminino (concorda com "seleção").
+ */
+function shortLabel(o: TeamOutlook, koEliminated: boolean): string {
+  if (koEliminated) return 'Eliminada';
+  if (o.guaranteedTop2) return 'Classificada';
+  if (o.eliminatedFromTop2) return o.canFinishThird ? 'Via 3º' : 'Eliminada';
   return `${o.rank}º Grupo ${o.group}`;
 }
 
@@ -38,6 +45,14 @@ type Props = {
 export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }: Props) {
   const styles = useThemedStyles(makeStyles);
   const { c } = useTheme();
+  // Seleções que perderam algum jogo do mata-mata = eliminadas (mesmo tendo se
+  // classificado na fase de grupos). knockoutResults dá o perdedor de cada confronto.
+  const koEliminated = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of Object.values(knockoutResults(matches))) s.add(r.loser);
+    return s;
+  }, [matches]);
+
   const rows = useMemo(
     () =>
       [...selected]
@@ -59,7 +74,8 @@ export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }
         contentContainerStyle={styles.row}
       >
         {rows.map(({ id, o }) => {
-          const color = statusColor(o, c);
+          const elim = koEliminated.has(id);
+          const color = statusColor(o, c, elim);
           const isPrimary = id === primaryTeam;
           return (
             <Pressable
@@ -72,7 +88,7 @@ export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }
                 pressed && styles.pressed,
               ]}
               accessibilityRole={onPressTeam ? 'button' : 'text'}
-              accessibilityLabel={`${isPrimary ? 'Sua seleção principal, ' : ''}${teamName(id)}: ${o.phraseShort}`}
+              accessibilityLabel={`${isPrimary ? 'Sua seleção principal, ' : ''}${teamName(id)}: ${elim ? 'Eliminada' : o.phraseShort}`}
             >
               <Flag teamId={id} size={32} />
               <View style={styles.info}>
@@ -83,7 +99,7 @@ export function TeamStatusBanner({ matches, selected, primaryTeam, onPressTeam }
                   {isPrimary && <Text style={styles.star}>★</Text>}
                 </View>
                 <Text style={[styles.status, { color }]} numberOfLines={1}>
-                  {shortLabel(o)}
+                  {shortLabel(o, elim)}
                 </Text>
               </View>
             </Pressable>
