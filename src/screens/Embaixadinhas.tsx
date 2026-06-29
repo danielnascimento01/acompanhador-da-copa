@@ -36,6 +36,12 @@ const BOUNCE_STEP = 4.5;   // sobe a cada toque → a velocidade da bola aumenta
 const SWEET = 12; // tolerância (px) do "no alvo" — cabeçada bem no centro
 const bounceAt = (touches: number) => Math.min(BOUNCE_MAX, BOUNCE_BASE + touches * BOUNCE_STEP);
 
+// Velocidade progressiva: o mundo inteiro acelera a cada toque.
+// Começa no 10º toque, sobe 1% por toque, teto em 2.5×.
+// bounce + gravidade + vento escalam juntos → bola sobe igual mas MUITO mais rápido.
+const WORLD_SPEED_MAX = 2.5;
+const worldSpeedAt = (t: number) => Math.min(WORLD_SPEED_MAX, 1 + Math.max(0, t - 10) * 0.01);
+
 // ── Novidades pra animar o jogo (tudo OTA-safe, placar = toques continua justo) ──
 const WIND_MAX = 240;   // px/s² da rajada de vento lateral
 const PERFECT = 14;     // cabeçada PERFEITA (centro da testa) → conta combo (janela mais generosa)
@@ -199,6 +205,9 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
   const beatRef = useRef(false);   // recorde já batido nesta partida? (saltos de +2)
   // 🔥 Bola em chamas — aceso SÓ enquanto o multiplicador 2x está ativo.
   const [onFire, setOnFire] = useState(false);
+  // 🚀 Velocidade progressiva — tier muda a cada ~50 toques, mostra no HUD.
+  const speedTierRef = useRef(0);
+  const [speedTier, setSpeedTier] = useState(0);
 
   const record = scores.length ? scores[0].score : 0;
   const skin = skinById(skinId);
@@ -330,6 +339,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
     cardRef.current = null; cardClock.current = 6 + Math.random() * 4; setCardOn(false);
     comboRef.current = 0; maxComboRef.current = 0; multiplierRef.current = 1; setCombo(0);
     beatRef.current = false; setOnFire(false);
+    speedTierRef.current = 0; setSpeedTier(0);
     charX.current = w / 2;
     charTX.setValue(w / 2 - CW / 2);
     ball.current = { x: w / 2, y: R + 8, vx: 0, vy: 0 };
@@ -382,7 +392,9 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
       if (clockRef.current >= fxRef.current.until) { fxRef.current = null; setFx(null); }
       else scale = fxRef.current.type === 'speed' ? SPEED_F : SLOW_F;
     }
-    const pdt = dt * scale; // dt físico (acelera/desacelera o jogo inteiro)
+    // 🚀 Velocidade progressiva — mundo inteiro acelera com os toques.
+    const ws = worldSpeedAt(touchesRef.current);
+    const pdt = dt * scale * ws; // dt físico (acelera/desacelera o jogo inteiro)
 
     const b = ball.current;
     const prevY = b.y; // posição no início do frame (p/ colisão por cruzamento)
@@ -474,7 +486,7 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
       const off = b.x - cx;
       if (Math.abs(off) < CW / 2 + R * 0.6) {
         b.y = headY - R;
-        b.vy = -bounceAt(touchesRef.current); // impulso sobe a cada toque
+        b.vy = -bounceAt(touchesRef.current) * ws; // impulso escala junto com o mundo
         b.vx += off * 4.5; // desvia conforme onde bate → habilidade
         b.vx = Math.max(-320, Math.min(320, b.vx));
         // 🎯 COMBO: COMBO_TARGET cabeçadas PERFEITAS seguidas (centro da testa) ativam o
@@ -500,6 +512,17 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
         const prevT = touchesRef.current;
         touchesRef.current += inc; // +1, ou +2 com o multiplicador
         setTouches(touchesRef.current);
+
+        // 🚀 Speed tier: avisa o jogador quando o mundo acelera (×1.5 / ×2.0 / ×2.5).
+        const wsTier = ws >= 2.4 ? 3 : ws >= 1.9 ? 2 : ws >= 1.4 ? 1 : 0;
+        if (wsTier !== speedTierRef.current) {
+          speedTierRef.current = wsTier;
+          setSpeedTier(wsTier);
+          if (wsTier > 0) {
+            const wMsg = wsTier === 1 ? '🏃 Acelerando!' : wsTier === 2 ? '💨 Turbinada!' : '🚀 MÁXIMO!';
+            showFlash(wMsg, 1200);
+          }
+        }
 
         // Marcos/recorde por CRUZAMENTO (a pontuação pode pular de +2 com o 2x).
         const cm = MILESTONES.find((m) => prevT < m && touchesRef.current >= m);
@@ -646,6 +669,11 @@ export function Embaixadinhas({ visible, onClose }: { visible: boolean; onClose:
               <View style={styles.hud}>
                 <Text style={styles.hudTouches}>{touches}</Text>
                 <Text style={styles.hudLabel}>toques · recorde {record}</Text>
+                {speedTier > 0 && (
+                  <Text style={styles.hudSpeed}>
+                    {speedTier === 1 ? '🏃 ×1.5' : speedTier === 2 ? '💨 ×2.0' : '🚀 ×2.5'}
+                  </Text>
+                )}
               </View>
               <Animated.View style={[styles.field, { transform: [{ translateX: shakeX }] }]} onLayout={onLayout} {...pan.panHandlers}>
                 <FieldBg />
@@ -751,6 +779,7 @@ const makeStyles = ({ c, st }: ThemeTokens) => StyleSheet.create({
   hud: { alignItems: 'center', marginBottom: spacing(2) },
   hudTouches: { color: c.text, fontFamily: fonts.display, fontSize: 44, fontVariant: ['tabular-nums'] },
   hudLabel: { color: c.textDim, fontFamily: fonts.medium, fontSize: 12, marginTop: -4 },
+  hudSpeed: { color: c.amber, fontFamily: fonts.bold, fontSize: 11, marginTop: 2, letterSpacing: 0.3 },
   field: { flex: 1, backgroundColor: '#1b7038', borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(20,224,138,0.35)', overflow: 'hidden' },
   flash: { position: 'absolute', alignSelf: 'center', top: '32%', color: c.amber, fontFamily: fonts.display, fontSize: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 6, zIndex: 4 },
   ball: { position: 'absolute', left: 0, top: 0, width: R * 2, height: R * 2, alignItems: 'center', justifyContent: 'center', zIndex: 3 },

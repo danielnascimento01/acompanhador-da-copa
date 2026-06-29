@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, LayoutChangeEvent, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, LayoutChangeEvent, Platform, Pressable, SafeAreaView, StatusBar as RNStatusBar, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -134,7 +134,18 @@ function Root() {
   const onMeasure = (e: LayoutChangeEvent) => {
     const { y, height } = e.nativeEvent.layout;
     const screenH = Dimensions.get('window').height;
-    setInsets({ top: Math.max(0, Math.round(y)), bottom: Math.max(0, Math.round(screenH - y - height)) });
+    const measuredTop = Math.max(0, Math.round(y));
+    const measuredBottom = Math.max(0, Math.round(screenH - y - height));
+    // Android: se a medição falhar (edge-to-edge não reportado corretamente em alguns
+    // dispositivos), usa StatusBar.currentHeight como piso do topo e garante ao menos
+    // 20 dp de margem inferior (barra de gestos).
+    const top = Platform.OS === 'android'
+      ? Math.max(measuredTop, RNStatusBar.currentHeight ?? 0)
+      : measuredTop;
+    const bottom = Platform.OS === 'android'
+      ? Math.max(measuredBottom, 20)
+      : measuredBottom;
+    setInsets({ top, bottom });
   };
   const [fontsLoaded, fontError] = useFonts({
     SairaCondensed_800ExtraBold,
