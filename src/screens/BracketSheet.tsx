@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { Flag } from '../components/Flag';
 import { teamName } from '../data/teams';
-import { BRACKET, STAGE_META, Slot, StageKey, groupPositions, knockoutResults, resolveSlot, slotLabel, type KnockoutResults } from '../data/bracket';
+import { BRACKET, STAGE_META, Slot, StageKey, groupPositions, predictedBracketAsMatches, predictedKnockoutResults, resolveSlot, slotLabel, type KnockoutResults } from '../data/bracket';
 
 import { Match, hasStarted, isLive } from '../data/fixtures';
 import { formatDayShort, formatTime } from '../lib/format';
@@ -29,11 +29,15 @@ const STAGE_TABS = STAGE_META.filter((s) => s.key !== 'third');
  */
 export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const styles = useThemedStyles(makeStyles);
-  const { matches, selected } = useStore();
+  const { matches, selected, predictions } = useStore();
   const positions = useMemo(() => groupPositions(matches), [matches]);
-  // Vencedores/perdedores confirmados de cada confronto (cascata 16-avos→final)
-  // — preenche os slots "Vencedor 16-avos J3" com o time real assim que decide.
-  const results = useMemo(() => knockoutResults(matches), [matches]);
+  // Vencedores/perdedores confirmados + palpites válidos (sem sobrescrever oficiais)
+  // — preenche os slots dependentes na visão simulada da chave.
+  const results = useMemo(() => predictedKnockoutResults(matches, predictions), [matches, predictions]);
+  const predictedById = useMemo(
+    () => new Map(predictedBracketAsMatches(matches, predictions).map((m) => [m.id, m])),
+    [matches, predictions],
+  );
   // Os jogos do mata-mata já vêm em `matches` (com placar/status ao vivo da ESPN),
   // indexados pelo MESMO id da chave (ex.: "r32-1"). Achamos o jogo "vivo" por id
   // para abrir o detalhe completo (lance a lance, escalações, onde assistir…).
@@ -99,19 +103,22 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
                   <Text style={styles.stageName}>{stage.name}</Text>
                   {BRACKET.filter((m) => m.stage === stage.key).map((m) => {
                     const live = liveById.get(m.id);
+                    const display = predictedById.get(m.id);
                     const started = live ? hasStarted(live) : false;
                     const liveNow = live ? isLive(live) : false;
+                    const displayReady = display && display.home && display.away ? display : null;
+                    const detailMatch = live ?? displayReady ?? null;
                     return (
                       <Pressable
                         key={m.id}
-                        onPress={() => live && setDetail(live)}
-                        disabled={!live}
-                        accessibilityRole={live ? 'button' : undefined}
-                        accessibilityLabel={live ? 'Abrir detalhes do jogo' : undefined}
+                        onPress={() => detailMatch && setDetail(detailMatch)}
+                        disabled={!detailMatch}
+                        accessibilityRole={detailMatch ? 'button' : undefined}
+                        accessibilityLabel={detailMatch ? 'Abrir detalhes do jogo' : undefined}
                         style={({ pressed }) => [
                           styles.match,
                           stage.key === 'final' && styles.matchFinal,
-                          pressed && live && styles.matchPressed,
+                          pressed && detailMatch && styles.matchPressed,
                         ]}
                       >
                         <View style={styles.matchHead}>
@@ -124,10 +131,24 @@ export function BracketSheet({ visible, onClose }: { visible: boolean; onClose: 
                             <Text style={styles.matchDate}>{whenLabel(m.utc)}</Text>
                           )}
                         </View>
-                        <SlotView slot={m.a} positions={positions} results={results} selected={selected} score={started ? live?.homeScore : null} />
+                        <SlotView
+                          slot={m.a}
+                          positions={positions}
+                          results={results}
+                          selected={selected}
+                          score={(started ? live?.homeScore : null) ?? display?.homeScore ?? null}
+                          predicted={slotFromPrediction(m.a, results)}
+                        />
                         <Text style={styles.vs}>×</Text>
-                        <SlotView slot={m.b} positions={positions} results={results} selected={selected} score={started ? live?.awayScore : null} />
-                        {live ? <Text style={styles.matchTap}>Toque para ver lance a lance, escalações e mais ›</Text> : null}
+                        <SlotView
+                          slot={m.b}
+                          positions={positions}
+                          results={results}
+                          selected={selected}
+                          score={(started ? live?.awayScore : null) ?? display?.awayScore ?? null}
+                          predicted={slotFromPrediction(m.b, results)}
+                        />
+                        {detailMatch ? <Text style={styles.matchTap}>Toque para ver lance a lance, escalações e mais ›</Text> : null}
                       </Pressable>
                     );
                   })}
@@ -161,12 +182,14 @@ function SlotView({
   results,
   selected,
   score,
+  predicted,
 }: {
   slot: Slot;
   positions: Record<string, { first?: string; second?: string }>;
   results: KnockoutResults;
   selected: Set<string>;
   score?: number | null;
+  predicted?: boolean;
 }) {
   const styles = useThemedStyles(makeStyles);
   const teamId = resolveSlot(slot, positions, results);
@@ -177,6 +200,7 @@ function SlotView({
         <Flag teamId={teamId} size={22} radius={6} />
         <Text style={[styles.slotTeam, fav && styles.slotTeamFav]} numberOfLines={1}>
           {teamName(teamId)}
+          {predicted ? <Text style={styles.predictionTag}>  🎮 Palpite</Text> : null}
         </Text>
         {score != null ? <Text style={styles.slotScore}>{score}</Text> : null}
       </View>
@@ -189,6 +213,11 @@ function SlotView({
       </Text>
     </View>
   );
+}
+
+function slotFromPrediction(slot: Slot, results: KnockoutResults): boolean {
+  if (slot.kind !== 'winnerOf' && slot.kind !== 'loserOf') return false;
+  return results[slot.ref]?.source === 'prediction';
 }
 
 const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
@@ -261,6 +290,7 @@ const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   slotFlag: { fontSize: 20 },
   slotTeam: { color: c.text, fontFamily: fonts.bold, fontSize: 14, flex: 1 },
   slotTeamFav: { color: c.accent },
+  predictionTag: { color: '#A855F7', fontFamily: fonts.bold },
   slotScore: { color: c.text, fontFamily: fonts.display, fontSize: 18, fontVariant: ['tabular-nums'], minWidth: 20, textAlign: 'right' },
   slotLabel: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 13, flex: 1 },
   vs: { color: c.textFaint, fontFamily: fonts.bold, fontSize: 11, textAlign: 'center', paddingVertical: 3 },

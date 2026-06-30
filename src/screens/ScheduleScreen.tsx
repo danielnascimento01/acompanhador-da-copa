@@ -49,6 +49,10 @@ function groupByDay(list: Match[]): DaySection[] {
   }));
 }
 
+function matchListKey(m: Match, index: number): string {
+  return `${m.id}:${m.round}:${m.utc}:${m.home || m.homeLabel}:${m.away || m.awayLabel}:${index}`;
+}
+
 // Aviso anti-apostas: aparece só nos primeiros ~15s da sessão; some ao trocar de
 // aba ou no fim do tempo, e não volta (flag de módulo = dura enquanto o app vive).
 let antiBetsDismissed = false;
@@ -220,7 +224,7 @@ export function ScheduleScreen() {
       </View>
       <SectionList
         sections={sections}
-        keyExtractor={(item) => item.id}
+        keyExtractor={matchListKey}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={{ paddingBottom: spacing(10), paddingHorizontal: spacing(4) }}
         refreshControl={

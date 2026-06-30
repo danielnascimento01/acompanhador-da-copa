@@ -18,6 +18,10 @@ type Props = {
 
 type DayGroup = { key: string; title: string; data: Match[] };
 
+function matchListKey(m: Match, index: number): string {
+  return `${m.id}:${m.round}:${m.utc}:${m.home || m.homeLabel}:${m.away || m.awayLabel}:${index}`;
+}
+
 /**
  * "Jogos passados": só os jogos já realizados/encerrados, agrupados por dia com
  * os mais recentes no topo. Mesmo MatchCard das outras telas; usa os dados que o
@@ -72,8 +76,8 @@ export function PastMatchesSheet({ visible, matches, selected, primaryTeam, onCl
               groups.map((g) => (
                 <View key={g.key}>
                   <Text style={styles.day}>{g.title}</Text>
-                  {g.data.map((m) => (
-                    <MatchCard key={m.id} match={m} selected={selected} primaryTeam={primaryTeam} onPress={() => onSelectMatch(m)} />
+                  {g.data.map((m, i) => (
+                    <MatchCard key={matchListKey(m, i)} match={m} selected={selected} primaryTeam={primaryTeam} onPress={() => onSelectMatch(m)} />
                   ))}
                 </View>
               ))

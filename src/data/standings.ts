@@ -1,5 +1,5 @@
 import { GROUPS, TEAMS, teamName } from './teams';
-import { Match, isPredictable, isFinished, isLive } from './fixtures';
+import { Match, isKnockoutPredictable, isPredictable, isFinished, isLive } from './fixtures';
 import type { PredictionMap } from '../lib/storage';
 
 export type Standing = {
@@ -159,7 +159,7 @@ export function applyPredictions(matches: Match[], predictions: PredictionMap): 
 export function countActivePredictions(matches: Match[], predictions: PredictionMap): number {
   let n = 0;
   for (const m of matches) {
-    if (isPredictable(m) && predictions[m.id]) n++;
+    if ((isPredictable(m) || isKnockoutPredictable(m)) && predictions[m.id]) n++;
   }
   return n;
 }

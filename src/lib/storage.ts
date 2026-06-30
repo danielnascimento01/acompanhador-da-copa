@@ -22,8 +22,11 @@ export const CURRENT_ANNOUNCE_ID = 'notif-fulltime-v2';
  */
 export const SERVER_URL = 'https://copa2026-worker.nascimentodaniel.workers.dev';
 
-/** Palpite do usuário para um jogo (placar simulado). `at` = quando palpitou. */
-export type Prediction = { home: number; away: number; at?: number };
+/**
+ * Palpite do usuário para um jogo. Em mata-mata, empate precisa de vencedor
+ * explícito nos pênaltis; nunca inferimos automaticamente.
+ */
+export type Prediction = { home: number; away: number; winner?: 'home' | 'away'; at?: number };
 export type PredictionMap = Record<string, Prediction>;
 
 export const MAX_PREDICTION_GOALS = 20;
@@ -46,6 +49,7 @@ function sanitizePredictions(raw: unknown): PredictionMap {
       out[id] = {
         home: p.home as number,
         away: p.away as number,
+        ...(p.winner === 'home' || p.winner === 'away' ? { winner: p.winner } : {}),
         ...(typeof p.at === 'number' ? { at: p.at } : {}),
       };
     }

@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "n=$(git -C \"$CLAUDE_PROJECT_DIR\" log --oneline @{u}..HEAD 2>/dev/null | wc -l | tr -d ' '); [ -n \"$n\" ] && [ \"$n\" != \"0\" ] && printf '{\"systemMessage\":\"🔔 Você tem %s commit(s) local(is) não enviados ao GitHub — rode: git push\"}' \"$n\" || true"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -14,10 +14,9 @@ const MAX_PENDING = 60;
 const MAX_DIGESTS = 16;
 const ANDROID_CHANNEL = 'jogos';
 
-// "Latest wins": cada chamada de rescheduleAll pega um número de sequência.
-// Se uma chamada mais nova começar, a antiga aborta no meio sem deixar a
-// agenda pela metade (evita interleaving em taps rápidos).
-let scheduleSeq = 0;
+// Serializa cancelamento+agendamento. Esse bloco precisa ser atômico: se duas
+// chamadas intercalarem, a antiga pode cancelar a agenda recém-criada pela nova.
+let scheduleQueue: Promise<unknown> = Promise.resolve();
 
 /** Define como notificações aparecem com o app aberto. Chame uma vez no boot. */
 export function configureNotificationHandler() {
@@ -74,25 +73,31 @@ export async function getPermissionGranted(): Promise<boolean> {
  * marcar muitas seleções não engole todos os resumos nem corta o futuro em
  * silêncio (a cada abertura a janela avança).
  *
- * "Latest wins": se uma chamada mais nova começar, esta aborta sem deixar a
- * agenda pela metade. Retorna quantas ficaram agendadas (ou -1 se abortada).
+ * As chamadas são serializadas: cada cancelamento+agendamento termina antes do
+ * próximo começar. Retorna quantas ficaram agendadas.
  */
 export async function rescheduleAll(
   allMatches: Match[],
   teamIds: string[],
   settings: Settings,
 ): Promise<number> {
-  const my = ++scheduleSeq;
+  const job = scheduleQueue.then(() => runRescheduleAll(allMatches, teamIds, settings));
+  scheduleQueue = job.catch(() => {});
+  return job;
+}
 
+async function runRescheduleAll(
+  allMatches: Match[],
+  teamIds: string[],
+  settings: Settings,
+): Promise<number> {
   await ensureAndroidChannel();
   await Notifications.cancelAllScheduledNotificationsAsync();
-  if (my !== scheduleSeq) return -1; // superada por uma chamada mais nova
 
   const now = new Date();
   const planned = planAll(allMatches, teamIds, settings, now, MAX_DIGESTS, MAX_PENDING);
 
   for (const p of planned) {
-    if (my !== scheduleSeq) return -1; // outra chamada assumiu — para aqui
     await Notifications.scheduleNotificationAsync({
       content: { title: p.title, body: p.body, data: p.data, sound: 'default' },
       trigger: {

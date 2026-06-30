@@ -37,6 +37,7 @@ yarn-error.*
 .easignore
 
 # Artefatos de loja (regeneráveis; binários pesados)
+*.aab
 store/build/
 store/screenshots/
 

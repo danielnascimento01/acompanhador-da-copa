@@ -3,12 +3,11 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 
 import { StandingsTable } from '../components/StandingsTable';
-import { QuickPredictRow } from '../components/QuickPredictRow';
 import { AdBanner } from '../components/AdBanner';
 import { FadeInUp } from '../components/Motion';
-import { applyPredictions, computeStandings, countActivePredictions } from '../data/standings';
-import { Match, isPredictable, hasMatchInPlayWindow } from '../data/fixtures';
-import { GROUPS, getTeam } from '../data/teams';
+import { computeStandings, countActivePredictions } from '../data/standings';
+import { hasMatchInPlayWindow } from '../data/fixtures';
+import { GROUPS } from '../data/teams';
 import { ScorersSheet } from './ScorersSheet';
 import { HistorySheet } from './HistorySheet';
 import { VenuesSheet } from './VenuesSheet';
@@ -24,7 +23,7 @@ type Mode = 'official' | 'predicted';
 export function StandingsScreen() {
   const styles = useThemedStyles(makeStyles);
   const { c } = useTheme();
-  const { matches, selected, predictions, setPrediction, clearAllPredictions, updatedAt, settings } = useStore();
+  const { matches, selected, predictions, clearAllPredictions, updatedAt, settings } = useStore();
   const dataStale = isStale(updatedAt, Date.now(), hasMatchInPlayWindow(matches), settings.dataSaver);
   const [mode, setMode] = useState<Mode>('official');
   const [scorersOpen, setScorersOpen] = useState(false);
@@ -38,17 +37,8 @@ export function StandingsScreen() {
     [matches, predictions],
   );
 
-  // Jogos palpitáveis de cada grupo (para o preenchimento rápido na simulação).
-  const predictableByGroup = useMemo(() => {
-    const map: Record<string, Match[]> = {};
-    for (const g of GROUPS) map[g] = [];
-    for (const m of matches) {
-      if (!isPredictable(m)) continue;
-      const g = getTeam(m.home)?.group;
-      if (g && getTeam(m.away)?.group === g) map[g].push(m);
-    }
-    return map;
-  }, [matches]);
+  // A fase de grupos já se encerrou: palpites agora simulam a chave do mata-mata,
+  // não recalculam a classificação oficial dos grupos.
 
   const confirmClearAll = () => {
     Alert.alert('Limpar todos os palpites?', 'Isso apaga todos os placares que você palpitou. Não dá para desfazer.', [
@@ -57,12 +47,7 @@ export function StandingsScreen() {
     ]);
   };
 
-  const effectiveMatches = useMemo(
-    () => (mode === 'predicted' ? applyPredictions(matches, predictions) : matches),
-    [mode, matches, predictions],
-  );
-
-  const byGroup = useMemo(() => computeStandings(effectiveMatches), [effectiveMatches]);
+  const byGroup = useMemo(() => computeStandings(matches), [matches]);
   const anyPlayed = useMemo(
     () => Object.values(byGroup).some((g) => g.some((s) => s.played > 0)),
     [byGroup],
@@ -143,8 +128,8 @@ export function StandingsScreen() {
         <View style={styles.predictBanner}>
           <Text style={styles.predictBannerText}>
             {activePredictions === 0
-              ? 'Preencha os placares dos jogos abaixo de cada grupo — a classificação simula na hora. Os palpites ficam só no seu aparelho.'
-              : `Simulação com ${activePredictions} ${activePredictions === 1 ? 'palpite seu' : 'palpites seus'} + resultados oficiais. Os palpites ficam só no seu aparelho.`}
+              ? 'Os palpites agora simulam o mata-mata. Abra a chave ou um jogo eliminatório para palpitar.'
+              : `${activePredictions} ${activePredictions === 1 ? 'palpite seu' : 'palpites seus'} no mata-mata. A classificação dos grupos fica oficial.`}
           </Text>
           {activePredictions > 0 && (
             <Pressable onPress={confirmClearAll} accessibilityRole="button" accessibilityLabel="Limpar todos os palpites" hitSlop={6}>
@@ -176,29 +161,15 @@ export function StandingsScreen() {
         {/* Banner discreto a cada 3 grupos (nunca intersticial). */}
         {i > 0 && i % 3 === 0 && <AdBanner />}
         <FadeInUp delay={i * 40}>
-          <View style={[styles.card, mode === 'predicted' && styles.cardPredicted]}>
+          <View style={styles.card}>
             <View style={styles.groupHead}>
-              <View style={[styles.groupTag, mode === 'predicted' && styles.groupTagPredicted]}>
+              <View style={styles.groupTag}>
                 <Text style={styles.groupTagText}>{g}</Text>
               </View>
               <Text style={styles.groupLabel}>Grupo {g}</Text>
-              {mode === 'predicted' && <Text style={styles.predictedFlag}>simulado</Text>}
             </View>
             <StandingsTable standings={byGroup[g]} selected={selected} primaryTeam={settings.primaryTeam} />
 
-            {mode === 'predicted' && predictableByGroup[g].length > 0 && (
-              <View style={styles.quickPredict}>
-                <Text style={styles.quickPredictTitle}>Palpite os jogos do grupo</Text>
-                {predictableByGroup[g].map((m) => (
-                  <QuickPredictRow
-                    key={m.id}
-                    match={m}
-                    prediction={predictions[m.id]}
-                    onChange={(p) => setPrediction(m.id, p)}
-                  />
-                ))}
-              </View>
-            )}
           </View>
         </FadeInUp>
         </React.Fragment>

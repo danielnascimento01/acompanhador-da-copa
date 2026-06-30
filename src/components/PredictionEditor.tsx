@@ -21,6 +21,7 @@ type Props = {
 export function PredictionEditor({ match, prediction, onChange, onClear }: Props) {
   const styles = useThemedStyles(makeStyles);
   const current = prediction ?? null;
+  const knockout = !!match.stageLabel;
 
   const bump = (side: 'home' | 'away', delta: 1 | -1) => {
     if (!current && delta === -1) return; // "−" sem palpite não cria um 0×0
@@ -29,8 +30,16 @@ export function PredictionEditor({ match, prediction, onChange, onClear }: Props
       ...base,
       [side]: Math.min(MAX_PREDICTION_GOALS, Math.max(0, base[side] + delta)),
     };
+    if (next.home !== next.away && 'winner' in next) delete next.winner;
     onChange(next);
   };
+
+  const pickWinner = (winner: 'home' | 'away') => {
+    const base = current ?? { home: 0, away: 0 };
+    onChange({ ...base, winner });
+  };
+
+  const tiedKnockout = knockout && current && current.home === current.away;
 
   return (
     <View style={styles.card}>
@@ -61,10 +70,44 @@ export function PredictionEditor({ match, prediction, onChange, onClear }: Props
         />
       </View>
 
+      {tiedKnockout && (
+        <View style={styles.penaltyBox}>
+          <Text style={styles.penaltyTitle}>Quem vence nos pênaltis?</Text>
+          <View style={styles.penaltyRow}>
+            <Pressable
+              onPress={() => pickWinner('home')}
+              accessibilityRole="button"
+              accessibilityState={{ selected: current.winner === 'home' }}
+              style={[styles.penaltyBtn, current.winner === 'home' && styles.penaltyBtnActive]}
+            >
+              <Text style={[styles.penaltyText, current.winner === 'home' && styles.penaltyTextActive]} numberOfLines={1}>
+                {teamFlag(match.home)} {teamName(match.home)}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => pickWinner('away')}
+              accessibilityRole="button"
+              accessibilityState={{ selected: current.winner === 'away' }}
+              style={[styles.penaltyBtn, current.winner === 'away' && styles.penaltyBtnActive]}
+            >
+              <Text style={[styles.penaltyText, current.winner === 'away' && styles.penaltyTextActive]} numberOfLines={1}>
+                {teamFlag(match.away)} {teamName(match.away)}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       <Text style={styles.hint}>
         {current
-          ? 'Palpite salvo no seu aparelho. Ele entra na aba Grupos no modo "Meus palpites".'
-          : 'Toque em + para palpitar o placar. A tabela simulada fica na aba Grupos.'}
+          ? knockout
+            ? tiedKnockout && !current.winner
+              ? 'Escolha o vencedor nos pênaltis para avançar na chave simulada.'
+              : 'Palpite salvo no seu aparelho. Ele entra na simulação do mata-mata.'
+            : 'Palpite salvo no seu aparelho.'
+          : knockout
+            ? 'Toque em + para palpitar o placar. Em empate, escolha quem vence nos pênaltis.'
+            : 'Toque em + para palpitar o placar.'}
       </Text>
     </View>
   );
@@ -156,4 +199,21 @@ const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   },
   scoreEmpty: { color: c.textFaint },
   hint: { color: c.textFaint, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, marginTop: spacing(3) },
+  penaltyBox: { marginTop: spacing(3), gap: spacing(2) },
+  penaltyTitle: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 12, textAlign: 'center' },
+  penaltyRow: { flexDirection: 'row', gap: spacing(2) },
+  penaltyBtn: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing(2),
+  },
+  penaltyBtnActive: { backgroundColor: c.amber, borderColor: c.amber },
+  penaltyText: { color: c.textDim, fontFamily: fonts.semibold, fontSize: 12 },
+  penaltyTextActive: { color: c.ink, fontFamily: fonts.bold },
 });

@@ -17,6 +17,10 @@ type Props = {
   onSelectMatch: (m: Match) => void;
 };
 
+function matchListKey(m: Match, index: number): string {
+  return `${m.id}:${m.round}:${m.utc}:${m.home || m.homeLabel}:${m.away || m.awayLabel}:${index}`;
+}
+
 /**
  * "Tela do dia": TODOS os jogos de hoje (de todos os grupos) num lugar só, ao
  * vivo no topo. Replica o split da TV nos dias de maior uso. Usa os jogos que o
@@ -52,8 +56,8 @@ export function DayMatchesSheet({ visible, matches, selected, primaryTeam, onClo
             {today.length === 0 ? (
               <Text style={styles.empty}>Nenhum jogo programado para hoje. Volte amanhã! ⚽</Text>
             ) : (
-              today.map((m) => (
-                <MatchCard key={m.id} match={m} selected={selected} primaryTeam={primaryTeam} onPress={() => onSelectMatch(m)} />
+              today.map((m, i) => (
+                <MatchCard key={matchListKey(m, i)} match={m} selected={selected} primaryTeam={primaryTeam} onPress={() => onSelectMatch(m)} />
               ))
             )}
           </ScrollView>

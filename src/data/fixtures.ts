@@ -101,6 +101,20 @@ export function isPredictable(match: Match, now: Date = new Date()): boolean {
   );
 }
 
+/** Palpite para mata-mata: só antes do apito, sem placar real e com confronto real. */
+export function isKnockoutPredictable(match: Match, now: Date = new Date()): boolean {
+  return (
+    !!match.stageLabel &&
+    !!match.home &&
+    !!match.away &&
+    match.homeScore == null &&
+    match.awayScore == null &&
+    !isLive(match, now) &&
+    !isFinished(match) &&
+    kickoff(match).getTime() > now.getTime()
+  );
+}
+
 /** O próximo jogo que ainda não terminou (ao vivo tem prioridade), ou null. */
 export function nextRelevantMatch(matches: Match[], now: Date = new Date()): Match | null {
   const live = matches.find((m) => isLive(m, now));

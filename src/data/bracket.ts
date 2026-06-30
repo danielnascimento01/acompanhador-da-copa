@@ -13,6 +13,7 @@ import { Match, isFinished } from './fixtures';
 import { computeStandings } from './standings';
 import { teamOutlook } from './scenarios';
 import { TEAMS } from './teams';
+import type { PredictionMap } from '../lib/storage';
 
 export type Slot =
   | { kind: 'winner'; group: string }
@@ -117,7 +118,7 @@ export function groupPositions(matches: Match[]): Record<string, { first?: strin
     out[group] = {};
     if (table.length < 3) continue;
     const ids = new Set(table.map((s) => s.teamId));
-    const groupMatches = matches.filter((m) => ids.has(m.home) && ids.has(m.away));
+    const groupMatches = matches.filter((m) => m.round <= 3 && !m.stageLabel && ids.has(m.home) && ids.has(m.away));
     const finished = groupMatches.length > 0 && groupMatches.every(isFinished);
     if (!finished) continue;
     const firstClear = strictlyAhead(table[0], table[1]);
@@ -150,8 +151,9 @@ const STAGE_ROUND: Record<StageKey, number> = {
   r32: 4, r16: 5, qf: 6, sf: 7, third: 8, final: 9,
 };
 
-/** Vencedor/perdedor confirmados de cada confronto da chave (por id do BRACKET). */
-export type KnockoutResults = Record<string, { winner: string; loser: string }>;
+/** Vencedor/perdedor confirmados/simulados de cada confronto da chave. */
+export type KnockoutResult = { winner: string; loser: string; source?: 'official' | 'prediction' };
+export type KnockoutResults = Record<string, KnockoutResult>;
 
 /**
  * Qual lado AVANÇOU num jogo de mata-mata — com CERTEZA. Usa o vencedor oficial
@@ -166,6 +168,19 @@ export function winnerSideOf(m: Match): 'home' | 'away' | null {
     return m.homeScore > m.awayScore ? 'home' : 'away';
   }
   return null;
+}
+
+/** Vencedor de um palpite de mata-mata. Empate exige `winner` explícito. */
+export function predictedWinnerSideOf(p?: { home: number; away: number; winner?: 'home' | 'away' }): 'home' | 'away' | null {
+  if (!p) return null;
+  if (p.home > p.away) return 'home';
+  if (p.away > p.home) return 'away';
+  return p.winner === 'home' || p.winner === 'away' ? p.winner : null;
+}
+
+function canUsePrediction(m: Match | undefined): boolean {
+  if (!m) return true;
+  return !isFinished(m) && m.status === 'NS' && m.homeScore == null && m.awayScore == null;
 }
 
 /**
@@ -185,8 +200,31 @@ export function knockoutResults(matches: Match[]): KnockoutResults {
     const m = byId.get(bm.id);
     if (!m) continue;
     const side = winnerSideOf(m);
-    if (side === 'home') results[bm.id] = { winner: homeId, loser: awayId };
-    else if (side === 'away') results[bm.id] = { winner: awayId, loser: homeId };
+    if (side === 'home') results[bm.id] = { winner: homeId, loser: awayId, source: 'official' };
+    else if (side === 'away') results[bm.id] = { winner: awayId, loser: homeId, source: 'official' };
+  }
+  return results;
+}
+
+/**
+ * Resultados do mata-mata para a VISÃO SIMULADA. Resultado oficial encerrado
+ * prevalece; palpite só entra quando ainda não há vencedor oficial. A função é
+ * derivada/pura e nunca sobrescreve os jogos reais.
+ */
+export function predictedKnockoutResults(matches: Match[], predictions: PredictionMap): KnockoutResults {
+  const positions = groupPositions(matches);
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  const results: KnockoutResults = {};
+  for (const bm of BRACKET) {
+    const homeId = resolveSlot(bm.a, positions, results);
+    const awayId = resolveSlot(bm.b, positions, results);
+    if (!homeId || !awayId) continue;
+    const m = byId.get(bm.id);
+    const officialSide = m ? winnerSideOf(m) : null;
+    const predictedSide = officialSide ?? (canUsePrediction(m) ? predictedWinnerSideOf(predictions[bm.id]) : null);
+    const source = officialSide ? 'official' : 'prediction';
+    if (predictedSide === 'home') results[bm.id] = { winner: homeId, loser: awayId, source };
+    else if (predictedSide === 'away') results[bm.id] = { winner: awayId, loser: homeId, source };
   }
   return results;
 }
@@ -221,6 +259,38 @@ export function bracketAsMatches(matches: Match[]): Match[] {
       awayScore: prev?.awayScore ?? null,
       status: prev?.status ?? 'NS',
       advance: prev?.advance,
+      homeLabel: homeId ? undefined : slotLabel(bm.a),
+      awayLabel: awayId ? undefined : slotLabel(bm.b),
+      stageLabel: STAGE_META.find((s) => s.key === bm.stage)?.name ?? '',
+    };
+  });
+}
+
+/** Chave simulada pelos palpites do usuário, preservando resultados oficiais. */
+export function predictedBracketAsMatches(matches: Match[], predictions: PredictionMap): Match[] {
+  const positions = groupPositions(matches);
+  const results = predictedKnockoutResults(matches, predictions);
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  return BRACKET.map((bm) => {
+    const homeId = resolveSlot(bm.a, positions, results);
+    const awayId = resolveSlot(bm.b, positions, results);
+    const prev = byId.get(bm.id);
+    const p = predictions[bm.id];
+    const usePrediction = canUsePrediction(prev);
+    const predictedSide = prev ? winnerSideOf(prev) ?? (usePrediction ? predictedWinnerSideOf(p) : null) : predictedWinnerSideOf(p);
+    return {
+      id: bm.id,
+      utc: bm.utc,
+      round: STAGE_ROUND[bm.stage],
+      home: homeId ?? '',
+      away: awayId ?? '',
+      homeBadge: prev?.homeBadge ?? null,
+      awayBadge: prev?.awayBadge ?? null,
+      venue: prev?.venue ?? null,
+      homeScore: prev?.homeScore ?? (usePrediction ? p?.home : undefined) ?? null,
+      awayScore: prev?.awayScore ?? (usePrediction ? p?.away : undefined) ?? null,
+      status: prev?.status ?? 'NS',
+      advance: prev?.advance ?? predictedSide ?? undefined,
       homeLabel: homeId ? undefined : slotLabel(bm.a),
       awayLabel: awayId ? undefined : slotLabel(bm.b),
       stageLabel: STAGE_META.find((s) => s.key === bm.stage)?.name ?? '',

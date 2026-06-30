@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Flag } from '../components/Flag';
 import { StandingsTable } from '../components/StandingsTable';
 import { PredictionEditor } from '../components/PredictionEditor';
-import { Match, kickoff, isPredictable, matchDisplay } from '../data/fixtures';
+import { Match, kickoff, isKnockoutPredictable, isPredictable, matchDisplay } from '../data/fixtures';
 import { getTeam, teamName } from '../data/teams';
 import { standingsForGroup } from '../data/standings';
 import { teamOutlook } from '../data/scenarios';
@@ -149,7 +149,7 @@ function Content({ match, matches, selected, onClose }: { match: Match } & Omit<
         {/* Escalações + estatísticas (ESPN summary). Só p/ jogos iniciados. */}
         <MatchStats match={match} />
 
-        {isPredictable(match) ? (
+        {isPredictable(match) || isKnockoutPredictable(match) ? (
           <PredictionEditor
             match={match}
             prediction={predictions[match.id]}

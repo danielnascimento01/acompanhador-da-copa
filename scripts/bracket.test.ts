@@ -4,7 +4,8 @@
  * Garante que só preenchemos 1º/2º quando é INEQUÍVOCO (zero chute).
  */
 import type { Match } from '../src/data/fixtures';
-import { BRACKET, Slot, groupPositions, bracketAsMatches, knockoutResults } from '../src/data/bracket';
+import { BRACKET, Slot, groupPositions, bracketAsMatches, knockoutResults, predictedBracketAsMatches, predictedKnockoutResults, predictedWinnerSideOf } from '../src/data/bracket';
+import type { PredictionMap } from '../src/lib/storage';
 
 let id = 0;
 function gm(home: string, away: string, hs: number | null, as: number | null): Match {
@@ -22,6 +23,25 @@ function gm(home: string, away: string, hs: number | null, as: number | null): M
     homeScore: hs,
     awayScore: as,
     status: future ? 'NS' : 'FT',
+  };
+}
+
+function ko(id: string, home: string, away: string, hs: number | null, as: number | null, status = 'NS', adv?: 'home' | 'away'): Match {
+  const future = hs == null && as == null;
+  return {
+    id,
+    utc: '2026-06-28T19:00:00Z',
+    round: 4,
+    home,
+    away,
+    homeBadge: null,
+    awayBadge: null,
+    venue: null,
+    homeScore: hs,
+    awayScore: as,
+    status: future ? status : 'FT',
+    advance: adv,
+    stageLabel: '16-avos de final',
   };
 }
 
@@ -124,6 +144,12 @@ const c4: Match[] = [
 check('A.first (em andamento)', groupPositions(c4).A.first, undefined);
 check('A.second (em andamento)', groupPositions(c4).A.second, undefined);
 
+// Caso 5: mata-mata entre times do mesmo grupo NÃO entra no cálculo da fase de grupos.
+console.log('\n— Caso 5: mata-mata não mexe no grupo —');
+const c5: Match[] = [...c1, ko('r32-x', MEX, SK, null, null)];
+check('A.first ignora KO futuro mesmo grupo', groupPositions(c5).A.first, MEX);
+check('A.second ignora KO futuro mesmo grupo', groupPositions(c5).A.second, SK);
+
 // ===== Auto-advance: o vencedor preenche a próxima fase (só com CERTEZA) =====
 console.log('\n— Auto-advance do mata-mata —');
 {
@@ -155,6 +181,42 @@ console.log('\n— Auto-advance do mata-mata —');
   // (C) Empate decidido nos PÊNALTIS (flag=home) → vencedor pelo flag, não pelo placar.
   const c = [...groups, koGame(1, 1, 'home')];
   check('C) pênaltis: vencedor = South Africa (flag, não placar)', knockoutResults(c)['r32-1']?.winner, SA);
+}
+
+// ===== Simulação de mata-mata por palpites =====
+console.log('\n— Palpites no mata-mata —');
+{
+  const SUI = 'Switzerland';
+  const CAN = 'Canada';
+  const BIH = 'Bosnia-Herzegovina';
+  const groups: Match[] = [
+    gm(MEX, SK, 3, 0), gm(MEX, SA, 2, 0), gm(SA, SK, 2, 0),
+    gm(SUI, CAN, 2, 0), gm(SUI, BIH, 2, 0), gm(CAN, BIH, 2, 0),
+    ko('r32-1', SA, CAN, null, null),
+  ];
+
+  const awayWins: PredictionMap = { 'r32-1': { home: 0, away: 2 } };
+  check('palpite r32-1 visitante avança', predictedKnockoutResults(groups, awayWins)['r32-1']?.winner, CAN);
+  check('palpite r32-1 tem origem de palpite', predictedKnockoutResults(groups, awayWins)['r32-1']?.source, 'prediction');
+  check('palpite aparece na próxima fase', predictedBracketAsMatches(groups, awayWins).find((m) => m.id === 'r16-1')!.away, CAN);
+
+  const homeWins: PredictionMap = { 'r32-1': { home: 1, away: 0 } };
+  check('alterar palpite recalcula vencedor', predictedKnockoutResults(groups, homeWins)['r32-1']?.winner, SA);
+  check('alterar palpite recalcula próxima fase', predictedBracketAsMatches(groups, homeWins).find((m) => m.id === 'r16-1')!.away, SA);
+
+  const noPrediction: PredictionMap = {};
+  check('sem palpite não inventa vencedor', predictedKnockoutResults(groups, noPrediction)['r32-1'] ?? null, null);
+  check('remover palpite limpa dependente', predictedBracketAsMatches(groups, noPrediction).find((m) => m.id === 'r16-1')!.away, '');
+
+  const officialBeatsPrediction = [...groups.filter((m) => m.id !== 'r32-1'), ko('r32-1', SA, CAN, 2, 0, 'FT')];
+  check('oficial prevalece sobre palpite conflitante', predictedKnockoutResults(officialBeatsPrediction, awayWins)['r32-1']?.winner, SA);
+  check('oficial prevalece com origem oficial', predictedKnockoutResults(officialBeatsPrediction, awayWins)['r32-1']?.source, 'official');
+
+  check('empate sem vencedor explícito não resolve', predictedWinnerSideOf({ home: 1, away: 1 }), null);
+  check('empate com vencedor explícito resolve pênaltis', predictedWinnerSideOf({ home: 1, away: 1, winner: 'away' }), 'away');
+
+  const groupPredictionOnly: PredictionMap = { [groups[0].id]: { home: 0, away: 9 } };
+  check('palpite de grupo não recalcula chave', predictedBracketAsMatches(groups, groupPredictionOnly).find((m) => m.id === 'r16-1')!.away, '');
 }
 
 console.log('');
