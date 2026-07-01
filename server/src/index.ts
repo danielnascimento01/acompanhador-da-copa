@@ -13,9 +13,10 @@
 import { fetchScoreboard, extractScore, yyyymmdd, type ESPNEvent } from './espn';
 import { sendPush } from './push';
 import { aggregateScorers, getScorers } from './scorers';
-import { wantsGoal, wantsFullTime, type SubscriberPrefs } from './filter';
-import { buildGoalNotification, buildFullTimeNotification, pickScorerFromDetails } from './notify';
+import { wantsGoal, wantsFullTime, wantsMatchAlert, type SubscriberPrefs } from './filter';
+import { buildGoalNotification, buildFullTimeNotification, buildMatchAlertNotification, pickScorerFromDetails } from './notify';
 import { submitScore, topScores } from './leaderboard';
+import { evaluateMatchAlert, parseMatchAlertState, type MatchAlertCandidate, type MatchAlertKind } from './matchAlerts';
 
 export interface Env {
   KV: KVNamespace;
@@ -35,6 +36,8 @@ const K = {
   scorers: 'scorers',
   lastScore: (matchId: string) => `lastScore:${matchId}`,
   matchState: (matchId: string) => `state:${matchId}`, // último estado visto: 'in' | 'post'
+  matchAlert: (matchId: string) => `matchAlert:${matchId}`,
+  manualMatchAlert: (signature: string) => `manualMatchAlert:${signature}`,
 };
 
 type Subscribers = Record<string, SubscriberPrefs>;
@@ -119,6 +122,59 @@ export async function processFullTime(
   return { sent, removedTokens };
 }
 
+export async function processMatchAlerts(
+  events: ESPNEvent[],
+  subs: Subscribers,
+  kv: KVLike,
+  send: SendFn,
+): Promise<{ sent: number; removedTokens: string[]; alerts: MatchAlertCandidate[] }> {
+  const removedTokens: string[] = [];
+  const alerts: MatchAlertCandidate[] = [];
+  let sent = 0;
+
+  for (const event of events) {
+    try {
+      const key = K.matchAlert(event.id);
+      const previous = parseMatchAlertState(await kv.get(key));
+      const decision = evaluateMatchAlert(event, previous);
+      const prevJson = previous ? JSON.stringify(previous) : null;
+      const nextJson = JSON.stringify(decision.nextState);
+
+      // Atualiza antes de enviar para reduzir reenvio em caso de cron redundante.
+      if (prevJson !== nextJson) {
+        await kv.put(key, nextJson, { expirationTtl: 14 * 24 * 60 * 60 });
+      }
+
+      const alert = decision.candidate;
+      if (!alert || previous?.signature === alert.signature) continue;
+      alerts.push(alert);
+
+      const recipients = Object.keys(subs).filter((t) => wantsMatchAlert(subs[t], alert.homeTeam, alert.awayTeam));
+      if (recipients.length === 0) continue;
+
+      const { title, body } = buildMatchAlertNotification(alert);
+      console.log('processMatchAlerts: ALERTA DE PARTIDA', {
+        event: event.id,
+        kind: alert.kind,
+        recipients: recipients.length,
+        title,
+      });
+
+      const { invalidTokens } = await send(recipients, {
+        title,
+        body,
+        data: { matchId: event.id, kind: 'match-alert', alertKind: alert.kind },
+      });
+      sent += recipients.length;
+      removedTokens.push(...invalidTokens);
+    } catch (err) {
+      console.error(`processMatchAlerts: erro no alerta ${event.id}:`, err);
+    }
+  }
+
+  return { sent, removedTokens, alerts };
+}
+
 // ── Cron ───────────────────────────────────────────────────────────────────────
 
 async function runCron(env: Env): Promise<void> {
@@ -145,15 +201,32 @@ async function runCron(env: Env): Promise<void> {
 
   const liveEvents = events.filter((e) => e.status.type.state === 'in');
   const finishedEvents = events.filter((e) => e.status.type.state === 'post');
-  if (liveEvents.length === 0 && finishedEvents.length === 0) return;
 
-  // Carrega os assinantes (com preferências) uma vez para gols + fim de jogo.
+  // Carrega os assinantes (com preferências) uma vez para alertas + gols + fim de jogo.
   // NÃO faz early-return se vazio: o rastreamento de estado do jogo ('in'/'post')
   // precisa rodar SEMPRE, senão um assinante que chega tarde (no fim do jogo)
   // perderia o aviso por nunca ter havido a transição 'in'→'post' gravada.
   // Com 0 destinatários, os loops abaixo apenas registram estado e não enviam nada.
   const subs = await loadSubscribers(env);
   let subsDirty = false; // só persiste o `subs` se removermos algum token inválido
+
+  // ── ALERTAS OPERACIONAIS ──────────────────────────────────────────────────
+  // Detecta atraso, adiamento, suspensão e mudança de horário também em jogos
+  // ainda não iniciados; por isso roda antes do early-return de jogos ao vivo.
+  const matchAlerts = await processMatchAlerts(events, subs, env.KV, (tokens, msg) =>
+    sendPush(tokens, msg, env.EXPO_ACCESS_TOKEN),
+  );
+  for (const t of matchAlerts.removedTokens) {
+    if (subs[t]) {
+      delete subs[t];
+      subsDirty = true;
+    }
+  }
+
+  if (liveEvents.length === 0 && finishedEvents.length === 0) {
+    if (subsDirty) await saveSubscribers(env, subs);
+    return;
+  }
 
   for (const event of liveEvents) {
     // Um jogo com erro (ESPN instável, parsing) NÃO pode abortar os demais.
@@ -393,6 +466,118 @@ async function handleCron(request: Request, env: Env, ctx: ExecutionContext): Pr
   return json({ ok: true });
 }
 
+function parseAlertKind(value: unknown): MatchAlertKind | null {
+  return value === 'delayed' || value === 'postponed' || value === 'suspended' || value === 'time_changed' || value === 'started'
+    ? value
+    : null;
+}
+
+function parseShortText(value: unknown, max = 180): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const clean = value.replace(/\s+/g, ' ').trim();
+  return clean ? clean.slice(0, max) : undefined;
+}
+
+function manualAlertSignature(input: {
+  matchId?: string;
+  homeTeam: string;
+  awayTeam: string;
+  kind: MatchAlertKind;
+  detail?: string;
+  currentStart?: string;
+}): string {
+  return [
+    input.matchId ?? `${input.homeTeam}-${input.awayTeam}`,
+    input.kind,
+    input.currentStart ?? '',
+    input.detail ?? '',
+  ].join('|').toLowerCase();
+}
+
+/**
+ * Disparo operacional manual para atraso/adiamento/suspensão confirmados fora da
+ * automação ESPN. Protegido pelo mesmo CRON_SECRET do gatilho redundante.
+ */
+async function handleManualMatchAlert(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  const key = new URL(request.url).searchParams.get('key');
+  if (!env.CRON_SECRET || key !== env.CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+
+  let body: {
+    matchId?: unknown;
+    homeTeam?: unknown;
+    awayTeam?: unknown;
+    kind?: unknown;
+    detail?: unknown;
+    currentStart?: unknown;
+    force?: unknown;
+  };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+
+  const kind = parseAlertKind(body.kind);
+  const homeTeam = parseShortText(body.homeTeam, 60);
+  const awayTeam = parseShortText(body.awayTeam, 60);
+  if (!kind || !homeTeam || !awayTeam) {
+    return json({ error: 'kind, homeTeam and awayTeam are required' }, 400);
+  }
+
+  const alert: MatchAlertCandidate = {
+    eventId: parseShortText(body.matchId, 80) ?? `${homeTeam}-${awayTeam}`,
+    kind,
+    signature: manualAlertSignature({
+      matchId: parseShortText(body.matchId, 80),
+      homeTeam,
+      awayTeam,
+      kind,
+      detail: parseShortText(body.detail),
+      currentStart: parseShortText(body.currentStart, 40),
+    }),
+    homeTeam,
+    awayTeam,
+    detail: parseShortText(body.detail),
+    currentStart: parseShortText(body.currentStart, 40),
+  };
+
+  const dedupeKey = K.manualMatchAlert(alert.signature);
+  const alreadySent = await env.KV.get(dedupeKey);
+  if (alreadySent && body.force !== true) {
+    return json({ ok: true, duplicate: true, sent: 0, recipients: 0 });
+  }
+
+  const subs = await loadSubscribers(env);
+  const recipients = Object.keys(subs).filter((t) => wantsMatchAlert(subs[t], alert.homeTeam, alert.awayTeam));
+  const { title, body: pushBody } = buildMatchAlertNotification(alert);
+
+  let invalidTokens: string[] = [];
+  if (recipients.length > 0) {
+    const result = await sendPush(
+      recipients,
+      { title, body: pushBody, data: { matchId: alert.eventId, kind: 'match-alert', alertKind: alert.kind } },
+      env.EXPO_ACCESS_TOKEN,
+    );
+    invalidTokens = result.invalidTokens;
+  }
+
+  let subsDirty = false;
+  for (const t of invalidTokens) {
+    if (subs[t]) {
+      delete subs[t];
+      subsDirty = true;
+    }
+  }
+  if (subsDirty) await saveSubscribers(env, subs);
+
+  await env.KV.put(dedupeKey, JSON.stringify({ sentAt: Date.now(), recipients: recipients.length, title }), {
+    expirationTtl: 14 * 24 * 60 * 60,
+  });
+
+  return json({ ok: true, duplicate: false, sent: recipients.length, recipients: recipients.length, title, body: pushBody });
+}
+
 async function handleHealth(env: Env): Promise<Response> {
   const subs = await loadSubscribers(env);
   const tokens = Object.keys(subs);
@@ -427,6 +612,7 @@ export default {
     }
 
     if (url.pathname === '/api/cron')        return handleCron(request, env, ctx);
+    if (url.pathname === '/api/match-alert') return handleManualMatchAlert(request, env);
     if (url.pathname === '/api/register')    return handleRegister(request, env);
     if (url.pathname === '/api/scorers')     return handleScorers(env);
     if (url.pathname === '/api/score')       return handleScoreSubmit(request, env);

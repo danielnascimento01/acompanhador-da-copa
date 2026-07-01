@@ -46,7 +46,7 @@ const Wof = (ref: string): Slot => ({ kind: 'winnerOf', ref });
 const Lof = (ref: string): Slot => ({ kind: 'loserOf', ref });
 
 export const BRACKET: BracketMatch[] = [
-  // 32 avos (ordem cronológica da ESPN)
+  // 16-avos (ordem cronológica da ESPN)
   { id: 'r32-1',  stage: 'r32', idx: 1,  utc: '2026-06-28T19:00:00Z', a: R('A'),              b: R('B') },
   { id: 'r32-2',  stage: 'r32', idx: 2,  utc: '2026-06-29T17:00:00Z', a: W('C'),              b: R('F') },
   { id: 'r32-3',  stage: 'r32', idx: 3,  utc: '2026-06-29T20:30:00Z', a: W('E'),              b: F('Paraguay') },
@@ -64,25 +64,25 @@ export const BRACKET: BracketMatch[] = [
   { id: 'r32-15', stage: 'r32', idx: 15, utc: '2026-07-03T22:00:00Z', a: W('J'),              b: R('H') },
   { id: 'r32-16', stage: 'r32', idx: 16, utc: '2026-07-04T01:30:00Z', a: W('K'),              b: F('Ghana') },
   // Oitavas
-  { id: 'r16-1', stage: 'r16', idx: 1, utc: '2026-07-04T17:00:00Z', a: Wof('r32-3'), b: Wof('r32-1') },
-  { id: 'r16-2', stage: 'r16', idx: 2, utc: '2026-07-05T20:00:00Z', a: Wof('r32-5'), b: Wof('r32-2') },
-  { id: 'r16-3', stage: 'r16', idx: 3, utc: '2026-07-05T20:00:00Z', a: Wof('r32-6'), b: Wof('r32-4') },
-  { id: 'r16-4', stage: 'r16', idx: 4, utc: '2026-07-06T00:00:00Z', a: Wof('r32-8'), b: Wof('r32-7') },
-  { id: 'r16-5', stage: 'r16', idx: 5, utc: '2026-07-06T19:00:00Z', a: Wof('r32-12'), b: Wof('r32-11') },
-  { id: 'r16-6', stage: 'r16', idx: 6, utc: '2026-07-07T00:00:00Z', a: Wof('r32-10'), b: Wof('r32-9') },
-  { id: 'r16-7', stage: 'r16', idx: 7, utc: '2026-07-07T16:00:00Z', a: Wof('r32-16'), b: Wof('r32-14') },
-  { id: 'r16-8', stage: 'r16', idx: 8, utc: '2026-07-07T20:00:00Z', a: Wof('r32-15'), b: Wof('r32-13') },
+  { id: 'r16-1', stage: 'r16', idx: 1, utc: '2026-07-04T17:00:00Z', a: Wof('r32-1'),  b: Wof('r32-4') },
+  { id: 'r16-2', stage: 'r16', idx: 2, utc: '2026-07-04T21:00:00Z', a: Wof('r32-3'),  b: Wof('r32-6') },
+  { id: 'r16-3', stage: 'r16', idx: 3, utc: '2026-07-05T20:00:00Z', a: Wof('r32-2'),  b: Wof('r32-5') },
+  { id: 'r16-4', stage: 'r16', idx: 4, utc: '2026-07-06T00:00:00Z', a: Wof('r32-7'),  b: Wof('r32-8') },
+  { id: 'r16-5', stage: 'r16', idx: 5, utc: '2026-07-06T19:00:00Z', a: Wof('r32-11'), b: Wof('r32-12') },
+  { id: 'r16-6', stage: 'r16', idx: 6, utc: '2026-07-07T00:00:00Z', a: Wof('r32-9'),  b: Wof('r32-10') },
+  { id: 'r16-7', stage: 'r16', idx: 7, utc: '2026-07-07T16:00:00Z', a: Wof('r32-15'), b: Wof('r32-14') },
+  { id: 'r16-8', stage: 'r16', idx: 8, utc: '2026-07-07T20:00:00Z', a: Wof('r32-13'), b: Wof('r32-16') },
   // Quartas
-  { id: 'qf-1', stage: 'qf', idx: 1, utc: '2026-07-09T20:00:00Z', a: Wof('r16-2'), b: Wof('r16-1') },
-  { id: 'qf-2', stage: 'qf', idx: 2, utc: '2026-07-10T19:00:00Z', a: Wof('r16-6'), b: Wof('r16-5') },
-  { id: 'qf-3', stage: 'qf', idx: 3, utc: '2026-07-11T21:00:00Z', a: Wof('r16-4'), b: Wof('r16-3') },
-  { id: 'qf-4', stage: 'qf', idx: 4, utc: '2026-07-12T01:00:00Z', a: Wof('r16-8'), b: Wof('r16-7') },
+  { id: 'qf-1', stage: 'qf', idx: 1, utc: '2026-07-09T20:00:00Z', a: Wof('r16-1'), b: Wof('r16-2') },
+  { id: 'qf-2', stage: 'qf', idx: 2, utc: '2026-07-10T19:00:00Z', a: Wof('r16-5'), b: Wof('r16-6') },
+  { id: 'qf-3', stage: 'qf', idx: 3, utc: '2026-07-11T21:00:00Z', a: Wof('r16-3'), b: Wof('r16-4') },
+  { id: 'qf-4', stage: 'qf', idx: 4, utc: '2026-07-12T01:00:00Z', a: Wof('r16-7'), b: Wof('r16-8') },
   // Semis
-  { id: 'sf-1', stage: 'sf', idx: 1, utc: '2026-07-14T19:00:00Z', a: Wof('qf-2'), b: Wof('qf-1') },
-  { id: 'sf-2', stage: 'sf', idx: 2, utc: '2026-07-15T19:00:00Z', a: Wof('qf-4'), b: Wof('qf-3') },
+  { id: 'sf-1', stage: 'sf', idx: 1, utc: '2026-07-14T19:00:00Z', a: Wof('qf-1'), b: Wof('qf-2') },
+  { id: 'sf-2', stage: 'sf', idx: 2, utc: '2026-07-15T19:00:00Z', a: Wof('qf-3'), b: Wof('qf-4') },
   // 3º lugar e Final
-  { id: 'third', stage: 'third', idx: 1, utc: '2026-07-18T21:00:00Z', a: Lof('sf-2'), b: Lof('sf-1') },
-  { id: 'final', stage: 'final', idx: 1, utc: '2026-07-19T19:00:00Z', a: Wof('sf-2'), b: Wof('sf-1') },
+  { id: 'third', stage: 'third', idx: 1, utc: '2026-07-18T21:00:00Z', a: Lof('sf-1'), b: Lof('sf-2') },
+  { id: 'final', stage: 'final', idx: 1, utc: '2026-07-19T19:00:00Z', a: Wof('sf-1'), b: Wof('sf-2') },
 ];
 
 const BY_ID = new Map(BRACKET.map((m) => [m.id, m]));

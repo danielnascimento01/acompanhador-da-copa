@@ -10,6 +10,7 @@
  */
 import { teamInfo } from './teams';
 import type { ESPNDetail } from './espn';
+import type { MatchAlertKind } from './matchAlerts';
 
 /**
  * Artilheiro a partir dos `details` do SCOREBOARD (fonte que de fato traz o nome
@@ -62,6 +63,53 @@ export function buildFullTimeNotification(input: {
   };
 }
 
+export function buildMatchAlertNotification(input: {
+  kind: MatchAlertKind;
+  homeTeam: string;
+  awayTeam: string;
+  detail?: string;
+  currentStart?: string;
+}): { title: string; body: string } {
+  const match = `${displayTeam(input.homeTeam)} x ${displayTeam(input.awayTeam)}`;
+  const time = input.currentStart ? formatBrazilTime(input.currentStart) : null;
+  const detail = sanitizeDetail(input.detail);
+
+  if (input.kind === 'time_changed') {
+    return {
+      title: `⚠️ ${match} mudou de horário`,
+      body: time ? joinSentences(`Agora previsto para ${time}.`, detail) : detail ?? 'A ESPN sinalizou mudança no horário da partida.',
+    };
+  }
+
+  if (input.kind === 'started') {
+    return {
+      title: `▶️ ${match} começou`,
+      body: detail ?? 'A bola já está rolando.',
+    };
+  }
+
+  if (input.kind === 'postponed') {
+    return {
+      title: `⚠️ ${match} adiado`,
+      body: detail ?? 'A ESPN sinalizou adiamento da partida. Avisaremos se houver nova atualização.',
+    };
+  }
+
+  if (input.kind === 'suspended') {
+    return {
+      title: `⚠️ ${match} suspenso`,
+      body: detail ?? 'A ESPN sinalizou suspensão da partida. Avisaremos se houver nova atualização.',
+    };
+  }
+
+  return {
+    title: `⚠️ ${match} atrasado`,
+    body: time
+      ? joinSentences(`Partida atrasada. Novo horário previsto: ${time}.`, detail)
+      : detail ?? 'A ESPN sinalizou atraso na partida. Avisaremos se houver nova atualização.',
+  };
+}
+
 /**
  * Linha de placar com emoji de bandeira ao lado de cada país:
  *   "🇧🇷 Brasil 1 x 0 🏴 Escócia"
@@ -75,6 +123,32 @@ function scoreLine(homeTeam: string, awayTeam: string, home: number, away: numbe
   const hE = h?.emoji ? `${h.emoji} ` : '';
   const aE = a?.emoji ? `${a.emoji} ` : '';
   return `${hE}${hName} ${home} x ${away} ${aE}${aName}`;
+}
+
+function displayTeam(team: string): string {
+  return teamInfo(team)?.name ?? team;
+}
+
+function formatBrazilTime(iso: string): string | null {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return null;
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(ms));
+}
+
+function sanitizeDetail(detail?: string): string | undefined {
+  const clean = detail?.replace(/\s+/g, ' ').trim();
+  if (!clean || clean === 'STATUS_DELAYED' || clean === 'STATUS_POSTPONED' || clean === 'STATUS_SUSPENDED') {
+    return undefined;
+  }
+  return clean.length > 180 ? `${clean.slice(0, 177)}...` : clean;
+}
+
+function joinSentences(first: string, second?: string): string {
+  return second ? `${first} ${second}` : first;
 }
 
 export function buildGoalNotification(input: GoalNotifyInput): { title: string; body: string } {

@@ -52,6 +52,21 @@ function check(label: string, got: unknown, want: unknown) {
   if (!ok) fails++;
 }
 
+function refOf(slot: Slot): string {
+  return slot.kind === 'winnerOf' || slot.kind === 'loserOf' ? slot.ref : `${slot.kind}:${'group' in slot ? slot.group : 'id' in slot ? slot.id : ''}`;
+}
+
+function spDateTime(utc: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(utc));
+}
+
 // ===== Sanidade estrutural da chave (pega erro de transcrição) =====
 console.log('— Estrutura do bracket —');
 {
@@ -85,6 +100,42 @@ console.log('— Estrutura do bracket —');
   check('cada grupo aparece 1x como vencedor', groups.every((g) => winners[g] === 1), true);
   check('cada grupo aparece 1x como 2º', groups.every((g) => runners[g] === 1), true);
   check('8 vagas de melhor 3º (third|fixed)', thirdSlots, 8);
+
+  check(
+    'Oitavas seguem os jogos FIFA 89–96, não a ordem visual dos cards',
+    BRACKET.filter((m) => m.stage === 'r16').map((m) => [m.id, m.utc, refOf(m.a), refOf(m.b)]),
+    [
+      ['r16-1', '2026-07-04T17:00:00Z', 'r32-1', 'r32-4'],
+      ['r16-2', '2026-07-04T21:00:00Z', 'r32-3', 'r32-6'],
+      ['r16-3', '2026-07-05T20:00:00Z', 'r32-2', 'r32-5'],
+      ['r16-4', '2026-07-06T00:00:00Z', 'r32-7', 'r32-8'],
+      ['r16-5', '2026-07-06T19:00:00Z', 'r32-11', 'r32-12'],
+      ['r16-6', '2026-07-07T00:00:00Z', 'r32-9', 'r32-10'],
+      ['r16-7', '2026-07-07T16:00:00Z', 'r32-15', 'r32-14'],
+      ['r16-8', '2026-07-07T20:00:00Z', 'r32-13', 'r32-16'],
+    ],
+  );
+
+  check(
+    'Quartas/Semis/Final preservam o caminho oficial 97–104',
+    BRACKET.filter((m) => m.stage !== 'r32' && m.stage !== 'r16').map((m) => [m.id, m.utc, refOf(m.a), refOf(m.b)]),
+    [
+      ['qf-1', '2026-07-09T20:00:00Z', 'r16-1', 'r16-2'],
+      ['qf-2', '2026-07-10T19:00:00Z', 'r16-5', 'r16-6'],
+      ['qf-3', '2026-07-11T21:00:00Z', 'r16-3', 'r16-4'],
+      ['qf-4', '2026-07-12T01:00:00Z', 'r16-7', 'r16-8'],
+      ['sf-1', '2026-07-14T19:00:00Z', 'qf-1', 'qf-2'],
+      ['sf-2', '2026-07-15T19:00:00Z', 'qf-3', 'qf-4'],
+      ['third', '2026-07-18T21:00:00Z', 'sf-1', 'sf-2'],
+      ['final', '2026-07-19T19:00:00Z', 'sf-1', 'sf-2'],
+    ],
+  );
+
+  const knockoutTimes = BRACKET.filter((m) => m.stage !== 'r32').map((m) => m.utc);
+  check('sem horários duplicados de Oitavas em diante', new Set(knockoutTimes).size, knockoutTimes.length);
+  check('r16-1 aparece em SP como sáb., 04/07, 14:00', spDateTime('2026-07-04T17:00:00Z'), 'sáb., 04/07, 14:00');
+  check('r16-2 aparece em SP como sáb., 04/07, 18:00', spDateTime('2026-07-04T21:00:00Z'), 'sáb., 04/07, 18:00');
+  check('r16-4 00:00Z cai em SP no dia anterior às 21:00', spDateTime('2026-07-06T00:00:00Z'), 'dom., 05/07, 21:00');
 }
 
 const MEX = 'Mexico';
@@ -168,15 +219,15 @@ console.log('\n— Auto-advance do mata-mata —');
     status: 'FT', advance: adv, stageLabel: '16-avos de final',
   });
 
-  // (A) Decidido no tempo normal: Canadá 0×1 → avança (= away do r16-1, que é Wof r32-1).
+  // (A) Decidido no tempo normal: Canadá 0×1 → avança (= home do r16-1, que é Wof r32-1).
   const a = [...groups, koGame(0, 1, 'away')];
   check('A) r32-1 winner = Canadá', knockoutResults(a)['r32-1']?.winner, CAN);
-  check('A) r16-1 away preenchido com Canadá', bracketAsMatches(a).find((m) => m.id === 'r16-1')!.away, CAN);
+  check('A) r16-1 home preenchido com Canadá', bracketAsMatches(a).find((m) => m.id === 'r16-1')!.home, CAN);
 
   // (B) Empate SEM flag de vencedor (pênaltis sem dado) → NÃO chuta: slot fica rótulo.
   const b = [...groups, koGame(1, 1)];
   check('B) empate s/ flag = vencedor indefinido', knockoutResults(b)['r32-1'] ?? null, null);
-  check('B) r16-1 away continua a definir', bracketAsMatches(b).find((m) => m.id === 'r16-1')!.away, '');
+  check('B) r16-1 home continua a definir', bracketAsMatches(b).find((m) => m.id === 'r16-1')!.home, '');
 
   // (C) Empate decidido nos PÊNALTIS (flag=home) → vencedor pelo flag, não pelo placar.
   const c = [...groups, koGame(1, 1, 'home')];
@@ -198,15 +249,15 @@ console.log('\n— Palpites no mata-mata —');
   const awayWins: PredictionMap = { 'r32-1': { home: 0, away: 2 } };
   check('palpite r32-1 visitante avança', predictedKnockoutResults(groups, awayWins)['r32-1']?.winner, CAN);
   check('palpite r32-1 tem origem de palpite', predictedKnockoutResults(groups, awayWins)['r32-1']?.source, 'prediction');
-  check('palpite aparece na próxima fase', predictedBracketAsMatches(groups, awayWins).find((m) => m.id === 'r16-1')!.away, CAN);
+  check('palpite aparece na próxima fase', predictedBracketAsMatches(groups, awayWins).find((m) => m.id === 'r16-1')!.home, CAN);
 
   const homeWins: PredictionMap = { 'r32-1': { home: 1, away: 0 } };
   check('alterar palpite recalcula vencedor', predictedKnockoutResults(groups, homeWins)['r32-1']?.winner, SA);
-  check('alterar palpite recalcula próxima fase', predictedBracketAsMatches(groups, homeWins).find((m) => m.id === 'r16-1')!.away, SA);
+  check('alterar palpite recalcula próxima fase', predictedBracketAsMatches(groups, homeWins).find((m) => m.id === 'r16-1')!.home, SA);
 
   const noPrediction: PredictionMap = {};
   check('sem palpite não inventa vencedor', predictedKnockoutResults(groups, noPrediction)['r32-1'] ?? null, null);
-  check('remover palpite limpa dependente', predictedBracketAsMatches(groups, noPrediction).find((m) => m.id === 'r16-1')!.away, '');
+  check('remover palpite limpa dependente', predictedBracketAsMatches(groups, noPrediction).find((m) => m.id === 'r16-1')!.home, '');
 
   const officialBeatsPrediction = [...groups.filter((m) => m.id !== 'r32-1'), ko('r32-1', SA, CAN, 2, 0, 'FT')];
   check('oficial prevalece sobre palpite conflitante', predictedKnockoutResults(officialBeatsPrediction, awayWins)['r32-1']?.winner, SA);
@@ -216,7 +267,7 @@ console.log('\n— Palpites no mata-mata —');
   check('empate com vencedor explícito resolve pênaltis', predictedWinnerSideOf({ home: 1, away: 1, winner: 'away' }), 'away');
 
   const groupPredictionOnly: PredictionMap = { [groups[0].id]: { home: 0, away: 9 } };
-  check('palpite de grupo não recalcula chave', predictedBracketAsMatches(groups, groupPredictionOnly).find((m) => m.id === 'r16-1')!.away, '');
+  check('palpite de grupo não recalcula chave', predictedBracketAsMatches(groups, groupPredictionOnly).find((m) => m.id === 'r16-1')!.home, '');
 }
 
 console.log('');

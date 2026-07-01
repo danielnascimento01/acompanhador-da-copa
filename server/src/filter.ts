@@ -52,3 +52,13 @@ export function wantsGoal(prefs: SubscriberPrefs, homeTeam: string, awayTeam: st
 export function wantsFullTime(prefs: SubscriberPrefs, homeTeam: string, awayTeam: string): boolean {
   return wantsByMode(prefs.fullTime ?? 'off', prefs, homeTeam, awayTeam);
 }
+
+/**
+ * Alertas operacionais (adiamento, suspensão, mudança de horário) são enviados
+ * só para quem acompanha uma seleção/jogo envolvido e tem algum push remoto ativo.
+ * Não usa 'all' como global aqui para evitar alertas massivos em usuários legados.
+ */
+export function wantsMatchAlert(prefs: SubscriberPrefs, homeTeam: string, awayTeam: string): boolean {
+  if (prefs.mode === 'off' && (prefs.fullTime ?? 'off') === 'off') return false;
+  return involvesMine(prefs, homeTeam, awayTeam);
+}

@@ -3,7 +3,7 @@
  * Cobre os casos críticos: modos, casamento por seleção, jogos seguidos e
  * aliases ESPN↔id (United States→usa, Korea Republic→southkorea, etc.).
  */
-import { wantsGoal, wantsFullTime, type SubscriberPrefs } from './filter';
+import { wantsGoal, wantsFullTime, wantsMatchAlert, type SubscriberPrefs } from './filter';
 
 let pass = 0;
 let fail = 0;
@@ -51,6 +51,12 @@ check("fullTime 'all' → qualquer fim de jogo", wantsFullTime({ mode: 'off', te
 check("fullTime 'mine' casa com a seleção seguida", wantsFullTime({ mode: 'off', teams: ['Brazil'], matches: [], fullTime: 'mine' }, 'Croatia', 'Brazil'), true);
 check("fullTime 'mine' sem a seleção → não", wantsFullTime({ mode: 'all', teams: ['Brazil'], matches: [], fullTime: 'mine' }, 'France', 'Spain'), false);
 check('fullTime independe do modo de gol (gol off, fim de jogo all)', wantsFullTime({ mode: 'off', teams: [], matches: [], fullTime: 'all' }, 'Brazil', 'Croatia'), true);
+
+// ── ALERTAS OPERACIONAIS ────────────────────────────────────────────────────
+check('match alert exige seleção acompanhada', wantsMatchAlert({ mode: 'all', teams: [], matches: [] }, 'Brazil', 'Croatia'), false);
+check('match alert casa com seleção acompanhada e push de gol ativo', wantsMatchAlert({ mode: 'mine', teams: ['Brazil'], matches: [], fullTime: 'off' }, 'Brazil', 'Croatia'), true);
+check('match alert casa com jogo seguido e fim de jogo ativo', wantsMatchAlert({ mode: 'off', teams: [], matches: [['Brazil', 'Croatia']], fullTime: 'mine' }, 'Croatia', 'Brazil'), true);
+check('match alert não envia se todos os pushes remotos estão off', wantsMatchAlert({ mode: 'off', teams: ['Brazil'], matches: [], fullTime: 'off' }, 'Brazil', 'Croatia'), false);
 
 console.log(`\n${pass} passaram, ${fail} falharam`);
 if (fail > 0) throw new Error(`${fail} teste(s) de filtragem falharam`);

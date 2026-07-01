@@ -13,6 +13,30 @@ export type ESPNCompetitor = {
   team: { id: string; displayName: string; abbreviation: string };
 };
 
+export type ESPNStatusType = {
+  state?: 'pre' | 'in' | 'post' | string;
+  name?: string;
+  description?: string;
+  detail?: string;
+  shortDetail?: string;
+  completed?: boolean;
+};
+
+export type ESPNNote = {
+  type?: string;
+  headline?: string;
+  text?: string;
+  detail?: string;
+  shortDetail?: string;
+  description?: string;
+};
+
+export type ESPNHeadline = {
+  headline?: string;
+  shortLinkText?: string;
+  description?: string;
+};
+
 /**
  * Lance do scoreboard (competitions[0].details[]) — É AQUI que a ESPN coloca o
  * artilheiro (o /summary?event= costuma vir SEM play-by-play na Copa). Tem o
@@ -31,12 +55,20 @@ export type ESPNDetail = {
 export type ESPNEvent = {
   id: string;
   name: string;
+  date?: string;
+  headlines?: ESPNHeadline[];
   status: {
-    type: { state: 'pre' | 'in' | 'post'; name: string };
-    displayClock: string;
-    period: number;
+    type: ESPNStatusType;
+    displayClock?: string;
+    period?: number;
   };
   competitions: Array<{
+    date?: string;
+    startDate?: string;
+    status?: { type?: ESPNStatusType };
+    notes?: ESPNNote[];
+    headlines?: ESPNHeadline[];
+    wasSuspended?: boolean;
     competitors: ESPNCompetitor[];
     details?: ESPNDetail[];
   }>;
