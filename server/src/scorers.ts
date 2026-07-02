@@ -118,18 +118,22 @@ export async function aggregateScorers(kv: KVNamespace): Promise<void> {
     .sort((a, b) => b.goals - a.goals || a.player.localeCompare(b.player))
     .slice(0, TOP_N);
 
-  // Backfill de foto (TheSportsDB) — cache permanente por jogador (achou OU não achou,
-  // pra nunca re-tentar à toa), com orçamento baixo por tick (torneio inteiro converge
-  // em poucos ciclos sem estourar limite de requests).
+  // Backfill de foto (TheSportsDB) — cache permanente por jogador, mas SÓ quando a
+  // busca respondeu de verdade (achou ou confirmou que não tem candidato confiável).
+  // Falha de rede/timeout NÃO é cacheada — senão uma rajada ruim (ex.: cold-start do
+  // deploy) bloqueia o jogador pra sempre mesmo com a fonte funcionando normal depois.
   const photoCache = safeParsePhotos(await kv.get('player_photos'));
   let photoCacheDirty = false;
   let lookupsUsed = 0;
   for (const s of scorers) {
-    if (s.player in photoCache) continue; // já resolvido (achou ou não achou)
+    if (s.player in photoCache) continue; // já resolvido (achou ou confirmou que não tem)
     if (lookupsUsed >= MAX_PHOTO_LOOKUPS_PER_TICK) continue; // orçamento do tick esgotado
-    photoCache[s.player] = await findPlayerPhoto(s.player, s.teamName);
-    photoCacheDirty = true;
     lookupsUsed++;
+    const result = await findPlayerPhoto(s.player, s.teamName);
+    if (result.ok) {
+      photoCache[s.player] = result.url;
+      photoCacheDirty = true;
+    } // ok:false → não grava nada, tenta de novo no próximo tick
   }
   for (const s of scorers) {
     const url = photoCache[s.player];

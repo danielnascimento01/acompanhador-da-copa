@@ -57,17 +57,26 @@ export function pickPlayerPhoto(results: TSDBPlayer[], teamName: string): string
   return p.strCutout || p.strThumb || null;
 }
 
-/** Busca + escolhe a foto de UM jogador. Retorna null em qualquer falha/ambiguidade. */
-export async function findPlayerPhoto(playerName: string, teamName: string): Promise<string | null> {
+/**
+ * Resultado da busca — distingue "busquei e não achei candidato confiável" (ok,
+ * cacheável pra sempre) de "a busca FALHOU" (rede/timeout/HTTP/parse — não é
+ * resposta real da fonte, não pode virar "sem foto" permanente). Sem essa
+ * distinção, uma falha transitória (ex.: rajada de requests no cold-start do
+ * deploy) bloqueava o jogador pra sempre mesmo com a fonte funcionando normal.
+ */
+export type PhotoLookup = { ok: true; url: string | null } | { ok: false };
+
+/** Busca + escolhe a foto de UM jogador. `ok:false` = tentar de novo depois. */
+export async function findPlayerPhoto(playerName: string, teamName: string): Promise<PhotoLookup> {
   try {
     const q = encodeURIComponent(playerName.trim().replace(/\s+/g, '_'));
     const res = await fetch(`${BASE}/searchplayers.php?p=${q}`, {
       headers: { 'User-Agent': 'Copa2026App/1.0' },
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { ok: false };
     const json = (await res.json()) as { player?: TSDBPlayer[] };
-    return pickPlayerPhoto(json.player ?? [], teamName);
+    return { ok: true, url: pickPlayerPhoto(json.player ?? [], teamName) };
   } catch {
-    return null;
+    return { ok: false };
   }
 }
