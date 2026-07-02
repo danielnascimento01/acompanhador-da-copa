@@ -16,6 +16,8 @@ export type LiveScorer = {
   teamId?: string;
   goals: number;
   updatedAt: string;
+  /** id do atleta na ESPN — SÓ o próprio id do artilheiro, nunca substituído/adivinhado. */
+  athleteId?: string;
 };
 
 /**

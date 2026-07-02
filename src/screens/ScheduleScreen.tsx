@@ -4,7 +4,10 @@ import { AppState, Pressable, RefreshControl, SectionList, StyleSheet, Text, Vie
 import { MatchCard } from '../components/MatchCard';
 import { NextMatchHero } from '../components/NextMatchHero';
 import { AdBanner } from '../components/AdBanner';
+import { MyPathCard } from '../components/MyPathCard';
+import { GoldenBootCard } from '../components/GoldenBootCard';
 import { BracketSheet } from './BracketSheet';
+import { ScorersSheet } from './ScorersSheet';
 import { MatchDetailSheet } from './MatchDetailSheet';
 import { DayMatchesSheet } from './DayMatchesSheet';
 import { PastMatchesSheet } from './PastMatchesSheet';
@@ -65,6 +68,7 @@ export function ScheduleScreen() {
   const [dayOpen, setDayOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
   const [bracketOpen, setBracketOpen] = useState(false);
+  const [scorersOpen, setScorersOpen] = useState(false);
   const [showAntiBets, setShowAntiBets] = useState(!antiBetsDismissed);
 
   // Esconde o aviso anti-apostas após 15s — ou ao sair da aba (cleanup). Não reaparece.
@@ -250,6 +254,8 @@ export function ScheduleScreen() {
                 <NextMatchHero match={hero} onPress={() => setDetail(hero)} />
               </FadeInUp>
             ) : null}
+            <MyPathCard onPress={() => setBracketOpen(true)} />
+            <GoldenBootCard onPress={() => setScorersOpen(true)} refreshKey={updatedAt} />
           </>
         }
         renderSectionHeader={({ section }) => <Text style={styles.day}>{section.title}</Text>}
@@ -297,6 +303,7 @@ export function ScheduleScreen() {
         }}
       />
       <BracketSheet visible={bracketOpen} onClose={() => setBracketOpen(false)} />
+      <ScorersSheet visible={scorersOpen} onClose={() => setScorersOpen(false)} />
     </View>
   );
 }

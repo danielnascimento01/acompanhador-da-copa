@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Flag } from '../components/Flag';
+import { PlayerAvatar } from '../components/PlayerAvatar';
 import { fetchLiveScorers, type LiveScorer } from '../lib/liveScorers';
 import { fonts, radius, spacing } from '../lib/theme';
 import { useThemedStyles, useTheme, type ThemeTokens } from '../lib/theme-context';
@@ -61,11 +61,7 @@ export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: 
               {ranked.map((s) => (
                 <View key={`${s.player}-${s.rank}`} style={[styles.row, s.rank === 1 && styles.rowLeader]}>
                   <Text style={[styles.rank, s.rank === 1 && styles.rankLeader]}>{s.rank}</Text>
-                  {s.teamId ? (
-                    <Flag teamId={s.teamId} size={34} radius={10} />
-                  ) : (
-                    <Text style={styles.flag}>{s.flag}</Text>
-                  )}
+                  <PlayerAvatar athleteId={s.athleteId} teamId={s.teamId} flag={s.flag} size={34} radius={10} />
                   <View style={styles.flex1}>
                     <Text style={styles.player}>{s.player}</Text>
                     <Text style={styles.team}>{s.teamName}</Text>
@@ -139,7 +135,6 @@ const makeStyles = ({ c }: ThemeTokens) => StyleSheet.create({
   rowLeader: { borderColor: c.amber },
   rank: { color: c.textDim, fontFamily: fonts.display, fontSize: 20, width: 28, textAlign: 'center' },
   rankLeader: { color: c.amber },
-  flag: { fontSize: 28 },
   flex1: { flex: 1 },
   player: { color: c.text, fontFamily: fonts.bold, fontSize: 16 },
   team: { color: c.textDim, fontFamily: fonts.regular, fontSize: 13, marginTop: 1 },

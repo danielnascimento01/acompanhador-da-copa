@@ -9,7 +9,7 @@
  * Slots de "melhor 3º" listam os grupos candidatos; o time real só entra com a
  * definição oficial (Anexo C, 495 combinações) — nunca inventamos.
  */
-import { Match, isFinished } from './fixtures';
+import { Match, isFinished, isLive } from './fixtures';
 import { computeStandings } from './standings';
 import { teamOutlook } from './scenarios';
 import { TEAMS } from './teams';
@@ -342,4 +342,96 @@ export function eliminatedTeams(matches: Match[]): Set<string> {
   }
   if (complete) for (const t of TEAMS) if (!qualified.has(t.id)) elim.add(t.id);
   return elim;
+}
+
+/**
+ * Para onde o vencedor de cada jogo avança — fixo pela ESTRUTURA da chave (não
+ * pelo resultado): o id do próximo jogo + de que lado (a/b) ele entra lá.
+ */
+const NEXT_MATCH: Record<string, { id: string; side: 'a' | 'b' }> = (() => {
+  const map: Record<string, { id: string; side: 'a' | 'b' }> = {};
+  for (const bm of BRACKET) {
+    if (bm.a.kind === 'winnerOf') map[bm.a.ref] = { id: bm.id, side: 'a' };
+    if (bm.b.kind === 'winnerOf') map[bm.b.ref] = { id: bm.id, side: 'b' };
+  }
+  return map;
+})();
+
+const KO_STAGE_ORDER: StageKey[] = ['r32', 'r16', 'qf', 'sf', 'final'];
+
+export type PathLeg = {
+  matchId: string;
+  stage: StageKey;
+  utc: string;
+  /** Adversário já conhecido (id da seleção), se resolvido. */
+  opponentId: string | null;
+  /** Rótulo do slot ("Vencedor Oitavas J3"), quando o adversário ainda não é conhecido. */
+  opponentLabel: string | null;
+  outcome: 'upcoming' | 'live' | 'won' | 'lost';
+  /** true quando o avanço depende de palpite do usuário (ainda não é oficial). */
+  predicted: boolean;
+};
+
+/**
+ * "Caminho até a final" de UMA seleção — assume que ela vence cada fase seguinte
+ * (ou usa o resultado oficial/o palpite quando já existe) e para na fase em que é
+ * eliminada. Retorna [] se a seleção ainda não tem entrada certa na chave (grupo
+ * indefinido) — nunca inventa um confronto.
+ */
+export function teamBracketPath(matches: Match[], predictions: PredictionMap, teamId: string): PathLeg[] {
+  const positions = groupPositions(matches);
+  const results = predictedKnockoutResults(matches, predictions);
+  const byId = new Map(matches.map((m) => [m.id, m]));
+
+  let entryId: string | null = null;
+  let entrySide: 'a' | 'b' | null = null;
+  for (const stage of KO_STAGE_ORDER) {
+    const found = BRACKET.find(
+      (bm) =>
+        bm.stage === stage &&
+        (resolveSlot(bm.a, positions, results) === teamId || resolveSlot(bm.b, positions, results) === teamId),
+    );
+    if (found) {
+      entryId = found.id;
+      entrySide = resolveSlot(found.a, positions, results) === teamId ? 'a' : 'b';
+      break;
+    }
+  }
+  if (!entryId || !entrySide) return [];
+
+  const legs: PathLeg[] = [];
+  let currentId: string | undefined = entryId;
+  let side: 'a' | 'b' = entrySide;
+  while (currentId) {
+    const bm = BY_ID.get(currentId);
+    if (!bm) break;
+    // Lado rastreado pela ESTRUTURA da chave (não por resolveSlot): em fases
+    // futuras ainda indefinidas, nenhum dos dois lados resolve para teamId —
+    // resolveSlot não diferencia "nós" do adversário nesse caso.
+    const oppSlot = side === 'a' ? bm.b : bm.a;
+    const oppId = resolveSlot(oppSlot, positions, results);
+    const liveMatch = byId.get(bm.id);
+    const result = results[bm.id];
+
+    let outcome: PathLeg['outcome'] = 'upcoming';
+    if (result) outcome = result.winner === teamId ? 'won' : 'lost';
+    else if (liveMatch && isLive(liveMatch)) outcome = 'live';
+
+    legs.push({
+      matchId: bm.id,
+      stage: bm.stage,
+      utc: bm.utc,
+      opponentId: oppId,
+      opponentLabel: oppId ? null : slotLabel(oppSlot),
+      outcome,
+      predicted: result?.source === 'prediction',
+    });
+
+    if (outcome === 'lost') break;
+    const next = NEXT_MATCH[bm.id];
+    if (!next) break;
+    currentId = next.id;
+    side = next.side;
+  }
+  return legs;
 }

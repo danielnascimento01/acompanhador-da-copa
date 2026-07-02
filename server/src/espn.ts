@@ -49,7 +49,7 @@ export type ESPNDetail = {
   penaltyKick?: boolean;
   clock?: { value?: number; displayValue?: string };
   team?: { id?: string };
-  athletesInvolved?: Array<{ displayName?: string; team?: { id?: string } }>;
+  athletesInvolved?: Array<{ id?: string; displayName?: string; team?: { id?: string } }>;
 };
 
 export type ESPNEvent = {

@@ -19,12 +19,14 @@ export type LiveScorer = {
   teamName: string;
   goals: number;
   updatedAt: string; // ISO 8601
+  /** id do atleta na ESPN (p/ foto real via a.espncdn.com — só o PRÓPRIO id, nunca outro). */
+  athleteId?: string;
 };
 
 /** Abertura da Copa 2026 (a soma começa daqui). */
 const TOURNEY_START = '20260611';
 
-type DayGoals = { player: string; teamName: string }[];
+type DayGoals = { player: string; teamName: string; athleteId?: string }[];
 type DateCache = Record<string, { final: boolean; scorers: DayGoals }>;
 
 /** Todas as datas YYYYMMDD da abertura até hoje+1 (o +1 cobre o fuso ET/UTC). */
@@ -52,7 +54,7 @@ export function scorersFromEvent(event: ESPNEvent): DayGoals {
     if (!player) continue;
     const teamId = ath?.team?.id ?? det.team?.id;
     const teamName = comp.competitors.find((c) => c.team.id === teamId)?.team.displayName ?? '';
-    out.push({ player, teamName });
+    out.push({ player, teamName, athleteId: ath?.id });
   }
   return out;
 }
@@ -89,17 +91,21 @@ export async function aggregateScorers(kv: KVNamespace): Promise<void> {
   }
 
   // Soma todos os dias cacheados → total por jogador.
-  const totals = new Map<string, { teamName: string; goals: number }>();
+  const totals = new Map<string, { teamName: string; goals: number; athleteId?: string }>();
   for (const date of Object.keys(cache)) {
     for (const g of cache[date].scorers) {
-      const cur = totals.get(g.player) ?? { teamName: g.teamName, goals: 0 };
-      totals.set(g.player, { teamName: cur.teamName || g.teamName, goals: cur.goals + 1 });
+      const cur = totals.get(g.player) ?? { teamName: g.teamName, goals: 0, athleteId: g.athleteId };
+      totals.set(g.player, {
+        teamName: cur.teamName || g.teamName,
+        goals: cur.goals + 1,
+        athleteId: cur.athleteId ?? g.athleteId,
+      });
     }
   }
   if (totals.size === 0) return; // nada ainda — não sobrescreve
 
   const scorers: LiveScorer[] = Array.from(totals.entries())
-    .map(([player, { teamName, goals }]) => ({ player, teamName, goals, updatedAt: now.toISOString() }))
+    .map(([player, { teamName, goals, athleteId }]) => ({ player, teamName, goals, athleteId, updatedAt: now.toISOString() }))
     .sort((a, b) => b.goals - a.goals || a.player.localeCompare(b.player));
 
   // Só grava `scorers` se a artilharia REALMENTE mudou (ignora `updatedAt`).
