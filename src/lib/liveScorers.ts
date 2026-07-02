@@ -18,6 +18,8 @@ export type LiveScorer = {
   updatedAt: string;
   /** id do atleta na ESPN — SÓ o próprio id do artilheiro, nunca substituído/adivinhado. */
   athleteId?: string;
+  /** foto real via TheSportsDB (melhor cobertura que a ESPN) — só quando a nacionalidade confirma. */
+  photoUrl?: string;
 };
 
 /**

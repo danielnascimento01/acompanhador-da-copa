@@ -15,34 +15,38 @@ function espnHeadshotUrl(athleteId?: string): string | null {
 }
 
 /**
- * Avatar de jogador: foto real se a ESPN tiver uma pro id (nem todo jogador tem —
- * cai pra bandeira da seleção, e sem seleção, pro emoji). Nunca mostra foto errada:
- * qualquer falha de carregamento (404, rede) descarta a imagem pro resto da sessão.
+ * Avatar de jogador — cadeia de fallback: foto do TheSportsDB (melhor cobertura,
+ * já resolvida com confirmação de nacionalidade no servidor) → foto da ESPN (id
+ * direto do gol) → bandeira da seleção → emoji. Qualquer falha de carregamento
+ * (404, rede) avança pro próximo da cadeia; nunca mostra foto errada.
  */
 export function PlayerAvatar({
   athleteId,
+  photoUrl,
   teamId,
   flag,
   size = 34,
   radius,
 }: {
   athleteId?: string;
+  photoUrl?: string;
   teamId?: string;
   flag?: string;
   size?: number;
   radius?: number;
 }) {
   const styles = useThemedStyles(makeStyles);
-  const [failed, setFailed] = useState(false);
+  const [idx, setIdx] = useState(0);
   const r = radius ?? Math.round(size * 0.3);
-  const url = !failed ? espnHeadshotUrl(athleteId) : null;
+  const candidates = [photoUrl, espnHeadshotUrl(athleteId)].filter((u): u is string => !!u);
+  const url = candidates[idx] ?? null;
 
   if (url) {
     return (
       <Image
         source={{ uri: url }}
         style={[styles.img, { width: size, height: size, borderRadius: r }]}
-        onError={() => setFailed(true)}
+        onError={() => setIdx((i) => i + 1)}
       />
     );
   }

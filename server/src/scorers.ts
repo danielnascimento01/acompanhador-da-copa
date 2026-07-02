@@ -13,6 +13,7 @@
  */
 
 import { fetchScoreboard, yyyymmdd, type ESPNEvent } from './espn';
+import { findPlayerPhoto } from './sportsdb';
 
 export type LiveScorer = {
   player: string;
@@ -21,7 +22,12 @@ export type LiveScorer = {
   updatedAt: string; // ISO 8601
   /** id do atleta na ESPN (p/ foto real via a.espncdn.com — só o PRÓPRIO id, nunca outro). */
   athleteId?: string;
+  /** foto real via TheSportsDB (busca por nome, só quando a nacionalidade confirma — ver sportsdb.ts). */
+  photoUrl?: string;
 };
+
+/** Backfill de foto por tick do cron: orçamento baixo pra não estourar TheSportsDB nem subrequests. */
+const MAX_PHOTO_LOOKUPS_PER_TICK = 8;
 
 /** Abertura da Copa 2026 (a soma começa daqui). */
 const TOURNEY_START = '20260611';
@@ -108,6 +114,27 @@ export async function aggregateScorers(kv: KVNamespace): Promise<void> {
     .map(([player, { teamName, goals, athleteId }]) => ({ player, teamName, goals, athleteId, updatedAt: now.toISOString() }))
     .sort((a, b) => b.goals - a.goals || a.player.localeCompare(b.player));
 
+  // Backfill de foto (TheSportsDB) — cache permanente por jogador (achou OU não achou,
+  // pra nunca re-tentar à toa), com orçamento baixo por tick (torneio inteiro converge
+  // em poucos ciclos sem estourar limite de requests).
+  const photoCache = safeParsePhotos(await kv.get('player_photos'));
+  let photoCacheDirty = false;
+  let lookupsUsed = 0;
+  for (const s of scorers) {
+    if (s.player in photoCache) continue; // já resolvido (achou ou não achou)
+    if (lookupsUsed >= MAX_PHOTO_LOOKUPS_PER_TICK) continue; // orçamento do tick esgotado
+    photoCache[s.player] = await findPlayerPhoto(s.player, s.teamName);
+    photoCacheDirty = true;
+    lookupsUsed++;
+  }
+  for (const s of scorers) {
+    const url = photoCache[s.player];
+    if (url) s.photoUrl = url;
+  }
+  if (photoCacheDirty) {
+    await kv.put('player_photos', JSON.stringify(photoCache), { expirationTtl: 60 * 24 * 60 * 60 });
+  }
+
   // Só grava `scorers` se a artilharia REALMENTE mudou (ignora `updatedAt`).
   const prevRaw = await kv.get('scorers');
   if (!prevRaw || !sameScorers(safeParse(prevRaw), scorers)) {
@@ -140,11 +167,22 @@ function safeParseDates(raw: string | null): DateCache {
   }
 }
 
+/** Parse tolerante do cache de fotos (jogador → url ou null se já checado e não achou). */
+function safeParsePhotos(raw: string | null): Record<string, string | null> {
+  if (!raw) return {};
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, string | null>) : {};
+  } catch {
+    return {};
+  }
+}
+
 /** Compara duas listas de artilheiros ignorando `updatedAt` (muda todo ciclo). */
 export function sameScorers(a: LiveScorer[], b: LiveScorer[]): boolean {
   if (a.length !== b.length) return false;
   const sig = (l: LiveScorer[]) =>
-    l.map((s) => JSON.stringify([s.player, s.teamName, s.goals, s.athleteId])).sort().join('|');
+    l.map((s) => JSON.stringify([s.player, s.teamName, s.goals, s.athleteId, s.photoUrl])).sort().join('|');
   return sig(a) === sig(b);
 }
 

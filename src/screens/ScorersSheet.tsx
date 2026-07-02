@@ -61,7 +61,7 @@ export function ScorersSheet({ visible, onClose }: { visible: boolean; onClose: 
               {ranked.map((s) => (
                 <View key={`${s.player}-${s.rank}`} style={[styles.row, s.rank === 1 && styles.rowLeader]}>
                   <Text style={[styles.rank, s.rank === 1 && styles.rankLeader]}>{s.rank}</Text>
-                  <PlayerAvatar athleteId={s.athleteId} teamId={s.teamId} flag={s.flag} size={34} radius={10} />
+                  <PlayerAvatar athleteId={s.athleteId} photoUrl={s.photoUrl} teamId={s.teamId} flag={s.flag} size={34} radius={10} />
                   <View style={styles.flex1}>
                     <Text style={styles.player}>{s.player}</Text>
                     <Text style={styles.team}>{s.teamName}</Text>

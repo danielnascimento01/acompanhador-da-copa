@@ -41,7 +41,7 @@ export function GoldenBootCard({ onPress, refreshKey }: { onPress: () => void; r
         {scorers.map((s, i) => (
           <View key={`${s.player}-${i}`} style={styles.player}>
             <Text style={styles.medal}>{MEDAL[i]}</Text>
-            <PlayerAvatar athleteId={s.athleteId} teamId={s.teamId} flag={s.flag} size={36} radius={10} />
+            <PlayerAvatar athleteId={s.athleteId} photoUrl={s.photoUrl} teamId={s.teamId} flag={s.flag} size={36} radius={10} />
             <Text style={styles.name} numberOfLines={1}>{s.player}</Text>
             <Text style={styles.goals}>{s.goals} {s.goals === 1 ? 'gol' : 'gols'}</Text>
           </View>
