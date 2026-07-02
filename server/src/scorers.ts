@@ -144,7 +144,7 @@ function safeParseDates(raw: string | null): DateCache {
 export function sameScorers(a: LiveScorer[], b: LiveScorer[]): boolean {
   if (a.length !== b.length) return false;
   const sig = (l: LiveScorer[]) =>
-    l.map((s) => JSON.stringify([s.player, s.teamName, s.goals])).sort().join('|');
+    l.map((s) => JSON.stringify([s.player, s.teamName, s.goals, s.athleteId])).sort().join('|');
   return sig(a) === sig(b);
 }
 
