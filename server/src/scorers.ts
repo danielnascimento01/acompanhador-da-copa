@@ -29,6 +29,9 @@ export type LiveScorer = {
 /** Backfill de foto por tick do cron: orçamento baixo pra não estourar TheSportsDB nem subrequests. */
 const MAX_PHOTO_LOOKUPS_PER_TICK = 8;
 
+/** Só a Chuteira de Ouro de verdade — corta o resto (também acelera o backfill de foto). */
+const TOP_N = 20;
+
 /** Abertura da Copa 2026 (a soma começa daqui). */
 const TOURNEY_START = '20260611';
 
@@ -112,7 +115,8 @@ export async function aggregateScorers(kv: KVNamespace): Promise<void> {
 
   const scorers: LiveScorer[] = Array.from(totals.entries())
     .map(([player, { teamName, goals, athleteId }]) => ({ player, teamName, goals, athleteId, updatedAt: now.toISOString() }))
-    .sort((a, b) => b.goals - a.goals || a.player.localeCompare(b.player));
+    .sort((a, b) => b.goals - a.goals || a.player.localeCompare(b.player))
+    .slice(0, TOP_N);
 
   // Backfill de foto (TheSportsDB) — cache permanente por jogador (achou OU não achou,
   // pra nunca re-tentar à toa), com orçamento baixo por tick (torneio inteiro converge
